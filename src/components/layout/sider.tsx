@@ -324,7 +324,8 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
         breakpoint='lg'
         trigger={
           <Button
-            type='text'
+            type='primary'
+            shape='round'
             style={{
               borderRadius: 0,
               height: "100%",

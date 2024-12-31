@@ -74,12 +74,14 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
     <AntdLayout.Header style={headerStyles}>
       <Space>
         <Dropdown
+          placement='bottomRight'
+          arrow
           menu={{ items: menuItems, onClick: handleMenuClick }}
           trigger={["click"]}
         >
           <Button type='text' style={{ display: "flex", alignItems: "center" }}>
             <Avatar
-              size={"large"}
+              size={"default"}
               src={user?.avatar}
               style={{ marginRight: 8 }}
             />

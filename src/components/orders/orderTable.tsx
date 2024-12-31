@@ -62,7 +62,7 @@ const exportToExcel = (orders: IOrder[]) => {
 };
 
 const exportToPDF = (orders: IOrder[]) => {
-  const doc = new jsPDF();
+  const doc = new jsPDF("landscape");
 
   const columns = [
     { header: "Nome Guida", dataKey: "nomeGuida" },
@@ -74,7 +74,7 @@ const exportToPDF = (orders: IOrder[]) => {
     { header: "Radioline", dataKey: "radiolineConsegnate" },
     { header: "Extra", dataKey: "extra" },
     { header: "Saldo", dataKey: "saldo" },
-    { header: "Status", dataKey: "status" },
+    // { header: "Status", dataKey: "status" },
     { header: "Note", dataKey: "note" },
   ];
 
@@ -93,7 +93,7 @@ const exportToPDF = (orders: IOrder[]) => {
   }));
 
   autoTable(doc, { columns, body: rows, margin: { top: 20 } });
-  doc.save("orders.pdf");
+
   const date = new Date().toLocaleDateString("it-IT");
   doc.save(`ordini_${date}.pdf`);
 };

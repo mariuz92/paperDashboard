@@ -39,9 +39,9 @@ export const OrdersPage: React.FC = () => {
         endDate,
       });
       setOrders(data);
-      message.success(
-        `Orders for ${selectedDate.format("DD/MM/YYYY")} loaded.`
-      );
+      // message.success(
+      //   `Orders for ${selectedDate.format("DD/MM/YYYY")} loaded.`
+      // );
     } catch (error) {
       message.error("Failed to fetch orders.");
       console.error("Error fetching orders:", error);
