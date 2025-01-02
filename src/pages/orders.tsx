@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { message } from "antd";
-import { Layout, Typography, DatePicker, Row, Collapse, Button } from "antd";
+import { Layout, Typography, DatePicker, Row } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { useSearchParams, useNavigate } from "react-router-dom"; // Handle query params and navigation
 import { getOrders } from "../api/orderApi"; // API to fetch orders
@@ -18,9 +18,6 @@ export const OrdersPage: React.FC = () => {
   const [searchParams] = useSearchParams(); // Get query parameters
   const navigate = useNavigate(); // For redirecting with query params
 
-  // Controls whether the form is open or closed
-  const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-
   /**
    * Fetch orders for the selected date.
    */
@@ -34,7 +31,7 @@ export const OrdersPage: React.FC = () => {
 
       const { data } = await getOrders({
         page: 1,
-        pageSize: 10,
+        pageSize: 50,
         startDate,
         endDate,
       });
@@ -88,43 +85,6 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  /**
-   * The panel header has only the button:
-   * - Blue (default) when "Crea ordine" is displayed
-   * - Grey (#bfbfbf) when "Chiudi ordine" is displayed
-   */
-  const panelHeader = (
-    <div style={{ textAlign: "right", width: "100%" }}>
-      <Button
-        type='primary'
-        style={
-          isFormOpen
-            ? {
-                backgroundColor: "#bfbfbf",
-                borderColor: "#bfbfbf",
-                color: "#fff",
-              }
-            : {}
-        }
-        onClick={() => setIsFormOpen((prev) => !prev)}
-      >
-        {isFormOpen ? "Chiudi ordine" : "Crea ordine"}
-      </Button>
-    </div>
-  );
-
-  const collapseItems = [
-    {
-      key: "orderFormPanel",
-      label: panelHeader,
-      children: (
-        <OrderForm
-          addOrder={(newOrder) => setOrders((prev) => [...prev, newOrder])}
-        />
-      ),
-    },
-  ];
-
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
@@ -142,13 +102,9 @@ export const OrdersPage: React.FC = () => {
       </Header>
 
       <Content>
-        <Collapse
-          expandIcon={() => null} // Hide the default arrow
-          style={{ marginBottom: 20 }}
-          activeKey={isFormOpen ? ["orderFormPanel"] : []}
-          items={collapseItems}
+        <OrderForm
+          addOrder={(newOrder) => setOrders((prev) => [...prev, newOrder])}
         />
-
         <OrderTable orders={orders} setOrders={setOrders} loading={loading} />
       </Content>
     </Layout>

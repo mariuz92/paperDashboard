@@ -14,7 +14,7 @@ import { UploadOutlined } from "@ant-design/icons";
 import { auth } from "../utils/firebaseConfig";
 import { updateProfile, updatePassword } from "firebase/auth";
 
-export const UserPage: React.FC = () => {
+export const ProfilePage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(auth.currentUser);

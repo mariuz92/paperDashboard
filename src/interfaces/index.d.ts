@@ -10,7 +10,11 @@ export interface IPost {
   category: { id: number };
 }
 
-export type IOrderStatus = "In Consegna" | "Presa in Carico" | "Consegnato";
+export type IOrderStatus =
+  | "In Consegna"
+  | "Presa in Carico"
+  | "Consegnato"
+  | "Ritirato";
 
 export interface IOrder {
   id?: string;

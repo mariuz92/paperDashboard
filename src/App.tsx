@@ -11,44 +11,66 @@ import {
   FileOutlined,
   CalendarOutlined,
   AndroidOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 
 import dataProvider from "@refinedev/simple-rest";
 import routerProvider, {
-  NavigateToResource,
   CatchAllNavigate,
   UnsavedChangesNotifier,
   DocumentTitleHandler,
 } from "@refinedev/react-router";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router";
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router";
 import { App as AntdApp, ConfigProvider } from "antd";
-import { ThemedHeaderV2 } from "./components/layout/header";
 import { ThemedLayoutV2 } from "./components/layout";
+import { ThemedHeaderV2 } from "./components/layout/header";
 import { ThemedTitleV2 } from "./components/layout/title";
 import "@refinedev/antd/dist/reset.css";
 
 import { CalendarPage } from "./pages/calendar";
 import { DashboardPage } from "../src/pages/dashboard";
 import { OrdersPage } from "../src/pages/orders";
-import { UserPage } from "../src/pages/profile";
+import { ProfilePage } from "../src/pages/profile";
+import RiderUpdatePage from "./pages/rider";
 
 import {
   signUpWithEmail,
   signInWithEmail,
   signOutUser,
-  onAuthStateChangedListener,
   signInWithGoogle,
 } from "../src/api/authApi";
 import { auth } from "./utils/firebaseConfig";
 import { CONFIG } from "./configuration";
+import UsersPage from "./pages/users";
+
 const API_URL = "https://api.fake-rest.refine.dev";
 
 const App: React.FC = () => {
+  /**
+   * Define an AuthProvider that:
+   * 1) Checks localStorage.getItem("email") to determine if user is 'authenticated'.
+   * 2) Provides login/logout/etc.
+   */
   const authProvider: AuthProvider = {
+    check: async () => {
+      // If no email in localStorage, user not authenticated -> redirect to /login
+      return localStorage.getItem("email")
+        ? { authenticated: true }
+        : {
+            authenticated: false,
+            error: {
+              name: "Not authenticated",
+              message: "User not logged in",
+            },
+            logout: true,
+            redirectTo: "/login",
+          };
+    },
     login: async ({ providerName, email, password }) => {
       if (providerName === "google") {
         try {
           await signInWithGoogle();
+          localStorage.setItem("email", email);
           return {
             success: true,
             redirectTo: "/",
@@ -83,9 +105,9 @@ const App: React.FC = () => {
         };
       }
     },
-    register: async ({ email, password }) => {
+    register: async ({ email, password, role }) => {
       try {
-        const user = await signUpWithEmail(email, password);
+        const user = await signUpWithEmail(email, password, role);
         if (user.email) {
           localStorage.setItem("email", user.email);
         }
@@ -104,13 +126,13 @@ const App: React.FC = () => {
       }
     },
     updatePassword: async (params) => {
-      // Implement update password logic here
+      // Implement password update logic if needed
       return {
         success: true,
       };
     },
     forgotPassword: async (params) => {
-      // Implement forgot password logic here
+      // Implement forgot password logic if needed
       return {
         success: true,
       };
@@ -139,23 +161,8 @@ const App: React.FC = () => {
           logout: true,
         };
       }
-
       return { error };
     },
-    check: async () =>
-      localStorage.getItem("email")
-        ? {
-            authenticated: true,
-          }
-        : {
-            authenticated: false,
-            error: {
-              message: "Check failed",
-              name: "Not authenticated",
-            },
-            logout: true,
-            redirectTo: "/login",
-          },
     getPermissions: async (params) => params?.permissions,
     getIdentity: async () => {
       const user = auth.currentUser;
@@ -206,12 +213,15 @@ const App: React.FC = () => {
                   icon: <DashboardOutlined />,
                 },
               },
-              // {
-              //   name: "posts",
-              //   list: "/posts",
-              //   show: "/posts/show/:id",
-              //   edit: "/posts/edit/:id",
-              // },
+              {
+                name: "users",
+                list: "/Collaboratori",
+                meta: {
+                  label: "Collaboratori",
+                  icon: <TeamOutlined />,
+                },
+              },
+              // potential other resources...
             ]}
             notificationProvider={useNotificationProvider}
             options={{
@@ -220,82 +230,21 @@ const App: React.FC = () => {
             }}
           >
             <Routes>
-              <Route
-                element={
-                  <Authenticated
-                    key='authenticated-routes'
-                    fallback={<CatchAllNavigate to='/login' />}
-                  >
-                    <ThemedLayoutV2
-                      Header={() => <ThemedHeaderV2 />}
-                      Title={({ collapsed }) => (
-                        <ThemedTitleV2
-                          collapsed={collapsed}
-                          icon={<AndroidOutlined />}
-                          text={CONFIG.appName}
-                        />
-                      )}
-                    >
-                      <Outlet />
-                    </ThemedLayoutV2>
-                  </Authenticated>
-                }
-              >
-                <Route index element={<OrdersPage />} />
-
-                <Route path='/Calendario'>
-                  <Route index element={<CalendarPage />} />
-                </Route>
-                <Route path='/Profilo'>
-                  <Route index element={<UserPage />} />
-                </Route>
-                <Route path='/Dashboard'>
-                  <Route index element={<DashboardPage />} />
-                </Route>
-
-                {/* <Route
-                  element={
-                    <Authenticated key='auth-pages' fallback={<Outlet />}>
-                      <NavigateToResource resource='posts' />
-                    </Authenticated>
-                  }
-                /> */}
-              </Route>
+              {/* PUBLIC AUTH ROUTES */}
               <Route
                 path='/login'
                 element={
                   <AuthPage
                     type='login'
                     formProps={{
-                      initialValues: {
-                        // ...authCredentials,
-                      },
+                      initialValues: {},
                     }}
                     providers={[
                       {
                         name: "google",
                         label: "Sign in with Google",
-                        icon: (
-                          <GoogleOutlined
-                            style={{
-                              fontSize: 24,
-                              lineHeight: 0,
-                            }}
-                          />
-                        ),
+                        icon: <GoogleOutlined style={{ fontSize: 24 }} />,
                       },
-                      // {
-                      //   name: "github",
-                      //   label: "Sign in with GitHub",
-                      //   icon: (
-                      //     <GithubOutlined
-                      //       style={{
-                      //         fontSize: 24,
-                      //         lineHeight: 0,
-                      //       }}
-                      //     />
-                      //   ),
-                      // },
                     ]}
                   />
                 }
@@ -309,14 +258,7 @@ const App: React.FC = () => {
                       {
                         name: "google",
                         label: "Sign in with Google",
-                        icon: (
-                          <GoogleOutlined
-                            style={{
-                              fontSize: 24,
-                              lineHeight: 0,
-                            }}
-                          />
-                        ),
+                        icon: <GoogleOutlined style={{ fontSize: 24 }} />,
                       },
                     ]}
                   />
@@ -331,25 +273,46 @@ const App: React.FC = () => {
                 element={<AuthPage type='updatePassword' />}
               />
 
+              {/* PROTECTED ROUTES */}
               <Route
                 element={
-                  <ThemedLayoutV2
-                    Header={() => <ThemedHeaderV2 />}
-                    Title={({ collapsed }) => (
-                      <ThemedTitleV2
-                        collapsed={collapsed}
-                        icon={<AndroidOutlined />}
-                        text={CONFIG.appName}
-                      />
-                    )}
+                  <Authenticated
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
                   >
-                    <Outlet />
-                  </ThemedLayoutV2>
+                    <ThemedLayoutV2
+                      Header={ThemedHeaderV2}
+                      Title={({ collapsed }) => (
+                        <ThemedTitleV2
+                          collapsed={collapsed}
+                          icon={<AndroidOutlined />}
+                          text={CONFIG.appName}
+                        />
+                      )}
+                    >
+                      <Outlet />
+                    </ThemedLayoutV2>
+                  </Authenticated>
                 }
               >
+                {/* Main routes */}
+                <Route index element={<OrdersPage />} />
+                <Route path='/Calendario' element={<CalendarPage />} />
+                <Route path='/Dashboard' element={<DashboardPage />} />
+                <Route path='/Profilo' element={<ProfilePage />} />
+                <Route path='/Collaboratori' element={<UsersPage />} />
+
+                {/* Rider sub-route (also protected) */}
+                <Route path='/rider'>
+                  <Route index element={<RiderUpdatePage />} />
+                  <Route path=':id' element={<RiderUpdatePage />} />
+                </Route>
+
+                {/* Catch-all 404 (protected) */}
                 <Route path='*' element={<ErrorComponent />} />
               </Route>
             </Routes>
+
             <UnsavedChangesNotifier />
             <DocumentTitleHandler />
           </Refine>

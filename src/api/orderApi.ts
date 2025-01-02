@@ -12,6 +12,7 @@ import {
   orderBy,
   limit,
   startAfter,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../utils/firebaseConfig";
 import { IOrder } from "../interfaces";
@@ -130,6 +131,27 @@ export const getOrders = async (
   } catch (error) {
     console.error("Error fetching orders:", error);
     throw error;
+  }
+};
+
+/**
+ * Get an order by ID from Firebase Firestore.
+ * @param {string} id - The document ID of the order to retrieve.
+ * @returns {Promise<IOrder | null>} - The order object if found, otherwise null.
+ */
+export const getOrderById = async (id: string): Promise<IOrder | null> => {
+  try {
+    const docRef = doc(db, "orders", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as IOrder;
+    } else {
+      console.log("No such document!");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error getting order:", error);
+    throw new Error("Failed to get order");
   }
 };
 

@@ -9,19 +9,32 @@ import {
   Button,
   message,
   DatePicker,
+  Dropdown,
+  Menu,
+  Divider,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
+import type { MenuProps } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { IOrder, IOrderStatus } from "../../interfaces";
 import { updateOrder, deleteOrder } from "../../api/orderApi";
 import ConfirmationModal from "../shared/confirmationModal";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  ShareAltOutlined,
+  SaveOutlined,
+  CloseOutlined,
+  MenuOutlined,
+  MoreOutlined,
+} from "@ant-design/icons";
 
-// For Excel, CSV, PDF exports
 import * as XLSX from "xlsx";
 import { CSVLink } from "react-csv";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { JSX } from "react/jsx-runtime";
 
 /**
  * Extended column type:
@@ -34,7 +47,7 @@ interface EditableColumnType<T> extends ColumnType<T> {
 }
 
 /**
- * Props for the EditableCell
+ * Props for the EditableCell:
  * - We allow "date" as an inputType for DatePicker
  */
 interface EditableCellProps {
@@ -53,7 +66,7 @@ interface OrderTableProps {
   loading: boolean;
 }
 
-/* -------------------- Export Helpers -------------------- */
+/** Convert data to Excel sheet */
 const exportToExcel = (orders: IOrder[]) => {
   const worksheet = XLSX.utils.json_to_sheet(orders);
   const workbook = XLSX.utils.book_new();
@@ -61,6 +74,7 @@ const exportToExcel = (orders: IOrder[]) => {
   XLSX.writeFile(workbook, "orders.xlsx");
 };
 
+/** Convert data to PDF (landscape) */
 const exportToPDF = (orders: IOrder[]) => {
   const doc = new jsPDF("landscape");
 
@@ -74,7 +88,7 @@ const exportToPDF = (orders: IOrder[]) => {
     { header: "Radioline", dataKey: "radiolineConsegnate" },
     { header: "Extra", dataKey: "extra" },
     { header: "Saldo", dataKey: "saldo" },
-    // { header: "Status", dataKey: "status" },
+    // { header: "Status", dataKey: "status" }, // commented out in your snippet
     { header: "Note", dataKey: "note" },
   ];
 
@@ -88,7 +102,6 @@ const exportToPDF = (orders: IOrder[]) => {
     radiolineConsegnate: order.radiolineConsegnate ?? 0,
     extra: order.extra ?? 0,
     saldo: order.saldo?.toFixed(2) ?? "0.00",
-    // status: order.status,
     note: order.note || "Nessuna nota",
   }));
 
@@ -98,7 +111,9 @@ const exportToPDF = (orders: IOrder[]) => {
   doc.save(`ordini_${date}.pdf`);
 };
 
-/* -------------------- EditableCell -------------------- */
+/**
+ * Editable cell component
+ */
 const EditableCell: React.FC<EditableCellProps> = ({
   editing,
   col,
@@ -118,19 +133,19 @@ const EditableCell: React.FC<EditableCellProps> = ({
             </Select.Option>
             <Select.Option value='In Consegna'>In Consegna</Select.Option>
             <Select.Option value='Consegnato'>Consegnato</Select.Option>
+            <Select.Option value='Ritirato'>Ritirato</Select.Option>
           </Select>
         );
       case "number":
         return <InputNumber style={{ width: "100%" }} />;
       case "date":
-        // Use DatePicker for date fields
         return <DatePicker style={{ width: "100%" }} format='YYYY-MM-DD' />;
       default:
+        // "text"
         return <Input />;
     }
   })();
 
-  // Validation rules if required
   const rules = col?.required
     ? [{ required: true, message: `Inserisci ${title}` }]
     : [];
@@ -148,7 +163,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   );
 };
 
-/** -------------------- OrderTable -------------------- */
+/** Main OrderTable component */
 const OrderTable: React.FC<OrderTableProps> = ({
   orders,
   setOrders,
@@ -161,11 +176,11 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
   const isEditing = (index: number) => index === editingRowIndex;
 
-  /** Enter edit mode */
+  /** Enter edit mode for row */
   const handleEdit = (index: number) => {
-    // Convert string date to Dayjs for orarioConsegna & oraRitiro
     const rowData = { ...orders[index] };
 
+    // Convert orarioConsegna and oraRitiro to Dayjs if they are strings
     if (typeof rowData.orarioConsegna === "string" && rowData.orarioConsegna) {
       rowData.orarioConsegna = dayjs(rowData.orarioConsegna, "YYYY-MM-DD");
     }
@@ -182,13 +197,12 @@ const OrderTable: React.FC<OrderTableProps> = ({
     setEditingRowIndex(null);
   };
 
-  /** Save after validation */
+  /** Save updated row */
   const handleSave = async (index: number) => {
     try {
-      // Grab form fields
       const updatedRow = (await form.validateFields()) as Partial<IOrder>;
 
-      // Convert Dayjs -> string
+      // Convert dayjs back to string
       if (dayjs.isDayjs(updatedRow.orarioConsegna)) {
         updatedRow.orarioConsegna =
           updatedRow.orarioConsegna.format("YYYY-MM-DD");
@@ -197,7 +211,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
         updatedRow.oraRitiro = updatedRow.oraRitiro.format("YYYY-MM-DD");
       }
 
-      // Replace undefined => null or remove them
+      // Remove undefined fields
       Object.entries(updatedRow).forEach(([k, v]) => {
         if (v === undefined) {
           delete updatedRow[k as keyof IOrder];
@@ -207,9 +221,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       const updatedOrders = [...orders];
       const mergedOrder = { ...updatedOrders[index], ...updatedRow };
 
-      // Update in Firestore
       await updateOrder(mergedOrder.id as string, updatedRow);
-
       updatedOrders[index] = mergedOrder;
       setOrders(updatedOrders);
       setEditingRowIndex(null);
@@ -226,7 +238,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
     setIsModalVisible(true);
   };
 
-  /** Confirm delete */
+  /** Confirm deletion */
   const handleDelete = async () => {
     if (deleteIndex === null) return;
     try {
@@ -244,22 +256,85 @@ const OrderTable: React.FC<OrderTableProps> = ({
     }
   };
 
-  // Build CSV data
-  const csvData = orders.map((o) => ({
-    NomeGuida: o.nomeGuida || "",
-    CanaleRadio: o.canaleRadio || "",
-    OrarioConsegna: o.orarioConsegna || "",
-    LuogoConsegna: o.luogoConsegna || "",
-    OraRitiro: o.oraRitiro || "",
-    LuogoRitiro: o.luogoRitiro || "",
-    Radioline: o.radiolineConsegnate ?? 0,
-    Extra: o.extra ?? 0,
-    Saldo: (o.saldo ?? 0).toFixed(2),
-    Status: o.status,
-    Note: o.note || "Nessuna nota",
-  }));
+  const riders = [
+    { id: 1, name: "John Doe", cell: "3270149663" },
+    { id: 2, name: "Jane Smith", cell: "987-654-3210" },
+    { id: 3, name: "Alice Johnson", cell: "555-555-5555" },
+  ];
 
-  // Define columns
+  const handleShare = (
+    rider: { id?: number; name: string; cell: string },
+    index: number
+  ) => {
+    const order = orders[index];
+    console.log(`Sharing order ${order.id} with ${rider.name} (${rider.cell})`);
+    const url = `${window.location.origin}/rider/${order.id}`;
+    // 1. Build your share message text
+    // You can customize the message any way you need (e.g. using order data)
+    const shareMessage = `Ciao ${rider.name}, ti invio i dettagli dell'ordine.
+
+  Ecco le informazioni principali:
+  - Nome Guida: ${order.nomeGuida || "N/A"}
+  - Canale Radio: ${order.canaleRadio || "N/A"}
+  - Orario Consegna: ${order.orarioConsegna || "N/A"}
+  - Luogo Consegna: ${order.luogoConsegna || "N/A"}
+  - Ora Ritiro: ${order.oraRitiro || "N/A"}
+  - Luogo Ritiro: ${order.luogoRitiro || "N/A"}
+  - Radioline Consegnate: ${order.radiolineConsegnate ?? 0}
+  - Extra: ${order.extra ?? 0}
+  - Saldo: €${(order.saldo ?? 0).toFixed(2)}
+  - Status: ${order.status || "N/A"}
+  - Note: ${order.note || "Nessuna nota"}
+  
+  Aggiorna l'ordine da qui: ${url}
+  `;
+
+    // 2. Encode the message for URLs
+    const encodedMessage = encodeURIComponent(shareMessage);
+
+    // 3. Construct the WhatsApp link
+    // Use the rider's cell in international format (no "+" sign, no spaces)
+    const phoneNumber = rider.cell.replace(/\D/g, ""); // remove non-digits if needed
+    const whatsappLink = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
+
+    // 4. Open the link in a new tab
+    window.open(whatsappLink, "_blank");
+  };
+
+  const getMenuItems = (index: number): MenuProps["items"] => [
+    {
+      label: (
+        <span onClick={() => handleEdit(index)}>
+          <EditOutlined /> Modifica
+        </span>
+      ),
+      key: "edit",
+    },
+    {
+      label: "Condividi",
+      key: "share",
+      icon: <ShareAltOutlined />,
+      children: riders.map((rider) => ({
+        label: (
+          <span onClick={() => handleShare(rider, index)}>{rider.name}</span>
+        ),
+        key: rider.id,
+      })),
+    },
+    {
+      type: "divider",
+    },
+    {
+      label: (
+        <span onClick={() => showDeleteModal(index)}>
+          <DeleteOutlined /> Elimina
+        </span>
+      ),
+      key: "delete",
+    },
+  ];
+
+  // Build columns (including fixed: "right" for the action column)
   const columns: EditableColumnType<IOrder>[] = [
     {
       title: "Nome Guida",
@@ -267,6 +342,8 @@ const OrderTable: React.FC<OrderTableProps> = ({
       key: "nomeGuida",
       editable: true,
       required: true,
+      fixed: "left", // Pin this column to the left
+      width: 220,
     },
     {
       title: "Canale Radio",
@@ -333,6 +410,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
           "In Consegna": "blue",
           "Presa in Carico": "gold",
           Consegnato: "green",
+          Ritirato: "purple",
         };
         return <Tag color={colors[status]}>{status}</Tag>;
       },
@@ -347,40 +425,50 @@ const OrderTable: React.FC<OrderTableProps> = ({
     {
       title: "Azione",
       key: "action",
+      fixed: "right", // Pin this column to the right
+      width: 120, // Example width, adjust as needed
       render: (_, __, index) => {
         const editing = isEditing(index);
         return editing ? (
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Button type='link' onClick={() => handleSave(index)}>
-              Salva
-            </Button>
-            <Button type='link' onClick={handleCancel}>
-              Annulla
-            </Button>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-evenly",
+
+              flexDirection: "row",
+            }}
+          >
+            <Button
+              type='default'
+              onClick={() => handleSave(index)}
+              icon={<SaveOutlined />}
+            />
+            <Button
+              type='text'
+              onClick={handleCancel}
+              icon={<CloseOutlined />}
+            />
           </div>
         ) : (
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Dropdown menu={{ items: getMenuItems(index) }} trigger={["click"]}>
             <Button
-              type='link'
-              onClick={() => handleEdit(index)}
-              disabled={editingRowIndex !== null}
+              type='text'
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
             >
-              <EditOutlined />
+              Menu
+              <MoreOutlined />
             </Button>
-            <Button
-              type='link'
-              danger
-              onClick={() => showDeleteModal(index)}
-              style={{ marginLeft: 8 }}
-            >
-              <DeleteOutlined />
-            </Button>
-          </div>
+          </Dropdown>
         );
       },
     },
   ];
 
+  // Merge columns for editable
   const mergedColumns: ColumnsType<IOrder> = columns.map((col) => {
     if (!col.editable) {
       return col as ColumnType<IOrder>;
@@ -403,7 +491,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
           col.dataIndex === "orarioConsegna" ||
           col.dataIndex === "oraRitiro"
         ) {
-          inputType = "date"; // DatePicker for these fields
+          inputType = "date";
         }
 
         return {
@@ -420,31 +508,12 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
   return (
     <Form form={form} component={false}>
-      {/* Export Buttons */}
-      <div style={{ marginBottom: 16, textAlign: "right" }}>
-        <Button
-          type='primary'
-          onClick={() => exportToPDF(orders)}
-          style={{ marginRight: 8 }}
-        >
-          Esporta in PDF
-        </Button>
-        <Button
-          type='primary'
-          onClick={() => exportToExcel(orders)}
-          style={{ marginRight: 8 }}
-        >
-          Esporta in Excel
-        </Button>
-        <CSVLink data={csvData} filename='orders.csv'>
-          <Button type='primary'>Esporta in CSV</Button>
-        </CSVLink>
-      </div>
-
       <Table<IOrder>
         components={{
           body: {
-            cell: (props: EditableCellProps) => <EditableCell {...props} />,
+            cell: (props: JSX.IntrinsicAttributes & EditableCellProps) => (
+              <EditableCell {...props} />
+            ),
           },
         }}
         bordered
@@ -452,12 +521,14 @@ const OrderTable: React.FC<OrderTableProps> = ({
         columns={mergedColumns}
         rowClassName='editable-row'
         rowKey={(record) => record.id as string}
-        pagination={{
-          defaultPageSize: 25,
-          pageSizeOptions: ["10", "25", "50", "100"],
-          showSizeChanger: true,
-        }}
+        // pagination={{
+        //   defaultPageSize: 25,
+        //   pageSizeOptions: ["10", "25", "50", "100"],
+        //   showSizeChanger: true,
+        // }}
         loading={loading}
+        virtual
+        scroll={{ x: 3000, y: 4500 }} // Enable horizontal scrolling
       />
 
       <ConfirmationModal
