@@ -22,75 +22,67 @@ import routerProvider, {
 } from "@refinedev/react-router";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router";
 import { App as AntdApp, ConfigProvider } from "antd";
-import { ThemedLayoutV2 } from "./components/layout";
-import { ThemedHeaderV2 } from "./components/layout/header";
-import { ThemedTitleV2 } from "./components/layout/title";
+import { ThemedLayoutV2 } from "./layout";
+import { ThemedHeaderV2 } from "./layout/header";
+import { ThemedTitleV2 } from "./layout/title";
 import "@refinedev/antd/dist/reset.css";
 
-import { CalendarPage } from "./pages/calendar";
-import { DashboardPage } from "../src/pages/dashboard";
-import { OrdersPage } from "../src/pages/orders";
-import { ProfilePage } from "../src/pages/profile";
-import RiderUpdatePage from "./pages/rider";
+import { CalendarPage } from "./features/calendar/pages/calendar";
+import { DashboardPage } from "./features/dashboard/pages/dashboard";
+import { OrdersPage } from "./features/orders/pages/orders";
+import { ProfilePage } from "./features/profile/pages/profile";
+import RiderUpdatePage from "./features/orders/pages/rider";
+import GuideOrderPage from "./features/orders/pages/guideOrder";
 
 import {
   signUpWithEmail,
   signInWithEmail,
   signOutUser,
   signInWithGoogle,
-} from "../src/api/authApi";
-import { auth } from "./utils/firebaseConfig";
-import { CONFIG } from "./configuration";
-import UsersPage from "./pages/users";
+} from "./features/auth/authApi";
+import { auth } from "./config/firebaseConfig";
+import { CONFIG } from "./config/configuration";
+import UsersPage from "./features/users/pages/users";
+import CustomOutlet from "./shared/components/customOutlet";
 
 const API_URL = "https://api.fake-rest.refine.dev";
 
 const App: React.FC = () => {
-  /**
-   * Define an AuthProvider that:
-   * 1) Checks localStorage.getItem("email") to determine if user is 'authenticated'.
-   * 2) Provides login/logout/etc.
-   */
   const authProvider: AuthProvider = {
     check: async () => {
-      // If no email in localStorage, user not authenticated -> redirect to /login
-      return localStorage.getItem("email")
-        ? { authenticated: true }
-        : {
-            authenticated: false,
-            error: {
-              name: "Not authenticated",
-              message: "User not logged in",
-            },
-            logout: true,
-            redirectTo: "/login",
-          };
+      const user = auth.currentUser || localStorage.getItem("email");
+      if (user) {
+        return { authenticated: true };
+      }
+      return {
+        authenticated: false,
+        error: {
+          name: "Not authenticated",
+          message: "User not logged in",
+        },
+        logout: true,
+        redirectTo: "/login",
+      };
+    },
+    onError: async (error) => {
+      if (error.response?.status === 401) {
+        return {
+          logout: true,
+        };
+      }
+      return { error };
     },
     login: async ({ providerName, email, password }) => {
-      if (providerName === "google") {
-        try {
+      try {
+        if (providerName === "google") {
           await signInWithGoogle();
-          localStorage.setItem("email", email);
           return {
             success: true,
             redirectTo: "/",
           };
-        } catch (error) {
-          return {
-            success: false,
-            error: {
-              message: "Login failed",
-              name: (error as Error).message,
-            },
-          };
         }
-      }
 
-      try {
-        const user = await signInWithEmail(email, password);
-        if (user.email) {
-          localStorage.setItem("email", user.email);
-        }
+        await signInWithEmail(email, password);
         return {
           success: true,
           redirectTo: "/",
@@ -107,10 +99,7 @@ const App: React.FC = () => {
     },
     register: async ({ email, password, role }) => {
       try {
-        const user = await signUpWithEmail(email, password, role);
-        if (user.email) {
-          localStorage.setItem("email", user.email);
-        }
+        await signUpWithEmail(email, password, role);
         return {
           success: true,
           redirectTo: "/",
@@ -119,28 +108,15 @@ const App: React.FC = () => {
         return {
           success: false,
           error: {
-            message: "Register failed",
+            message: "Registration failed",
             name: (error as Error).message,
           },
         };
       }
     },
-    updatePassword: async (params) => {
-      // Implement password update logic if needed
-      return {
-        success: true,
-      };
-    },
-    forgotPassword: async (params) => {
-      // Implement forgot password logic if needed
-      return {
-        success: true,
-      };
-    },
     logout: async () => {
       try {
         await signOutUser();
-        localStorage.removeItem("email");
         return {
           success: true,
           redirectTo: "/login",
@@ -155,26 +131,18 @@ const App: React.FC = () => {
         };
       }
     },
-    onError: async (error) => {
-      if (error.response?.status === 401) {
-        return {
-          logout: true,
-        };
-      }
-      return { error };
-    },
-    getPermissions: async (params) => params?.permissions,
     getIdentity: async () => {
-      const user = auth.currentUser;
-      if (user) {
-        return {
-          id: user.uid,
-          name: user.displayName || user.email,
-          avatar:
-            user.photoURL ||
-            "https://unsplash.com/photos/IWLOvomUmWU/download?force=true&w=640",
-          email: user.email || "",
-        };
+      const userInfo = localStorage.getItem("userInfo");
+      if (userInfo) {
+        return JSON.parse(userInfo);
+      }
+      return null;
+    },
+    getPermissions: async () => {
+      const userInfo = localStorage.getItem("userInfo");
+      if (userInfo) {
+        const user = JSON.parse(userInfo);
+        return user.role;
       }
       return null;
     },
@@ -230,15 +198,13 @@ const App: React.FC = () => {
             }}
           >
             <Routes>
-              {/* PUBLIC AUTH ROUTES */}
+              {/* Public Auth Routes */}
               <Route
                 path='/login'
                 element={
                   <AuthPage
                     type='login'
-                    formProps={{
-                      initialValues: {},
-                    }}
+                    formProps={{ initialValues: {} }}
                     providers={[
                       {
                         name: "google",
@@ -273,7 +239,7 @@ const App: React.FC = () => {
                 element={<AuthPage type='updatePassword' />}
               />
 
-              {/* PROTECTED ROUTES */}
+              {/* Main (Default) Protected Layout */}
               <Route
                 element={
                   <Authenticated
@@ -295,21 +261,44 @@ const App: React.FC = () => {
                   </Authenticated>
                 }
               >
-                {/* Main routes */}
                 <Route index element={<OrdersPage />} />
                 <Route path='/Calendario' element={<CalendarPage />} />
                 <Route path='/Dashboard' element={<DashboardPage />} />
                 <Route path='/Profilo' element={<ProfilePage />} />
                 <Route path='/Collaboratori' element={<UsersPage />} />
-
-                {/* Rider sub-route (also protected) */}
-                <Route path='/rider'>
-                  <Route index element={<RiderUpdatePage />} />
-                  <Route path=':id' element={<RiderUpdatePage />} />
-                </Route>
-
-                {/* Catch-all 404 (protected) */}
+                {/* 404 inside default layout */}
                 <Route path='*' element={<ErrorComponent />} />
+              </Route>
+
+              {/* Minimal Layout for Rider */}
+              <Route
+                path='/rider'
+                element={
+                  <Authenticated
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
+                  >
+                    <CustomOutlet />
+                  </Authenticated>
+                }
+              >
+                <Route index element={<RiderUpdatePage />} />
+                <Route path=':id' element={<RiderUpdatePage />} />
+              </Route>
+
+              {/* Minimal Layout for Guida */}
+              <Route
+                path='/OrdineGuida'
+                element={
+                  <Authenticated
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
+                  >
+                    <CustomOutlet />
+                  </Authenticated>
+                }
+              >
+                <Route index element={<GuideOrderPage />} />
               </Route>
             </Routes>
 
