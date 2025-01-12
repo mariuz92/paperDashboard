@@ -13,4 +13,5 @@ export interface IUser {
   lastLoginAt: Date;
   role: Role;
   disabled: boolean;
+  tenantId: string;
 }

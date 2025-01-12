@@ -2,7 +2,6 @@ import { Refine, type AuthProvider, Authenticated } from "@refinedev/core";
 import {
   useNotificationProvider,
   ErrorComponent,
-  AuthPage,
   RefineThemes,
 } from "@refinedev/antd";
 import {
@@ -25,6 +24,7 @@ import { App as AntdApp, ConfigProvider } from "antd";
 import { ThemedLayoutV2 } from "./layout";
 import { ThemedHeaderV2 } from "./layout/header";
 import { ThemedTitleV2 } from "./layout/title";
+import { AuthPage } from "./features/auth";
 import "@refinedev/antd/dist/reset.css";
 
 import { CalendarPage } from "./features/calendar/pages/calendar";
@@ -39,7 +39,7 @@ import {
   signInWithEmail,
   signOutUser,
   signInWithGoogle,
-} from "./features/auth/authApi";
+} from "./features/auth/api/authApi";
 import { auth } from "./config/firebaseConfig";
 import { CONFIG } from "./config/configuration";
 import UsersPage from "./features/users/pages/users";
@@ -72,17 +72,17 @@ const App: React.FC = () => {
       }
       return { error };
     },
-    login: async ({ providerName, email, password }) => {
+    login: async ({ providerName, email, password, tenantName }) => {
       try {
         if (providerName === "google") {
-          await signInWithGoogle();
+          await signInWithGoogle(tenantName);
           return {
             success: true,
             redirectTo: "/",
           };
         }
 
-        await signInWithEmail(email, password);
+        await signInWithEmail(tenantName, email, password);
         return {
           success: true,
           redirectTo: "/",
@@ -203,6 +203,13 @@ const App: React.FC = () => {
                 path='/login'
                 element={
                   <AuthPage
+                    title={
+                      <ThemedTitleV2
+                        icon={<AndroidOutlined />}
+                        text={CONFIG.appName}
+                        collapsed={false}
+                      />
+                    }
                     type='login'
                     formProps={{ initialValues: {} }}
                     providers={[
@@ -219,6 +226,13 @@ const App: React.FC = () => {
                 path='/register'
                 element={
                   <AuthPage
+                    title={
+                      <ThemedTitleV2
+                        icon={<AndroidOutlined />}
+                        text={CONFIG.appName}
+                        collapsed={false}
+                      />
+                    }
                     type='register'
                     providers={[
                       {
@@ -232,11 +246,33 @@ const App: React.FC = () => {
               />
               <Route
                 path='/forgot-password'
-                element={<AuthPage type='forgotPassword' />}
+                element={
+                  <AuthPage
+                    title={
+                      <ThemedTitleV2
+                        icon={<AndroidOutlined />}
+                        text={CONFIG.appName}
+                        collapsed={false}
+                      />
+                    }
+                    type='forgotPassword'
+                  />
+                }
               />
               <Route
                 path='/update-password'
-                element={<AuthPage type='updatePassword' />}
+                element={
+                  <AuthPage
+                    title={
+                      <ThemedTitleV2
+                        icon={<AndroidOutlined />}
+                        text={CONFIG.appName}
+                        collapsed={false}
+                      />
+                    }
+                    type='updatePassword'
+                  />
+                }
               />
 
               {/* Main (Default) Protected Layout */}

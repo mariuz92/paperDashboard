@@ -36,6 +36,8 @@ const UserForm: React.FC<UserFormProps> = ({
         lastLoginAt: new Date(),
         emailVerified: false,
         disabled: false,
+
+        // tenantId: isTenant ? localStorage.getItem("userId")  : "",
       });
     }
     form.resetFields();

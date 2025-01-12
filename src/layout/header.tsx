@@ -3,13 +3,12 @@ import { Layout, Button, Avatar, Dropdown, Menu, Space, theme } from "antd";
 import type { RefineThemedLayoutV2HeaderProps } from "@refinedev/antd";
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-import { signOutUser } from "../features/auth/authApi";
+import { signOutUser } from "../features/auth/api/authApi";
 import { IUser } from "../types/interfaces/IUser";
 
 const { Header } = Layout;
 
 export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
-  isSticky,
   sticky,
 }) => {
   const { token } = theme.useToken();
@@ -57,7 +56,7 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
     height: "64px",
   };
 
-  if (sticky || isSticky) {
+  if (sticky) {
     headerStyles.position = "sticky";
     headerStyles.top = 0;
     headerStyles.zIndex = 1;

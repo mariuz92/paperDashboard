@@ -11,6 +11,32 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../config/firebaseConfig";
 import { IUser } from "../../../types/interfaces/IUser";
+import { ITenant } from "../../../types/interfaces/ITenant";
+
+// Check if tenant exists by name
+export const getTenantByName = async (
+  name: string
+): Promise<ITenant | null> => {
+  try {
+    const q = query(collection(db, "tenants"), where("name", "==", name));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const docSnap = querySnapshot.docs[0];
+      const tenant: ITenant = {
+        id: docSnap.id,
+        ...docSnap.data(),
+      } as ITenant;
+      return tenant;
+    } else {
+      console.log("No such tenant!");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error checking tenant:", error);
+    throw new Error("Failed to retrieve tenant");
+  }
+};
 
 // Create user
 export const createUser = async (user: Omit<IUser, "id">): Promise<string> => {

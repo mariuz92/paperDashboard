@@ -2,12 +2,7 @@ import React from "react";
 import { Table, Button, Dropdown, message, Popconfirm } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { MenuProps } from "antd";
-import {
-  DownOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  MoreOutlined,
-} from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { IUser } from "../../../types/interfaces/IUser";
 import { deleteUser } from "../api/userApi";
 

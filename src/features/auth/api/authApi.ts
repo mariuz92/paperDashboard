@@ -1,4 +1,4 @@
-import { auth } from "../../config/firebaseConfig";
+import { auth } from "../../../config/firebaseConfig";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -7,9 +7,13 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import { createUser, getUserById } from "../users/api/userApi";
-import { IUser, Role } from "../../types/interfaces/IUser";
-
+import {
+  createUser,
+  getUserById,
+  getTenantByName,
+} from "../../users/api/userApi";
+import { IUser } from "../../../types/interfaces/IUser";
+import { ITenant } from "../../../types/interfaces/ITenant";
 // Helper to store user info in localStorage
 const storeUserInLocalStorage = (user: IUser) => {
   localStorage.setItem("email", user.email);
@@ -26,9 +30,15 @@ const clearUserFromLocalStorage = () => {
 export const signUpWithEmail = async (
   email: string,
   password: string,
-  role: Role
+  tenantName: string
 ) => {
   try {
+    // Fetch tenant details by name
+    const tenant: ITenant | null = await getTenantByName(tenantName);
+    if (!tenant) {
+      throw new Error("Tenant does not exist.");
+    }
+
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -45,8 +55,9 @@ export const signUpWithEmail = async (
       phoneNumber: firebaseUser.phoneNumber || "",
       createdAt: new Date(),
       lastLoginAt: new Date(),
-      role: role,
+      role: "",
       disabled: false,
+      tenantId: tenantName,
     };
 
     // Create user in database
@@ -63,8 +74,18 @@ export const signUpWithEmail = async (
 };
 
 // Sign in with email and password
-export const signInWithEmail = async (email: string, password: string) => {
+export const signInWithEmail = async (
+  email: string,
+  password: string,
+  tenantName: string
+) => {
   try {
+    // Fetch tenant details by name
+    const tenant: ITenant | null = await getTenantByName(tenantName);
+    if (!tenant) {
+      throw new Error("Tenant does not exist.");
+    }
+
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email,
@@ -79,10 +100,12 @@ export const signInWithEmail = async (email: string, password: string) => {
       throw new Error("User does not exist. Please register first.");
     }
 
-    // Store user info in localStorage if not already present
-    if (!localStorage.getItem("userInfo")) {
-      storeUserInLocalStorage(existingUser);
+    if (existingUser.tenantId !== tenant.id) {
+      throw new Error("User does not belong to the specified tenant.");
     }
+
+    // Store user info in localStorage
+    storeUserInLocalStorage(existingUser);
 
     return firebaseUser;
   } catch (error) {
@@ -90,7 +113,6 @@ export const signInWithEmail = async (email: string, password: string) => {
     throw error;
   }
 };
-
 // Sign out
 export const signOutUser = async () => {
   try {
@@ -108,8 +130,14 @@ export const onAuthStateChangedListener = (callback: (user: any) => void) => {
 };
 
 // Sign in with Google
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (tenantName: string) => {
   try {
+    // Fetch tenant details by name
+    const tenant: ITenant | null = await getTenantByName(tenantName);
+    if (!tenant) {
+      throw new Error("Tenant does not exist.");
+    }
+
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     const firebaseUser = result.user;
@@ -128,6 +156,7 @@ export const signInWithGoogle = async () => {
         lastLoginAt: new Date(),
         role: "", // Default role, can be modified
         disabled: false,
+        tenantId: tenant.id, // Use tenant ID from ITenant
       };
 
       // Create user in database
@@ -136,6 +165,10 @@ export const signInWithGoogle = async () => {
       // Store user info in localStorage
       storeUserInLocalStorage(newUser);
     } else {
+      if (existingUser.tenantId !== tenant.id) {
+        throw new Error("User does not belong to the specified tenant.");
+      }
+
       // Optionally update `lastLoginAt` and store info in localStorage
       storeUserInLocalStorage(existingUser);
     }
