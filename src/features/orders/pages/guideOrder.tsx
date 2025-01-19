@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Form,
-  Input,
   InputNumber,
   Button,
   Row,
@@ -10,12 +9,13 @@ import {
   TimePicker,
   message,
   Typography,
+  Input,
 } from "antd";
 import { saveOrder } from "../api/orderApi";
 import { IOrder } from "../../../types/interfaces";
-
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { useActiveAuthProvider, useGetIdentity } from "@refinedev/core";
+import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -49,11 +49,11 @@ const GuideOrderPage: React.FC = () => {
     setLoading(true);
     try {
       await saveOrder(newOrder);
-      message.success("Order placed successfully");
+      message.success("Ordine fatto");
       form.resetFields();
       form.setFieldsValue({ nomeGuida: user.displayName }); // Reset the guide name
     } catch (error) {
-      message.error("Failed to place order");
+      message.error("Errore nell'inserimento dell'ordine");
     } finally {
       setLoading(false);
     }
@@ -63,24 +63,6 @@ const GuideOrderPage: React.FC = () => {
     <Form form={form} layout='vertical' onFinish={onFinish}>
       <Title level={4}>Informazioni Guida</Title>
       <Row gutter={16}>
-        {/* <Col span={8}>
-          <Form.Item
-            label='Nome Guida / Gruppo'
-            name='nomeGuida'
-            rules={[{ required: true, message: "Inserisci Nome Guida" }]}
-          >
-            <Input disabled placeholder='Nome Guida' />
-          </Form.Item>
-        </Col> */}
-        {/* <Col span={4}>
-          <Form.Item
-            label='Canale Radio'
-            name='canaleRadio'
-            rules={[{ required: false, message: "Inserisci Canale Radio" }]}
-          >
-            <Input placeholder='Canale Radio' />
-          </Form.Item>
-        </Col> */}
         <Col span={4}>
           <Form.Item
             label='Radioline'
@@ -95,24 +77,6 @@ const GuideOrderPage: React.FC = () => {
             />
           </Form.Item>
         </Col>
-        {/* <Col span={4}>
-          <Form.Item
-            label='Extra'
-            name='extra'
-            rules={[{ required: false, message: "Inserisci Numero di Extra" }]}
-          >
-            <InputNumber placeholder='Radio Extra' style={{ width: "100%" }} />
-          </Form.Item>
-        </Col> */}
-        {/* <Col span={4}>
-          <Form.Item
-            label='Saldo (€)'
-            name='saldo'
-            rules={[{ required: false, message: "Inserisci Saldo" }]}
-          >
-            <InputNumber placeholder='Saldo (€)' style={{ width: "100%" }} />
-          </Form.Item>
-        </Col> */}
       </Row>
 
       <Title level={4}>Informazioni Consegna</Title>
@@ -130,13 +94,19 @@ const GuideOrderPage: React.FC = () => {
             />
           </Form.Item>
         </Col>
+
         <Col span={7}>
           <Form.Item
             label='Luogo Consegna'
             name='luogoConsegna'
             rules={[{ required: true, message: "Inserisci Luogo Consegna" }]}
           >
-            <Input placeholder='Luogo Consegna' />
+            <GooglePlacesAutocomplete
+              placeholder='Inserisci Luogo Consegna'
+              onPlaceSelect={(address) =>
+                form.setFieldsValue({ luogoConsegna: address })
+              }
+            />
           </Form.Item>
         </Col>
 
@@ -167,13 +137,19 @@ const GuideOrderPage: React.FC = () => {
             />
           </Form.Item>
         </Col>
+
         <Col span={7}>
           <Form.Item
             label='Luogo Ritiro'
             name='luogoRitiro'
             rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
           >
-            <Input placeholder='Luogo Ritiro' />
+            <GooglePlacesAutocomplete
+              placeholder='Inserisci Luogo Ritiro'
+              onPlaceSelect={(address) =>
+                form.setFieldsValue({ luogoRitiro: address })
+              }
+            />
           </Form.Item>
         </Col>
       </Row>

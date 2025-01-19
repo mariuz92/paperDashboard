@@ -11,7 +11,7 @@ export const i18nProvider: I18nProvider = {
    * If translation is not found, it returns the provided default message.
    */
   translate: (key: string, options?: any, defaultMessage?: string): string => {
-    console.log("translate called with:", { key, options, defaultMessage });
+    // console.log("translate called with:", { key, options, defaultMessage });
 
     // Example translations dictionary (replace with an actual i18n library)
     const translations: Record<string, Record<string, string>> = {
@@ -35,18 +35,18 @@ export const i18nProvider: I18nProvider = {
    * Changes the locale and stores it in localStorage.
    */
   changeLocale: async (lang: string, options?: any): Promise<void> => {
-    console.log("changeLocale called with:", { lang, options });
+    // console.log("changeLocale called with:", { lang, options });
 
     // Save the locale in localStorage
     localStorage.setItem("app_locale", lang);
-    console.log(`Language changed to: ${lang}`);
+    // console.log(`Language changed to: ${lang}`);
   },
 
   /**
    * Gets the current locale from localStorage or falls back to browser settings.
    */
   getLocale: (): string => {
-    console.log("getLocale called");
+    // console.log("getLocale called");
 
     // Retrieve locale from localStorage or fallback to browser settings
     return (

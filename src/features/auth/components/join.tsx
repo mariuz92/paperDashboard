@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Form, Input, Button, notification, Card, Typography } from "antd";
-import { validateInvitation } from "../../auth/api/invitationApi"; // Import API for validation
+import { validateInvitation } from "../../auth/api/invitationApi"; // Importa API per la validazione
 import { LockOutlined, MailOutlined, SafetyOutlined } from "@ant-design/icons";
 import { registerWithInvitation, updateEmailVerified } from "../api/authApi";
 
@@ -13,7 +13,7 @@ const JoinPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [otpValid, setOtpValid] = useState(false);
 
-  // Extract URL parameters
+  // Estrai i parametri dall'URL
   const email = searchParams.get("email") || "";
   const tenant = searchParams.get("tenant") || "";
   const otp = searchParams.get("otp") || "";
@@ -24,7 +24,7 @@ const JoinPage: React.FC = () => {
     }
   }, [email, tenant, otp, form]);
 
-  // Handle OTP validation
+  // Gestione della validazione dell'OTP
   const handleOtpValidation = async () => {
     try {
       setLoading(true);
@@ -32,8 +32,8 @@ const JoinPage: React.FC = () => {
 
       if (!otpValue || otpValue.length !== 6) {
         notification.error({
-          message: "Invalid OTP",
-          description: "OTP must be 6 digits.",
+          message: "OTP non valido",
+          description: "L'OTP deve essere di 6 cifre.",
         });
         setLoading(false);
         return;
@@ -44,29 +44,29 @@ const JoinPage: React.FC = () => {
       if (isValid) {
         setOtpValid(true);
         notification.success({
-          message: "OTP Verified",
-          description: "You can now complete your registration.",
+          message: "OTP verificato",
+          description: "Ora puoi completare la registrazione.",
         });
 
-        // Update email verification status
+        // Aggiorna lo stato della verifica email
         await updateEmailVerified(email);
       } else {
         notification.error({
-          message: "Invalid OTP",
-          description: "Please enter a valid OTP code.",
+          message: "OTP non valido",
+          description: "Inserisci un codice OTP valido.",
         });
       }
     } catch (error) {
       notification.error({
-        message: "Verification Failed",
-        description: "There was an error verifying your OTP.",
+        message: "Verifica fallita",
+        description: "Si è verificato un errore nella verifica dell'OTP.",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle registration submission
+  // Gestione della registrazione
   const onFinish = async (values: any) => {
     try {
       setLoading(true);
@@ -74,8 +74,8 @@ const JoinPage: React.FC = () => {
 
       if (password !== confirmPassword) {
         notification.error({
-          message: "Password Mismatch",
-          description: "Passwords do not match.",
+          message: "Le password non coincidono",
+          description: "Le password inserite non corrispondono.",
         });
         setLoading(false);
         return;
@@ -83,13 +83,13 @@ const JoinPage: React.FC = () => {
 
       await registerWithInvitation(email, password, tenant);
       notification.success({
-        message: "Registration Successful",
-        description: "Your account has been successfully created.",
+        message: "Registrazione completata",
+        description: "Il tuo account è stato creato con successo.",
       });
     } catch (error) {
       notification.error({
-        message: "Registration Failed",
-        description: "There was an error completing your registration.",
+        message: "Registrazione fallita",
+        description: "Si è verificato un errore durante la registrazione.",
       });
     } finally {
       setLoading(false);
@@ -102,7 +102,7 @@ const JoinPage: React.FC = () => {
     >
       <Card style={{ width: 400, padding: "20px" }}>
         <Title level={3} style={{ textAlign: "center" }}>
-          Complete Your Registration
+          Completa la tua registrazione
         </Title>
         <Form form={form} layout='vertical' onFinish={onFinish}>
           {!otpValid && (
@@ -114,7 +114,7 @@ const JoinPage: React.FC = () => {
                   {
                     required: true,
                     type: "email",
-                    message: "Valid email is required",
+                    message: "È richiesta un'email valida",
                   },
                 ]}
               >
@@ -123,24 +123,26 @@ const JoinPage: React.FC = () => {
 
               <Form.Item
                 name='tenant'
-                label='Tenant ID'
-                rules={[{ required: true, message: "Tenant ID is required" }]}
+                label='ID Tenant'
+                rules={[
+                  { required: true, message: "L'ID del tenant è richiesto" },
+                ]}
               >
                 <Input prefix={<SafetyOutlined />} disabled />
               </Form.Item>
 
               <Form.Item
                 name='otp'
-                label='OTP Code'
+                label='Codice OTP'
+                style={{ textAlign: "center" }}
                 rules={[
-                  { required: true, message: "OTP is required" },
-                  { len: 6, message: "OTP must be 6 digits" },
+                  { required: true, message: "L'OTP è richiesto" },
+                  { len: 6, message: "L'OTP deve essere di 6 cifre" },
                 ]}
               >
                 <Input.OTP
                   length={6}
                   inputMode='numeric'
-                  //   placeholder='Enter OTP'
                   style={{ textAlign: "center" }}
                 />
               </Form.Item>
@@ -151,7 +153,7 @@ const JoinPage: React.FC = () => {
                 loading={loading}
                 block
               >
-                Verify OTP
+                Verifica OTP
               </Button>
             </>
           )}
@@ -161,29 +163,32 @@ const JoinPage: React.FC = () => {
                 name='password'
                 label='Password'
                 rules={[
-                  { required: true, message: "Please enter a password" },
-                  { min: 6, message: "Password must be at least 6 characters" },
+                  { required: true, message: "Inserisci una password" },
+                  {
+                    min: 6,
+                    message: "La password deve contenere almeno 6 caratteri",
+                  },
                 ]}
               >
                 <Input.Password
                   prefix={<LockOutlined />}
-                  placeholder='Enter your password'
+                  placeholder='Inserisci la tua password'
                 />
               </Form.Item>
 
               <Form.Item
                 name='confirmPassword'
-                label='Confirm Password'
+                label='Conferma Password'
                 dependencies={["password"]}
                 rules={[
-                  { required: true, message: "Please confirm your password" },
+                  { required: true, message: "Conferma la tua password" },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       if (!value || getFieldValue("password") === value) {
                         return Promise.resolve();
                       }
                       return Promise.reject(
-                        new Error("Passwords do not match")
+                        new Error("Le password non coincidono")
                       );
                     },
                   }),
@@ -191,7 +196,7 @@ const JoinPage: React.FC = () => {
               >
                 <Input.Password
                   prefix={<LockOutlined />}
-                  placeholder='Confirm your password'
+                  placeholder='Conferma la tua password'
                 />
               </Form.Item>
 
@@ -202,7 +207,7 @@ const JoinPage: React.FC = () => {
                   loading={loading}
                   block
                 >
-                  Register
+                  Registrati
                 </Button>
               </Form.Item>
             </>

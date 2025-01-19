@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.5.1",
+    "@react-google-maps/api": "^2.20.5",
     "@refinedev/antd": "^5.45.1",
     "@refinedev/cli": "^2.16.42",
     "@refinedev/core": "^4.57.1",

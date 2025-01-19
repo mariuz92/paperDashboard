@@ -16,6 +16,7 @@ import {
 import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
 import { saveOrder } from "../api/orderApi"; // Firebase saveOrder function
 import { IOrder } from "../../../types/interfaces/index";
+import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 const { Title } = Typography;
 
 interface OrderFormProps {
@@ -189,7 +190,12 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
                   { required: true, message: "Inserisci Luogo Consegna" },
                 ]}
               >
-                <Input placeholder='Luogo Consegna' />
+                <GooglePlacesAutocomplete
+                  placeholder='Inserisci Luogo Consegna'
+                  onPlaceSelect={(address) =>
+                    form.setFieldsValue({ luogoConsegna: address })
+                  }
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -216,7 +222,12 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
                 name='luogoRitiro'
                 rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
               >
-                <Input placeholder='Luogo Ritiro' />
+                <GooglePlacesAutocomplete
+                  placeholder='Inserisci Luogo Ritiro'
+                  onPlaceSelect={(address) =>
+                    form.setFieldsValue({ luogoRitiro: address })
+                  }
+                />
               </Form.Item>
             </Col>
           </Row>

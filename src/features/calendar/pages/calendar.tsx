@@ -27,7 +27,7 @@ export const CalendarPage: React.FC = () => {
       setDailyCounts(dailyCounts);
       setMonthlyCounts(monthlyCounts);
     } catch (error) {
-      message.error("Failed to load order data.");
+      message.error("Errore nel caricare gli ordini.");
     } finally {
       setLoading(false);
     }
