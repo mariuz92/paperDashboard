@@ -13,13 +13,29 @@ import { db } from "../../../config/firebaseConfig";
 import { IUser } from "../../../types/interfaces/IUser";
 import { ITenant } from "../../../types/interfaces/ITenant";
 
-// Check if tenant exists by name
+/**
+ * Fetches a tenant by its name from Firestore.
+ * @param name - The tenant's name to search for.
+ * @returns A tenant object if found, otherwise null.
+ */
 export const getTenantByName = async (
   name: string
 ): Promise<ITenant | null> => {
   try {
-    const q = query(collection(db, "tenants"), where("name", "==", name));
-    const querySnapshot = await getDocs(q);
+    if (!name.trim()) {
+      console.warn("Tenant name is empty.");
+      return null;
+    }
+
+    // Convert the input name to uppercase for consistency with Firestore storage
+    const formattedName = name.trim().toUpperCase();
+
+    const tenantQuery = query(
+      collection(db, "tenants"),
+      where("name", "==", formattedName)
+    );
+
+    const querySnapshot = await getDocs(tenantQuery);
 
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
@@ -27,13 +43,15 @@ export const getTenantByName = async (
         id: docSnap.id,
         ...docSnap.data(),
       } as ITenant;
+
       return tenant;
     } else {
-      console.log("No such tenant!");
+      console.log(
+        `[getTenantByName] No tenant found with name: ${formattedName}`
+      );
       return null;
     }
   } catch (error) {
-    console.error("Error checking tenant:", error);
     throw new Error("Failed to retrieve tenant");
   }
 };

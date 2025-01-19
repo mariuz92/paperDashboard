@@ -11,13 +11,13 @@ import {
   DatePicker,
   Dropdown,
   Popconfirm,
+  Space,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { MenuProps } from "antd";
 import dayjs from "dayjs";
 import { IOrder, IOrderStatus } from "../../../types/interfaces";
 import { updateOrder, deleteOrder } from "../api/orderApi";
-import ConfirmationModal from "../../../shared/components/confirmationModal";
 import {
   EditOutlined,
   DeleteOutlined,
@@ -25,10 +25,11 @@ import {
   SaveOutlined,
   CloseOutlined,
   MoreOutlined,
+  FileExcelOutlined,
+  FilePdfOutlined,
 } from "@ant-design/icons";
 
 import * as XLSX from "xlsx";
-import { CSVLink } from "react-csv";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { JSX } from "react/jsx-runtime";
@@ -170,8 +171,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
   const [riders, setRiders] = useState<IUser[]>([]);
 
   const isEditing = (index: number) => index === editingRowIndex;
@@ -245,12 +244,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
     }
   };
 
-  /** Show delete modal */
-  const showDeleteModal = (index: number) => {
-    setDeleteIndex(index);
-    setIsModalVisible(true);
-  };
-
   const handleDelete = async (id: string) => {
     try {
       await deleteOrder(id);
@@ -288,7 +281,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
   - Status: ${order.status || "N/A"}
   - Note: ${order.note || "Nessuna nota"}
   
-  Aggiorna l'ordine da qui: ${url}
+  Aggiorna l'ordine qui: ${url}
   `;
 
     // 2. Encode the message for URLs
@@ -518,30 +511,50 @@ const OrderTable: React.FC<OrderTableProps> = ({
   }) as ColumnsType<IOrder>;
 
   return (
-    <Form form={form} component={false}>
-      <Table<IOrder>
-        components={{
-          body: {
-            cell: (props: JSX.IntrinsicAttributes & EditableCellProps) => (
-              <EditableCell {...props} />
-            ),
-          },
-        }}
-        bordered
-        dataSource={orders}
-        columns={mergedColumns}
-        rowClassName='editable-row'
-        rowKey={(record) => record.id as string}
-        // pagination={{
-        //   defaultPageSize: 25,
-        //   pageSizeOptions: ["10", "25", "50", "100"],
-        //   showSizeChanger: true,
-        // }}
-        loading={loading}
-        virtual
-        scroll={{ x: 3000, y: 4500 }} // Enable horizontal scrolling
-      />
-    </Form>
+    <>
+      <Space
+        style={{ marginBottom: 16, display: "flex", justifyContent: "end" }}
+      >
+        <Button
+          icon={<FileExcelOutlined />}
+          onClick={() => exportToExcel(orders)}
+          type='primary'
+        >
+          Esporta in Excel
+        </Button>
+        <Button
+          icon={<FilePdfOutlined />}
+          onClick={() => exportToPDF(orders)}
+          type='primary'
+        >
+          Esporta in PDF
+        </Button>
+      </Space>
+      <Form form={form} component={false}>
+        <Table<IOrder>
+          components={{
+            body: {
+              cell: (props: JSX.IntrinsicAttributes & EditableCellProps) => (
+                <EditableCell {...props} />
+              ),
+            },
+          }}
+          bordered
+          dataSource={orders}
+          columns={mergedColumns}
+          rowClassName='editable-row'
+          rowKey={(record) => record.id as string}
+          // pagination={{
+          //   defaultPageSize: 25,
+          //   pageSizeOptions: ["10", "25", "50", "100"],
+          //   showSizeChanger: true,
+          // }}
+          loading={loading}
+          virtual
+          scroll={{ x: 3000, y: 4500 }} // Enable horizontal scrolling
+        />
+      </Form>
+    </>
   );
 };
 

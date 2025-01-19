@@ -1,4 +1,9 @@
-import { Refine, type AuthProvider, Authenticated } from "@refinedev/core";
+import {
+  Refine,
+  type AuthProvider,
+  Authenticated,
+  I18nProvider,
+} from "@refinedev/core";
 import {
   useNotificationProvider,
   ErrorComponent,
@@ -19,6 +24,7 @@ import routerProvider, {
   UnsavedChangesNotifier,
   DocumentTitleHandler,
 } from "@refinedev/react-router";
+
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router";
 import { App as AntdApp, ConfigProvider } from "antd";
 import { ThemedLayoutV2 } from "./layout";
@@ -31,6 +37,7 @@ import { CalendarPage } from "./features/calendar/pages/calendar";
 import { DashboardPage } from "./features/dashboard/pages/dashboard";
 import { OrdersPage } from "./features/orders/pages/orders";
 import { ProfilePage } from "./features/profile/pages/profile";
+import JoinPage from "./features/auth/components/join";
 import RiderUpdatePage from "./features/orders/pages/rider";
 import GuideOrderPage from "./features/orders/pages/guideOrder";
 
@@ -44,6 +51,7 @@ import { auth } from "./config/firebaseConfig";
 import { CONFIG } from "./config/configuration";
 import UsersPage from "./features/users/pages/users";
 import CustomOutlet from "./shared/components/customOutlet";
+import { i18nProvider } from "./shared/providers/i18n-provider";
 
 const API_URL = "https://api.fake-rest.refine.dev";
 
@@ -72,17 +80,17 @@ const App: React.FC = () => {
       }
       return { error };
     },
-    login: async ({ providerName, email, password, tenantName }) => {
+    login: async ({ providerName, email, password, companyName }) => {
       try {
         if (providerName === "google") {
-          await signInWithGoogle(tenantName);
+          await signInWithGoogle(companyName);
           return {
             success: true,
             redirectTo: "/",
           };
         }
 
-        await signInWithEmail(tenantName, email, password);
+        await signInWithEmail(companyName, email, password);
         return {
           success: true,
           redirectTo: "/",
@@ -97,9 +105,9 @@ const App: React.FC = () => {
         };
       }
     },
-    register: async ({ email, password, role }) => {
+    register: async ({ email, password, companyName }) => {
       try {
-        await signUpWithEmail(email, password, role);
+        await signUpWithEmail(email, password, companyName);
         return {
           success: true,
           redirectTo: "/",
@@ -132,16 +140,16 @@ const App: React.FC = () => {
       }
     },
     getIdentity: async () => {
-      const userInfo = localStorage.getItem("userInfo");
-      if (userInfo) {
-        return JSON.parse(userInfo);
+      const email = localStorage.getItem("email");
+      if (email) {
+        return JSON.parse(email);
       }
       return null;
     },
     getPermissions: async () => {
-      const userInfo = localStorage.getItem("userInfo");
-      if (userInfo) {
-        const user = JSON.parse(userInfo);
+      const role = localStorage.getItem("role");
+      if (role) {
+        const user = JSON.parse(role);
         return user.role;
       }
       return null;
@@ -156,6 +164,7 @@ const App: React.FC = () => {
             authProvider={authProvider}
             dataProvider={dataProvider(API_URL)}
             routerProvider={routerProvider}
+            i18nProvider={i18nProvider}
             resources={[
               {
                 name: "orders",
@@ -335,6 +344,20 @@ const App: React.FC = () => {
                 }
               >
                 <Route index element={<GuideOrderPage />} />
+              </Route>
+
+              <Route
+                path='/join'
+                element={
+                  <Authenticated
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
+                  >
+                    <CustomOutlet />
+                  </Authenticated>
+                }
+              >
+                <Route index element={<JoinPage />} />
               </Route>
             </Routes>
 

@@ -1,7 +1,6 @@
 import React from "react";
 import {
   type LoginPageProps,
-  type LoginFormTypes,
   useLink,
   useRouterType,
   useActiveAuthProvider,
@@ -33,6 +32,7 @@ import {
   type FormProps,
   theme,
 } from "antd";
+import { ExpendadedLoginFormTypes } from "../../../types/interfaces/extendedLoginForm";
 
 type LoginProps = LoginPageProps<LayoutProps, CardProps, FormProps>;
 /**
@@ -54,7 +54,7 @@ export const LoginPage: React.FC<LoginProps> = ({
   mutationVariables,
 }) => {
   const { token } = theme.useToken();
-  const [form] = Form.useForm<LoginFormTypes>();
+  const [form] = Form.useForm<ExpendadedLoginFormTypes>();
   const translate = useTranslate();
   const routerType = useRouterType();
   const Link = useLink();
@@ -63,7 +63,7 @@ export const LoginPage: React.FC<LoginProps> = ({
   const ActiveLink = routerType === "legacy" ? LegacyLink : Link;
 
   const authProvider = useActiveAuthProvider();
-  const { mutate: login, isLoading } = useLogin<LoginFormTypes>({
+  const { mutate: login, isLoading } = useLogin<ExpendadedLoginFormTypes>({
     v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
   });
 
@@ -152,7 +152,7 @@ export const LoginPage: React.FC<LoginProps> = ({
     >
       {renderProviders()}
       {!hideForm && (
-        <Form<LoginFormTypes>
+        <Form<ExpendadedLoginFormTypes>
           layout='vertical'
           form={form}
           onFinish={(values) => login({ ...values, ...mutationVariables })}
@@ -163,7 +163,7 @@ export const LoginPage: React.FC<LoginProps> = ({
           {...formProps}
         >
           <Form.Item
-            name='company'
+            name='companyName'
             label={translate("pages.login.fields.company", "Company")}
             rules={[
               {

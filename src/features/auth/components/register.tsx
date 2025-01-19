@@ -32,6 +32,7 @@ import {
   Divider,
   theme,
 } from "antd";
+import { ExtendedRegisterFormTypes } from "../../../types/interfaces/extendedRegisterForm";
 
 type RegisterProps = RegisterPageProps<LayoutProps, CardProps, FormProps>;
 /**
@@ -60,9 +61,10 @@ export const RegisterPage: React.FC<RegisterProps> = ({
   const ActiveLink = routerType === "legacy" ? LegacyLink : Link;
 
   const authProvider = useActiveAuthProvider();
-  const { mutate: register, isLoading } = useRegister<RegisterFormTypes>({
-    v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
-  });
+  const { mutate: register, isLoading } =
+    useRegister<ExtendedRegisterFormTypes>({
+      v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
+    });
 
   const PageTitle =
     title === false ? null : (
@@ -152,7 +154,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
     >
       {renderProviders()}
       {!hideForm && (
-        <Form<RegisterFormTypes>
+        <Form<ExtendedRegisterFormTypes>
           layout='vertical'
           form={form}
           onFinish={(values) => register({ ...mutationVariables, ...values })}
@@ -160,7 +162,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
           {...formProps}
         >
           <Form.Item
-            name='company'
+            name='companyName'
             label={translate("pages.register.company", "Company")}
             rules={[
               {
@@ -187,6 +189,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
               )}
             />
           </Form.Item>
+
           <Form.Item
             name='email'
             label={translate("pages.register.email", "Email")}
@@ -212,6 +215,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
               placeholder={translate("pages.register.fields.email", "Email")}
             />
           </Form.Item>
+
           <Form.Item
             name='password'
             label={translate("pages.register.fields.password", "Password")}
@@ -224,9 +228,47 @@ export const RegisterPage: React.FC<RegisterProps> = ({
                 ),
               },
             ]}
+            hasFeedback
           >
-            <Input type='password' placeholder='●●●●●●●●' size='large' />
+            <Input.Password placeholder='●●●●●●●●' size='large' />
           </Form.Item>
+
+          <Form.Item
+            name='confirmPassword'
+            label={translate(
+              "pages.register.fields.confirmPassword",
+              "Confirm Password"
+            )}
+            dependencies={["password"]}
+            hasFeedback
+            rules={[
+              {
+                required: true,
+                message: translate(
+                  "pages.register.errors.requiredConfirmPassword",
+                  "Please confirm your password"
+                ),
+              },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("password") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(
+                    new Error(
+                      translate(
+                        "pages.register.errors.passwordMismatch",
+                        "Passwords do not match"
+                      )
+                    )
+                  );
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder='●●●●●●●●' size='large' />
+          </Form.Item>
+
           <div
             style={{
               display: "flex",
@@ -263,11 +305,8 @@ export const RegisterPage: React.FC<RegisterProps> = ({
               </Typography.Text>
             )}
           </div>
-          <Form.Item
-            style={{
-              marginBottom: 0,
-            }}
-          >
+
+          <Form.Item style={{ marginBottom: 0 }}>
             <Button
               type='primary'
               size='large'
