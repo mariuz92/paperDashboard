@@ -164,7 +164,7 @@ const App: React.FC = () => {
             authProvider={authProvider}
             dataProvider={dataProvider(API_URL)}
             routerProvider={routerProvider}
-            i18nProvider={i18nProvider}
+            // i18nProvider={i18nProvider}
             resources={[
               {
                 name: "orders",
