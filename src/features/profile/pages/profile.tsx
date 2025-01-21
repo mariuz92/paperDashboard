@@ -13,6 +13,8 @@ import {
 import { UploadOutlined } from "@ant-design/icons";
 import { auth } from "../../../config/firebaseConfig";
 import { updateProfile, updatePassword } from "firebase/auth";
+import { IUser } from "../../../types/interfaces/IUser";
+import { updateUser } from "../../users/api/userApi";
 
 export const ProfilePage: React.FC = () => {
   const [form] = Form.useForm();
@@ -48,20 +50,33 @@ export const ProfilePage: React.FC = () => {
     setLoading(true);
     try {
       if (user) {
+        // Update Firebase Auth profile
         await updateProfile(user, {
           displayName: values.displayName,
           photoURL: values.photoURL,
-          phoneNumber: values.phoneNumber,
         });
+
+        // Update password if provided
         if (values.password) {
           await updatePassword(user, values.password);
         }
-        message.success("Profile updated successfully.");
+
+        // Update Firestore user data
+        const firestoreUserUpdate: Partial<IUser> = {
+          displayName: values.displayName,
+          photoURL: values.photoURL,
+          phoneNumber: values.phoneNumber,
+        };
+
+        // Assuming user.uid corresponds to Firestore document ID
+        await updateUser(user.uid, firestoreUserUpdate);
+
+        message.success("Profilo aggiornato con successo.");
         setUser(auth.currentUser); // Refresh user data
       }
     } catch (error) {
-      message.error("Failed to update profile.");
-      console.error("Error updating profile:", error);
+      message.error("Aggiornamento del profilo non riuscito.");
+      console.error("Errore durante l'aggiornamento del profilo:", error);
     } finally {
       setLoading(false);
     }
@@ -71,9 +86,9 @@ export const ProfilePage: React.FC = () => {
     setFileList(fileList);
     if (fileList.length > 0 && fileList[0].status === "done") {
       form.setFieldsValue({ photoURL: fileList[0].url });
-      message.success(`${fileList[0].name} file uploaded successfully`);
+      message.success(`${fileList[0].name} caricato con successo`);
     } else if (fileList.length > 0 && fileList[0].status === "error") {
-      message.error(`${fileList[0].name} file upload failed.`);
+      message.error(`${fileList[0].name} caricamento non riuscito.`);
     }
   };
 
@@ -88,12 +103,12 @@ export const ProfilePage: React.FC = () => {
           </div>
           <Form form={form} layout='vertical' onFinish={handleUpdateProfile}>
             <Form.Item name='displayName' label='Name'>
-              <Input placeholder='Enter your name' />
+              <Input placeholder='Inserisci il tuo nome' />
             </Form.Item>
             <Form.Item name='email' label='Email'>
               <Input disabled />
             </Form.Item>
-            <Form.Item name='photoURL' label='Profile Image URL'>
+            <Form.Item name='photoURL' label='Immagine profilo'>
               <Upload
                 name='file'
                 action='/upload.do'
@@ -104,11 +119,11 @@ export const ProfilePage: React.FC = () => {
                 <Button icon={<UploadOutlined />}>Click to Upload</Button>
               </Upload>
             </Form.Item>
-            <Form.Item name='phoneNumber' label='Phone Number'>
+            <Form.Item name='phoneNumber' label='Telefono'>
               <Input placeholder='Enter your phone number' />
             </Form.Item>
-            <Form.Item name='password' label='New Password'>
-              <Input.Password placeholder='Enter new password' />
+            <Form.Item name='password' label='Nuova password'>
+              <Input.Password placeholder='Inserisci nuova password' />
             </Form.Item>
             <Form.Item>
               <Button type='primary' htmlType='submit' loading={loading} block>
