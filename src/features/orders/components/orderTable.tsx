@@ -14,8 +14,9 @@ import {
   Space,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
-import type { MenuProps } from "antd";
-import dayjs from "dayjs";
+import type { FormInstance, MenuProps } from "antd";
+import dayjs, { Dayjs } from "dayjs";
+import { Timestamp } from "firebase/firestore"; // If you need to convert back to Timestamps
 import { IOrder, IOrderStatus } from "../../../types/interfaces";
 import { updateOrder, deleteOrder } from "../api/orderApi";
 import {
@@ -27,36 +28,59 @@ import {
   MoreOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
+  CarryOutOutlined,
+  SyncOutlined,
+  ClockCircleOutlined,
+  PlusCircleOutlined,
+  SendOutlined,
+  RollbackOutlined,
+  SwapRightOutlined,
+  SwapOutlined,
+  SwapLeftOutlined,
+  IssuesCloseOutlined,
 } from "@ant-design/icons";
-
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { JSX } from "react/jsx-runtime";
 import { IUser } from "../../../types/interfaces/IUser";
 import { getUsers } from "../../users/api/userApi";
+import "../../../shared/style.css";
+import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 
-/**
- * Extended column type:
- * - `editable?: boolean` if cell is editable
- * - `required?: boolean` for validation
- */
+/** Helper: Safely convert a `Timestamp|string|undefined` to a Dayjs object. */
+function dayjsValue(value?: Timestamp | string) {
+  if (!value) {
+    // Return an invalid Dayjs by passing an un-parseable string
+    return dayjs("");
+  }
+  if (value instanceof Timestamp) {
+    return dayjs(value.toDate());
+  }
+  return dayjs(value);
+}
+
+/** Helper: Format a `Timestamp|string` nicely for display in the table. */
+function formatDateCell(value?: Timestamp | string) {
+  const d = dayjsValue(value);
+  return d.isValid() ? d.format("YYYY-MM-DD HH:mm") : "";
+}
+
+/** Extended column type: can be editable, required, etc. */
 interface EditableColumnType<T> extends ColumnType<T> {
   editable?: boolean;
   required?: boolean;
 }
 
-/**
- * Props for the EditableCell:
- * - We allow "date" as an inputType for DatePicker
- */
+/** Props for the EditableCell */
 interface EditableCellProps {
   editing: boolean;
   col?: EditableColumnType<IOrder>;
   dataIndex: keyof IOrder;
   title: string;
-  inputType: "text" | "number" | "select" | "date";
+  inputType: "text" | "number" | "select" | "date" | "places";
   children: React.ReactNode;
+  form: FormInstance; // <-- Must declare this!
 }
 
 /** Main props for OrderTable */
@@ -64,6 +88,7 @@ interface OrderTableProps {
   orders: IOrder[];
   setOrders: React.Dispatch<React.SetStateAction<IOrder[]>>;
   loading: boolean;
+  selectedDate: Dayjs;
 }
 
 /** Convert data to Excel sheet */
@@ -77,7 +102,6 @@ const exportToExcel = (orders: IOrder[]) => {
 /** Convert data to PDF (landscape) */
 const exportToPDF = (orders: IOrder[]) => {
   const doc = new jsPDF("landscape");
-
   const columns = [
     { header: "Nome Guida", dataKey: "nomeGuida" },
     { header: "Canale Radio", dataKey: "canaleRadio" },
@@ -88,25 +112,24 @@ const exportToPDF = (orders: IOrder[]) => {
     { header: "Radioline", dataKey: "radiolineConsegnate" },
     { header: "Extra", dataKey: "extra" },
     { header: "Saldo", dataKey: "saldo" },
-    // { header: "Status", dataKey: "status" }, // commented out in your snippet
     { header: "Note", dataKey: "note" },
   ];
 
   const rows = orders.map((order) => ({
     nomeGuida: order.nomeGuida || "",
     canaleRadio: order.canaleRadio || "",
-    orarioConsegna: order.orarioConsegna || "",
+    orarioConsegna: formatDateCell(order.orarioConsegna),
     luogoConsegna: order.luogoConsegna || "",
-    oraRitiro: order.oraRitiro || "",
+    oraRitiro: formatDateCell(order.oraRitiro),
     luogoRitiro: order.luogoRitiro || "",
     radiolineConsegnate: order.radiolineConsegnate ?? 0,
     extra: order.extra ?? 0,
     saldo: order.saldo?.toFixed(2) ?? "0.00",
     note: order.note || "Nessuna nota",
+    lost: order.lost ?? 0,
   }));
 
   autoTable(doc, { columns, body: rows, margin: { top: 20 } });
-
   const date = new Date().toLocaleDateString("it-IT");
   doc.save(`ordini_${date}.pdf`);
 };
@@ -121,6 +144,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
   title,
   inputType,
   children,
+  form,
   ...restProps
 }) => {
   const inputNode = (() => {
@@ -140,6 +164,19 @@ const EditableCell: React.FC<EditableCellProps> = ({
         return <InputNumber style={{ width: "100%" }} />;
       case "date":
         return <DatePicker style={{ width: "100%" }} format='YYYY-MM-DD' />;
+      case "places":
+        // Use GooglePlacesAutocomplete for luogoConsegna/luogoRitiro
+        const currentValue = form.getFieldValue(dataIndex);
+        return (
+          <GooglePlacesAutocomplete
+            placeholder={title} // e.g. "Luogo Consegna" or "Luogo Ritiro"
+            initialValue={currentValue}
+            onPlaceSelect={(address: string) => {
+              // Update this field in the Form
+              form.setFieldsValue({ [dataIndex]: address });
+            }}
+          />
+        );
       default:
         // "text"
         return <Input />;
@@ -163,11 +200,76 @@ const EditableCell: React.FC<EditableCellProps> = ({
   );
 };
 
+/**
+ * Decide which icon to render for "Tipo Ordine" based on your rules:
+ *   1) If there's no canaleRadio => "New" icon
+ *   2) If orarioConsegna and oraRitiro exist and are the same day => "same-day" icon
+ *   3) If only orarioConsegna matches selectedDate => "deliver" icon
+ *   4) If only oraRitiro matches selectedDate => "retrieve" icon
+ *   (Adjust or add more rules as needed.)
+ */
+function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
+  // 1) If no canaleRadio => new
+  if (!order.canaleRadio) {
+    return (
+      <span title='Nuovo Ordine'>
+        <IssuesCloseOutlined style={{ color: "blue", fontSize: 18 }} />
+      </span>
+    );
+  }
+
+  const consegnaDay = dayjsValue(order.orarioConsegna);
+  const ritiroDay = dayjsValue(order.oraRitiro);
+
+  // Both exist and are the same day
+  if (
+    consegnaDay.isValid() &&
+    ritiroDay.isValid() &&
+    consegnaDay.isSame(ritiroDay, "day")
+  ) {
+    return (
+      <span title='Consegna e ritiro lo stesso giorno'>
+        <SwapOutlined style={{ color: "green", fontSize: 18 }} />
+      </span>
+    );
+  }
+
+  // Only orarioConsegna is the selected day
+  if (
+    consegnaDay.isValid() &&
+    consegnaDay.isSame(selectedDate, "day") &&
+    (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
+  ) {
+    return (
+      <span title='Consegna in questa data'>
+        <SwapRightOutlined style={{ fontSize: 18 }} />
+      </span>
+    );
+  }
+
+  // Only oraRitiro is the selected day
+  if (
+    ritiroDay.isValid() &&
+    ritiroDay.isSame(selectedDate, "day") &&
+    (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
+  ) {
+    return (
+      <span title='Ritiro in questa data'>
+        <SwapLeftOutlined style={{ fontSize: 18 }} />
+      </span>
+    );
+  }
+
+  // Default fallback: no special icon
+  return <span>-</span>;
+}
+
 /** Main OrderTable component */
 const OrderTable: React.FC<OrderTableProps> = ({
   orders,
   setOrders,
   loading,
+  selectedDate,
 }) => {
   const [form] = Form.useForm();
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
@@ -178,8 +280,8 @@ const OrderTable: React.FC<OrderTableProps> = ({
   useEffect(() => {
     const fetchRiders = async () => {
       try {
-        const riders = await getUsers("rider");
-        setRiders(riders);
+        const _riders = await getUsers("rider");
+        setRiders(_riders);
       } catch (error) {
         console.error("Error fetching riders:", error);
       }
@@ -192,12 +294,12 @@ const OrderTable: React.FC<OrderTableProps> = ({
   const handleEdit = (index: number) => {
     const rowData = { ...orders[index] };
 
-    // Convert orarioConsegna and oraRitiro to Dayjs if they are strings
-    if (typeof rowData.orarioConsegna === "string" && rowData.orarioConsegna) {
-      rowData.orarioConsegna = dayjs(rowData.orarioConsegna, "YYYY-MM-DD");
+    // Convert orarioConsegna and oraRitiro to Dayjs if they exist
+    if (rowData.orarioConsegna) {
+      rowData.orarioConsegna = dayjsValue(rowData.orarioConsegna);
     }
-    if (typeof rowData.oraRitiro === "string" && rowData.oraRitiro) {
-      rowData.oraRitiro = dayjs(rowData.oraRitiro, "YYYY-MM-DD");
+    if (rowData.oraRitiro) {
+      rowData.oraRitiro = dayjsValue(rowData.oraRitiro);
     }
 
     form.setFieldsValue(rowData);
@@ -209,35 +311,49 @@ const OrderTable: React.FC<OrderTableProps> = ({
     setEditingRowIndex(null);
   };
 
+  /** Helper: Format a `Timestamp|string` nicely for display in European format. */
+  function formatDateCell(value?: Timestamp | string) {
+    const d = dayjsValue(value);
+    return d.isValid() ? d.format("DD/MM/YYYY HH:mm") : "";
+  }
+
   /** Save updated row */
   const handleSave = async (index: number) => {
     try {
       const updatedRow = (await form.validateFields()) as Partial<IOrder>;
 
-      // Convert dayjs back to string
+      // 1. If orarioConsegna is a Dayjs, convert it to a Firestore Timestamp.
       if (dayjs.isDayjs(updatedRow.orarioConsegna)) {
-        updatedRow.orarioConsegna =
-          updatedRow.orarioConsegna.format("YYYY-MM-DD");
-      }
-      if (dayjs.isDayjs(updatedRow.oraRitiro)) {
-        updatedRow.oraRitiro = updatedRow.oraRitiro.format("YYYY-MM-DD");
+        const dayjsValue = updatedRow.orarioConsegna as Dayjs;
+        updatedRow.orarioConsegna = Timestamp.fromDate(dayjsValue.toDate());
       }
 
-      // Remove undefined fields
+      // 2. If oraRitiro is a Dayjs, convert it to a Firestore Timestamp.
+      if (dayjs.isDayjs(updatedRow.oraRitiro)) {
+        const dayjsValue = updatedRow.oraRitiro as Dayjs;
+        updatedRow.oraRitiro = Timestamp.fromDate(dayjsValue.toDate());
+      }
+
+      // Remove any undefined fields
       Object.entries(updatedRow).forEach(([k, v]) => {
         if (v === undefined) {
           delete updatedRow[k as keyof IOrder];
         }
       });
 
+      // Merge updated fields into the existing order
       const updatedOrders = [...orders];
       const mergedOrder = { ...updatedOrders[index], ...updatedRow };
 
+      // Update Firestore
       await updateOrder(mergedOrder.id as string, updatedRow);
+
+      // Update local state
       updatedOrders[index] = mergedOrder;
       setOrders(updatedOrders);
+
       setEditingRowIndex(null);
-      message.success("Order updated successfully!");
+      message.success("Ordine salvato con successo!");
     } catch (error) {
       console.error("Error saving row:", error);
       message.error("Failed to save the order.");
@@ -249,53 +365,55 @@ const OrderTable: React.FC<OrderTableProps> = ({
       await deleteOrder(id);
       const updatedOrders = orders.filter((order) => order.id !== id);
       setOrders(updatedOrders);
-      message.success("Order deleted successfully!");
+      message.success("Ordine eliminato con successo!");
     } catch (error) {
       console.error("Error deleting order:", error);
-      message.error("Failed to delete the order.");
+      message.error("Ordine non eliminato.");
     }
   };
 
   const handleShare = (rider: IUser, index: number) => {
     const order = orders[index];
-    console.log(
-      `Sharing order ${order.id} with ${rider.displayName} (${rider.phoneNumber})`
-    );
-    const url = `${window.location.origin}/rider/${order.id}`;
-    // 1. Build your share message text
-    // You can customize the message any way you need (e.g. using order data)
-    const shareMessage = `Ciao ${
-      rider.displayName
-    }, ti invio i dettagli dell'ordine.
+    // console.log(
+    //   `Sharing order ${order.id} with ${rider.displayName} (${rider.phoneNumber})`
+    // );
+    // 1. Encode rider name for use in the URL
+    const encodedRiderName = encodeURIComponent(rider.displayName || "");
 
-  Ecco le informazioni principali:
-  - Nome Guida: ${order.nomeGuida || "N/A"}
-  - Canale Radio: ${order.canaleRadio || "N/A"}
-  - Orario Consegna: ${order.orarioConsegna || "N/A"}
-  - Luogo Consegna: ${order.luogoConsegna || "N/A"}
-  - Ora Ritiro: ${order.oraRitiro || "N/A"}
-  - Luogo Ritiro: ${order.luogoRitiro || "N/A"}
-  - Radioline Consegnate: ${order.radiolineConsegnate ?? 0}
-  - Extra: ${order.extra ?? 0}
-  - Saldo: €${(order.saldo ?? 0).toFixed(2)}
-  - Status: ${order.status || "N/A"}
-  - Note: ${order.note || "Nessuna nota"}
-  
-  Aggiorna l'ordine qui: ${url}
-  `;
+    // 2. Construct URL with query param for the rider name
+    const url = `${window.location.origin}/rider/${order.id}?riderName=${encodedRiderName}`;
 
-    // 2. Encode the message for URLs
+    // Build an engaging share message text
+    const shareMessage = `🚀 Ciao ${rider.displayName}! 
+
+Ti affido un nuovo ordine con i seguenti dettagli: 📦
+
+📋 *Dati Ordine*:
+-----------------------------------
+👤 *Nome Guida:* ${order.nomeGuida || "N/A"}
+📡 *Canale Radio:* ${order.canaleRadio || "N/A"}
+📅 *Orario Consegna:* ${formatDateCell(order.orarioConsegna) || "N/A"}
+📍 *Luogo Consegna:* ${order.luogoConsegna || "N/A"}
+⏰ *Ora Ritiro:* ${formatDateCell(order.oraRitiro) || "N/A"}
+🏠 *Luogo Ritiro:* ${order.luogoRitiro || "N/A"}
+🎧 *Radioline Consegnate:* ${order.radiolineConsegnate ?? 0}
+➕ *Extra:* ${order.extra ?? 0}
+💰 *Saldo:* €${(order.saldo ?? 0).toFixed(2)}
+📄 *Stato:* ${order.status || "N/A"}
+📝 *Note:* ${order.note || "Nessuna nota"}
+-----------------------------------
+
+🔗 Aggiorna l'ordine direttamente qui: ${url}
+
+Grazie per la collaborazione! 💪`;
+
     const encodedMessage = encodeURIComponent(shareMessage);
-
-    // 3. Construct the WhatsApp link
-    // Use the rider's cell in international format (no "+" sign, no spaces)
-    const phoneNumber = rider.phoneNumber?.replace(/\D/g, ""); // remove non-digits if needed
+    const phoneNumber = rider.phoneNumber?.replace(/\D/g, "");
     const whatsappLink = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-
-    // 4. Open the link in a new tab
     window.open(whatsappLink, "_blank");
   };
 
+  /** Build the menu items (Edit, Share, Delete) */
   const getMenuItems = (index: number): MenuProps["items"] => [
     {
       label: (
@@ -306,7 +424,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       key: "edit",
     },
     {
-      label: "Condividi",
+      label: "Assegna a",
       key: "share",
       icon: <ShareAltOutlined />,
       children: riders.map((rider) => ({
@@ -325,7 +443,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       label: (
         <Popconfirm
           title='Sei sicuro di voler eliminare questo ordine?'
-          onConfirm={() => orders[index].id && handleDelete(orders[index].id)}
+          onConfirm={() => orders[index].id && handleDelete(orders[index].id!)}
           okText='Sì'
           cancelText='No'
         >
@@ -338,15 +456,23 @@ const OrderTable: React.FC<OrderTableProps> = ({
     },
   ];
 
-  // Build columns (including fixed: "right" for the action column)
+  // Build columns
   const columns: EditableColumnType<IOrder>[] = [
+    {
+      title: "Ordine",
+      key: "tipoOrdine",
+      // no dataIndex, we compute it with render
+      render: (_, record) => renderOrderTypeIcon(record, selectedDate),
+      width: 80,
+      fixed: "left",
+    },
     {
       title: "Nome Guida",
       dataIndex: "nomeGuida",
       key: "nomeGuida",
       editable: true,
       required: true,
-      fixed: "left", // Pin this column to the left
+      fixed: "left",
       width: 220,
     },
     {
@@ -361,8 +487,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
       key: "orarioConsegna",
       editable: true,
       sorter: (a, b) =>
-        new Date(a.orarioConsegna || "").getTime() -
-        new Date(b.orarioConsegna || "").getTime(),
+        dayjsValue(a.orarioConsegna).valueOf() -
+        dayjsValue(b.orarioConsegna).valueOf(),
+      render: (val) => formatDateCell(val),
     },
     {
       title: "Luogo Consegna",
@@ -375,6 +502,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       dataIndex: "oraRitiro",
       key: "oraRitiro",
       editable: true,
+      render: (val) => formatDateCell(val),
     },
     {
       title: "Luogo Ritiro",
@@ -427,21 +555,21 @@ const OrderTable: React.FC<OrderTableProps> = ({
       render: (val) => val || "Nessuna nota",
     },
     {
+      title: "Radio Perse",
+      dataIndex: "lost",
+      key: "lost",
+      editable: true,
+      render: (val) => val ?? 0,
+    },
+    {
       title: "Azione",
       key: "action",
-      fixed: "right", // Pin this column to the right
-      width: 120, // Example width, adjust as needed
+      fixed: "right",
+      width: 120,
       render: (_, __, index) => {
         const editing = isEditing(index);
         return editing ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-evenly",
-
-              flexDirection: "row",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-evenly" }}>
             <Button
               type='default'
               onClick={() => handleSave(index)}
@@ -457,11 +585,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
           <Dropdown menu={{ items: getMenuItems(index) }} trigger={["click"]}>
             <Button
               type='text'
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
+              style={{ display: "flex", alignItems: "center" }}
             >
               Menu
               <MoreOutlined />
@@ -481,8 +605,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
     return {
       ...col,
       onCell: (record: IOrder, index?: number) => {
-        let inputType: "text" | "number" | "select" | "date" = "text";
-
+        let inputType: "text" | "number" | "select" | "date" | "places" =
+          "text";
+        // Decide the input type based on dataIndex
         if (col.dataIndex === "status") {
           inputType = "select";
         } else if (
@@ -496,19 +621,25 @@ const OrderTable: React.FC<OrderTableProps> = ({
           col.dataIndex === "oraRitiro"
         ) {
           inputType = "date";
+        } else if (
+          col.dataIndex === "luogoConsegna" ||
+          col.dataIndex === "luogoRitiro"
+        ) {
+          inputType = "places";
         }
 
         return {
           record,
           col,
-          dataIndex: col.dataIndex,
+          dataIndex: col.dataIndex!,
           title: String(col.title),
           editing: isEditing(index!),
           inputType,
+          form,
         };
       },
     } as ColumnType<IOrder>;
-  }) as ColumnsType<IOrder>;
+  });
 
   return (
     <>
@@ -539,19 +670,48 @@ const OrderTable: React.FC<OrderTableProps> = ({
               ),
             },
           }}
+          // rowClassName={(record) => {
+          //   const selectedDateFormatted = selectedDate;
+
+          //   // Safely check if orarioConsegna and oraRitiro exist before conversion
+          //   const orarioConsegna = record.orarioConsegna
+          //     ? dayjs(record.orarioConsegna.toDate())
+          //     : null;
+          //   const oraRitiro = record.oraRitiro
+          //     ? dayjs(record.oraRitiro.toDate())
+          //     : null;
+
+          //   console.log("Selected Date:", selectedDateFormatted);
+          //   console.log("Orario Consegna:", orarioConsegna);
+          //   console.log("Ora Ritiro:", oraRitiro);
+
+          //   // If both consegna and ritiro match the selected date, do not highlight
+          //   if (
+          //     selectedDateFormatted === orarioConsegna &&
+          //     selectedDateFormatted === oraRitiro
+          //   ) {
+          //     console.log("No highlight - Both dates match selected date.");
+          //     return "";
+          //   }
+
+          //   // If the selected date differs from either consegna or ritiro, highlight
+          //   if (
+          //     selectedDateFormatted !== orarioConsegna ||
+          //     selectedDateFormatted == oraRitiro
+          //   ) {
+          //     console.log("Highlight row - Date mismatch found.");
+          //     return "highlight-row";
+          //   }
+
+          //   return "";
+          // }}
+          virtual
           bordered
           dataSource={orders}
           columns={mergedColumns}
-          rowClassName='editable-row'
           rowKey={(record) => record.id as string}
-          // pagination={{
-          //   defaultPageSize: 25,
-          //   pageSizeOptions: ["10", "25", "50", "100"],
-          //   showSizeChanger: true,
-          // }}
           loading={loading}
-          virtual
-          scroll={{ x: 3000, y: 4500 }} // Enable horizontal scrolling
+          scroll={{ x: 3000, y: 4500 }} // Example large scroll area
         />
       </Form>
     </>

@@ -152,7 +152,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
       }}
       {...(contentProps ?? {})}
     >
-      {renderProviders()}
+      {/* {renderProviders()} */}
       {!hideForm && (
         <Form<ExtendedRegisterFormTypes>
           layout='vertical'

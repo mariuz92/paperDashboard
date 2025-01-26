@@ -25,8 +25,12 @@ import {
   Tooltip,
   CartesianGrid,
   ResponsiveContainer,
+  BarChart,
+  Legend,
+  Bar,
+  LineChart,
+  Line,
 } from "recharts";
-
 const { Title } = Typography;
 const { Content } = Layout;
 
@@ -48,10 +52,16 @@ export const DashboardPage: React.FC = () => {
   const [currentMonthCount, setCurrentMonthCount] = useState<number>(0);
   const [lastMonthCount, setLastMonthCount] = useState<number>(0);
   const [variationPercent, setVariationPercent] = useState<number>(0);
-
+  const [totalRadiosDelivered, setTotalRadiosDelivered] = useState<number>(0);
+  const [hourlyData, setHourlyData] = useState<any[]>([]);
   // Chart data
   const [chartData, setChartData] = useState<any[]>([]);
 
+  const [totalMoneyReceived, setTotalMoneyReceived] = useState<number>(0);
+  const [previousMonthMoneyReceived, setPreviousMonthMoneyReceived] =
+    useState<number>(0);
+  const [revenueDifference, setRevenueDifference] = useState<number>(0);
+  const [saldoChartData, setSaldoChartData] = useState<any[]>([]);
   /** Fetch all orders once on mount */
   useEffect(() => {
     fetchOrders();
@@ -111,10 +121,83 @@ export const DashboardPage: React.FC = () => {
     setLastMonthCount(previousCount);
     setVariationPercent(diff);
 
+    const totalRadios = thisMonthOrders.reduce(
+      (sum, order) => sum + (order.radiolineConsegnate || 0),
+      0
+    );
+
+    // Calculate total money received
+    const totalMoney = thisMonthOrders.reduce(
+      (sum, order) => sum + (order.saldo || 0),
+      0
+    );
+
+    setTotalMoneyReceived(totalMoney);
+
+    const lastMonthMoney = lastMonthOrders.reduce(
+      (sum, order) => sum + (order.saldo || 0),
+      0
+    );
+
+    setPreviousMonthMoneyReceived(lastMonthMoney);
+
+    // Calculate revenue difference percentage
+    const difference =
+      lastMonthMoney === 0
+        ? 100
+        : ((totalMoney - lastMonthMoney) / lastMonthMoney) * 100;
+    setRevenueDifference(difference);
+
+    // Prepare saldo data for chart
+    const saldoData = thisMonthOrders.map((order) => ({
+      date: dayjs(order.orarioConsegna.toDate()).format("YYYY-MM-DD"),
+      saldo: order.saldo || 0,
+    }));
+
+    setSaldoChartData(saldoData);
+    const hourlyFrequency = buildOrderFrequencyData(thisMonthOrders);
+    setHourlyData(hourlyFrequency);
+
+    setTotalRadiosDelivered(totalRadios);
     // Build chart data for the selected month
     const chart = buildChartDataByWeek(thisMonthOrders, selectedMonth);
     setChartData(chart);
   };
+
+  /** Function to build hourly order data, limiting only to hours present in orders */
+  function buildOrderFrequencyData(ordersList: IOrder[]) {
+    const frequencyCounts: Record<
+      string,
+      { consegne: number; ritiri: number }
+    > = {};
+
+    ordersList.forEach((o) => {
+      const date = dayjs(o.orarioConsegna.toDate()).format("YYYY-MM-DD");
+
+      // Ensure the date key exists
+      if (!frequencyCounts.hasOwnProperty(date)) {
+        frequencyCounts[date] = { consegne: 0, ritiri: 0 };
+      }
+
+      frequencyCounts[date].consegne += 1;
+
+      if (o.oraRitiro) {
+        const rDate = dayjs(o.oraRitiro.toDate()).format("YYYY-MM-DD");
+
+        if (!frequencyCounts.hasOwnProperty(rDate)) {
+          frequencyCounts[rDate] = { consegne: 0, ritiri: 0 };
+        }
+
+        frequencyCounts[rDate].ritiri += 1;
+      }
+    });
+
+    return Object.entries(frequencyCounts).map(([date, counts]) => ({
+      label: date,
+      consegne: counts.consegne,
+      ritiri: counts.ritiri,
+    }));
+  }
 
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
@@ -135,8 +218,61 @@ export const DashboardPage: React.FC = () => {
           </Col>
         </Row>
 
+        {/* Statistic for Total Money Received */}
+        <Row style={{ marginTop: 32 }}>
+          <Title level={4}>Entrate</Title>
+        </Row>
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} sm={12} md={8}>
+            <Card loading={loading}>
+              <Statistic
+                title={`Totale entrate (${selectedMonth.format("MMMM YYYY")})`}
+                value={totalMoneyReceived}
+                prefix='€'
+                valueStyle={{ fontSize: "1.5rem" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Card loading={loading}>
+              <Statistic
+                title='Differenza Mese Precedente'
+                value={revenueDifference}
+                precision={2}
+                suffix='%'
+                valueStyle={{
+                  color: revenueDifference >= 0 ? "#3f8600" : "#cf1322",
+                  fontSize: "1.5rem",
+                }}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Saldo Radioline Chart */}
+        <Row style={{ marginTop: 32 }}>
+          <Col span={24}>
+            <Card title='Andamento Entrate'>
+              <div style={{ width: "100%", height: 300 }}>
+                <ResponsiveContainer>
+                  <LineChart data={saldoChartData}>
+                    <CartesianGrid strokeDasharray='3 3' />
+                    <XAxis dataKey='date' />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type='monotone' dataKey='saldo' stroke='#1890ff' />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+        </Row>
         {/* Stats: This Month, Last Month, Variation */}
-        <Row gutter={[16, 16]}>
+        <Row style={{ marginTop: 32 }}>
+          <Title level={4}>Radioline Consegnate</Title>
+        </Row>
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
           <Col xs={24} sm={12} md={8}>
             <Card loading={loading}>
               <Statistic
@@ -226,6 +362,40 @@ export const DashboardPage: React.FC = () => {
             </Card>
           </Col>
         </Row>
+
+        <Row style={{ marginTop: 32 }}>
+          <Title level={4}>Frequenza Consegne e Ritiri per Ora</Title>
+        </Row>
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} sm={12} md={8}>
+            <Card loading={loading}>
+              <Statistic
+                title='Radioline Consegnate'
+                value={totalRadiosDelivered}
+                valueStyle={{ fontSize: "1.5rem" }}
+              />
+            </Card>
+          </Col>
+        </Row>
+        <Row style={{ marginTop: 32 }}>
+          <Col span={24}>
+            <Card title='Frequenza Ordini per Ora'>
+              <div style={{ width: "100%", height: 400 }}>
+                <ResponsiveContainer>
+                  <BarChart data={hourlyData}>
+                    <CartesianGrid strokeDasharray='3 3' />
+                    <XAxis dataKey='hour' />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey='consegne' stackId='a' fill='#1890ff' />
+                    <Bar dataKey='ritiri' stackId='a' fill='#ff4d4f' />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </Col>
+        </Row>
       </Content>
     </Layout>
   );
@@ -233,10 +403,17 @@ export const DashboardPage: React.FC = () => {
 
 /* -------------- Helper Functions --------------- */
 
+/* -------------- Helper Functions --------------- */
+
 /** Check if an order is in [start, end] range by `orarioConsegna`. */
 function inRange(o: IOrder, start: Dayjs, end: Dayjs) {
   if (!o.orarioConsegna) return false;
-  const orderDate = dayjs(o.orarioConsegna);
+
+  // Ensure Firestore Timestamp is converted correctly to Day.js
+  const orderDate = o.orarioConsegna.toDate
+    ? dayjs(o.orarioConsegna.toDate()) // Convert Firestore Timestamp
+    : dayjs(o.orarioConsegna); // Already in valid date format
+
   return orderDate.isSameOrAfter(start) && orderDate.isSameOrBefore(end);
 }
 
@@ -252,7 +429,10 @@ function buildChartDataByWeek(ordersList: IOrder[], selectedMonth: Dayjs) {
   const weekCounts: Record<string, number> = {};
 
   filtered.forEach((o) => {
-    const d = dayjs(o.orarioConsegna);
+    const d = o.orarioConsegna.toDate
+      ? dayjs(o.orarioConsegna.toDate()) // Convert Firestore Timestamp
+      : dayjs(o.orarioConsegna);
+
     const dayOfMonth = d.date(); // 1..31
     const weekIndex = Math.ceil((dayOfMonth / selectedMonth.daysInMonth()) * 4); // integer 1..4
     const key = `Settimana ${weekIndex}`;

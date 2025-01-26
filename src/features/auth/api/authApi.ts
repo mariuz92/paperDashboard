@@ -27,7 +27,17 @@ import {
 const storeUserInLocalStorage = (user: IUser) => {
   localStorage.setItem("email", user.email);
   // const newUser: Omit<IUser, "id"> = (({ id, ...rest }) => rest)(user);
-  // localStorage.setItem("userInfo", JSON.stringify(newUser));
+
+  const userInfo = {
+    role: user.role,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    phone: user.phoneNumber,
+    createdAt: user.createdAt,
+    lastLoginAt: user.lastLoginAt,
+    disabled: user.disabled,
+  };
+  localStorage.setItem("userInfo", JSON.stringify(userInfo));
   localStorage.setItem("tenantId", user.tenantId);
 };
 
@@ -35,6 +45,7 @@ const storeUserInLocalStorage = (user: IUser) => {
 const clearUserFromLocalStorage = () => {
   localStorage.removeItem("email");
   localStorage.removeItem("tenantId");
+  localStorage.removeItem("userInfo");
 };
 
 // Sign up with email and password

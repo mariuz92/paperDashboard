@@ -19,68 +19,48 @@ import { updateUser } from "../../users/api/userApi";
 export const ProfilePage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(auth.currentUser);
+  const [firebaseUser, setFirebaseUser] = useState(auth.currentUser);
+  const [localUser, setLocalUser] = useState<any>(null);
   const [fileList, setFileList] = useState<any[]>([]);
 
+  // 1. Get user data from Local Storage on mount
   useEffect(() => {
-    if (user) {
-      console.log("User is logged in");
-      form.setFieldsValue({
-        displayName: user.displayName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        photoURL: user.photoURL,
-      });
-      if (user.photoURL) {
-        setFileList([
-          {
-            uid: "-1",
-            name: "profile.png",
-            status: "done",
-            url: user.photoURL,
-          },
-        ]);
-      }
-    } else {
-      console.log("No user is logged in.");
+    const localData = localStorage.getItem("userInfo");
+    if (localData) {
+      setLocalUser(JSON.parse(localData));
     }
-  }, [user, form]);
+  }, []);
 
-  const handleUpdateProfile = async (values: any) => {
-    setLoading(true);
-    try {
-      if (user) {
-        // Update Firebase Auth profile
-        await updateProfile(user, {
-          displayName: values.displayName,
-          photoURL: values.photoURL,
-        });
+  // 2. Merge Firebase user and local user data
+  useEffect(() => {
+    // If there's no firebaseUser or localUser, skip
+    // (Or handle them separately as you like)
+    if (!firebaseUser && !localUser) return;
 
-        // Update password if provided
-        if (values.password) {
-          await updatePassword(user, values.password);
-        }
+    // Create a combined user object
+    // Prefer Firebase values if they exist; otherwise use Local Storage
+    const combinedUser = {
+      displayName: firebaseUser?.displayName || localUser?.displayName,
+      email: firebaseUser?.email || localUser?.email,
+      phoneNumber: firebaseUser?.phoneNumber || localUser?.phone,
+      photoURL: firebaseUser?.photoURL || localUser?.photoURL,
+    };
 
-        // Update Firestore user data
-        const firestoreUserUpdate: Partial<IUser> = {
-          displayName: values.displayName,
-          photoURL: values.photoURL,
-          phoneNumber: values.phoneNumber,
-        };
+    // Populate form
+    form.setFieldsValue(combinedUser);
 
-        // Assuming user.uid corresponds to Firestore document ID
-        await updateUser(user.uid, firestoreUserUpdate);
-
-        message.success("Profilo aggiornato con successo.");
-        setUser(auth.currentUser); // Refresh user data
-      }
-    } catch (error) {
-      message.error("Aggiornamento del profilo non riuscito.");
-      console.error("Errore durante l'aggiornamento del profilo:", error);
-    } finally {
-      setLoading(false);
+    // If there's a photoURL, initialize the fileList
+    if (combinedUser.photoURL) {
+      setFileList([
+        {
+          uid: "-1",
+          name: "profile.png",
+          status: "done",
+          url: combinedUser.photoURL,
+        },
+      ]);
     }
-  };
+  }, [firebaseUser, localUser, form]);
 
   const handleUpload = ({ fileList }: any) => {
     setFileList(fileList);
@@ -92,14 +72,52 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleUpdateProfile = async (values: any) => {
+    setLoading(true);
+    try {
+      if (firebaseUser) {
+        // 3. Update the Firebase user’s displayName and photo
+        await updateProfile(firebaseUser, {
+          displayName: values.displayName,
+          photoURL: values.photoURL,
+        });
+
+        // Update password if provided
+        if (values.password) {
+          await updatePassword(firebaseUser, values.password);
+        }
+
+        // Update Firestore user data
+        const firestoreUserUpdate: Partial<IUser> = {
+          displayName: values.displayName,
+          photoURL: values.photoURL,
+          phoneNumber: values.phoneNumber,
+        };
+        // Assuming user.uid corresponds to Firestore document ID
+        await updateUser(firebaseUser.uid, firestoreUserUpdate);
+
+        message.success("Profilo aggiornato con successo.");
+        setFirebaseUser(auth.currentUser); // Refresh user data
+      }
+    } catch (error) {
+      message.error("Aggiornamento del profilo non riuscito.");
+      console.error("Errore durante l'aggiornamento del profilo:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Row justify='center' style={{ marginTop: 50 }}>
       <Col span={12}>
         <Card>
           <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <Avatar size={100} src={user?.photoURL} />
-            <h2>{user?.displayName || user?.email}</h2>
-            <p>{user?.email}</p>
+            <Avatar
+              size={100}
+              src={firebaseUser?.photoURL || localUser?.photoURL}
+            />
+            <h2>{firebaseUser?.displayName || localUser?.displayName}</h2>
+            <p>{firebaseUser?.email || localUser?.email}</p>
           </div>
           <Form form={form} layout='vertical' onFinish={handleUpdateProfile}>
             <Form.Item name='displayName' label='Name'>

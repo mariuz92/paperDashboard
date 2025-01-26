@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export interface ICategory {
   id: number;
   title: string;
@@ -23,11 +25,11 @@ export interface IOrder {
 
   canaleRadio?: string;
 
-  orarioConsegna?: string | Dayjs;
+  orarioConsegna?: Timestamp | Dayjs;
 
   luogoConsegna?: string;
 
-  oraRitiro?: string | Dayjs;
+  oraRitiro?: Timestamp | Dayjs;
 
   luogoRitiro?: string;
 
@@ -40,6 +42,8 @@ export interface IOrder {
   status: IOrderStatus;
 
   note?: string;
+
+  lost?: number;
 }
 
 const colors: Record<IOrderStatus, string> = {
@@ -51,8 +55,8 @@ const colors: Record<IOrderStatus, string> = {
 export interface IGetOrdersParams {
   page?: number;
   pageSize?: number;
-  startDate?: string; // or Date, depending on usage
-  endDate?: string; // or Date
+  startDate?: Timestamp; // or Date, depending on usage
+  endDate?: Timestamp; // or Date
   orderByField?: string;
   orderDirection?: "asc" | "desc";
 }

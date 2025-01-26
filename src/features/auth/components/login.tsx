@@ -150,7 +150,7 @@ export const LoginPage: React.FC<LoginProps> = ({
       }}
       {...(contentProps ?? {})}
     >
-      {renderProviders()}
+      {/* {renderProviders()} */}
       {!hideForm && (
         <Form<ExpendadedLoginFormTypes>
           layout='vertical'
@@ -218,7 +218,7 @@ export const LoginPage: React.FC<LoginProps> = ({
               },
             ]}
           >
-            <Input
+            <Input.Password
               type='password'
               autoComplete='current-password'
               placeholder='●●●●●●●●'

@@ -1,9 +1,4 @@
-import {
-  Refine,
-  type AuthProvider,
-  Authenticated,
-  I18nProvider,
-} from "@refinedev/core";
+import { Refine, type AuthProvider, Authenticated } from "@refinedev/core";
 import {
   useNotificationProvider,
   ErrorComponent,
@@ -18,7 +13,6 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 
-import dataProvider from "@refinedev/simple-rest";
 import routerProvider, {
   CatchAllNavigate,
   UnsavedChangesNotifier,
@@ -51,10 +45,7 @@ import { auth } from "./config/firebaseConfig";
 import { CONFIG } from "./config/configuration";
 import UsersPage from "./features/users/pages/users";
 import CustomOutlet from "./shared/components/customOutlet";
-import { i18nProvider } from "./shared/providers/i18n-provider";
-
-const API_URL = "https://api.fake-rest.refine.dev";
-
+import logo from "../src/images/youngtour.jpg";
 const App: React.FC = () => {
   const authProvider: AuthProvider = {
     check: async () => {
@@ -162,7 +153,6 @@ const App: React.FC = () => {
         <AntdApp>
           <Refine
             authProvider={authProvider}
-            dataProvider={dataProvider(API_URL)}
             routerProvider={routerProvider}
             // i18nProvider={i18nProvider}
             resources={[
@@ -204,6 +194,10 @@ const App: React.FC = () => {
             options={{
               syncWithLocation: true,
               warnWhenUnsavedChanges: true,
+              title: {
+                text: CONFIG.appName,
+                icon: logo,
+              },
             }}
           >
             <Routes>
@@ -214,6 +208,7 @@ const App: React.FC = () => {
                   <AuthPage
                     title={
                       <ThemedTitleV2
+                        image={logo}
                         icon={<AndroidOutlined />}
                         text={CONFIG.appName}
                         collapsed={false}
@@ -238,8 +233,9 @@ const App: React.FC = () => {
                     title={
                       <ThemedTitleV2
                         icon={<AndroidOutlined />}
+                        image={logo}
                         text={CONFIG.appName}
-                        collapsed={false}
+                        collapsed={true}
                       />
                     }
                     type='register'
@@ -260,8 +256,9 @@ const App: React.FC = () => {
                     title={
                       <ThemedTitleV2
                         icon={<AndroidOutlined />}
+                        image={logo}
                         text={CONFIG.appName}
-                        collapsed={false}
+                        collapsed={true}
                       />
                     }
                     type='forgotPassword'
@@ -275,6 +272,7 @@ const App: React.FC = () => {
                     title={
                       <ThemedTitleV2
                         icon={<AndroidOutlined />}
+                        image={logo}
                         text={CONFIG.appName}
                         collapsed={false}
                       />
@@ -296,6 +294,7 @@ const App: React.FC = () => {
                       Title={({ collapsed }) => (
                         <ThemedTitleV2
                           collapsed={collapsed}
+                          image={logo}
                           icon={<AndroidOutlined />}
                           text={CONFIG.appName}
                         />

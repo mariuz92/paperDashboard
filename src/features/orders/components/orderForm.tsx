@@ -14,9 +14,13 @@ import {
   Typography,
 } from "antd";
 import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
+import { Timestamp } from "firebase/firestore";
+
 import { saveOrder } from "../api/orderApi"; // Firebase saveOrder function
 import { IOrder } from "../../../types/interfaces/index";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
+
 const { Title } = Typography;
 
 interface OrderFormProps {
@@ -27,53 +31,67 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
   const [form] = Form.useForm();
   const [drawerVisible, setDrawerVisible] = useState(false);
 
-  const showDrawer = () => {
-    setDrawerVisible(true);
-  };
-
-  const closeDrawer = () => {
-    setDrawerVisible(false);
-  };
+  const showDrawer = () => setDrawerVisible(true);
+  const closeDrawer = () => setDrawerVisible(false);
 
   /**
-   * Handles form submission.
-   * Converts date/time fields to the required format and saves data to Firebase.
+   * Handles form submission:
+   *  - Converts time/date fields to Firestore Timestamps
+   *  - Saves data to Firebase
    */
   const onFinish = async (values: Record<string, any>) => {
-    // Format date and time fields
-    const orarioConsegna = values.orarioConsegna
-      ? values.orarioConsegna.format("YYYY-MM-DD HH:mm")
-      : null;
-    const oraRitiro = values.oraRitiro
-      ? values.oraRitiro.format("YYYY-MM-DD HH:mm")
-      : null;
+    // 1) Convert orarioConsegna (TimePicker) into a full Date, then to Timestamp
+    //    We assume "today" as the date portion if you only have a TimePicker.
+    //    If you want the user to pick an actual date, replace TimePicker with a DatePicker + showTime.
+    let orarioConsegna: Timestamp | null = null;
+    if (values.orarioConsegna) {
+      // Dayjs time from TimePicker
+      const time = values.orarioConsegna;
+      // Merge today's date with the selected time
+      const mergedDateTime = dayjs()
+        .hour(time.hour())
+        .minute(time.minute())
+        .second(0)
+        .millisecond(0);
+      orarioConsegna = Timestamp.fromDate(mergedDateTime.toDate());
+    }
 
-    if (!orarioConsegna || !oraRitiro) {
-      message.error("Date fields are required!");
+    // 2) Convert oraRitiro (DatePicker w/ time) to Timestamp
+    let oraRitiro: Timestamp | null = null;
+    if (values.oraRitiro) {
+      // Dayjs date+time from DatePicker
+      const dateTime = values.oraRitiro;
+      oraRitiro = Timestamp.fromDate(dateTime.toDate());
+    }
+
+    // If either field is required, handle that here:
+    if (!orarioConsegna) {
+      message.error("Orario Consegna (Time) is required!");
       return;
     }
 
-    const formattedValues: Omit<IOrder, "id"> = {
-      nomeGuida: values.nomeGuida || "", // Required
-      canaleRadio: values.canaleRadio || "", // Required
-      orarioConsegna, // Required
-      luogoConsegna: values.luogoConsegna || "", // Required
-      oraRitiro, // Required
-      luogoRitiro: values.luogoRitiro || "", // Required
-      saldo: values.saldo || 0, // Optional
-      radiolineConsegnate: values.radiolineConsegnate || 0, // Optional
-      extra: values.extra || 0, // Optional
-      note: values.note || "", // Optional
+    // 3) Build the order object matching IOrder but with Timestamps
+    const newOrder: Omit<IOrder, "id"> = {
+      nomeGuida: values.nomeGuida || "",
+      canaleRadio: values.canaleRadio || "",
+      orarioConsegna,
+      luogoConsegna: values.luogoConsegna || "",
+      oraRitiro: oraRitiro || undefined,
+      luogoRitiro: values.luogoRitiro || "",
+      saldo: values.saldo || 0,
+      radiolineConsegnate: values.radiolineConsegnate || 0,
+      extra: values.extra || 0,
+      note: values.note || "",
       status: "Presa in Carico", // Default status
     };
 
     try {
-      // Save the order and handle the response
-      const docId = await saveOrder(formattedValues); // Save to Firebase
+      // 4) Save the order to Firebase, then update local state
+      const docId = await saveOrder(newOrder);
       message.success("Order saved successfully!");
-      addOrder({ ...formattedValues, id: docId }); // Add the saved order locally
-      form.resetFields(); // Reset the form fields after submission
-      closeDrawer(); // Close the drawer after submission
+      addOrder({ ...newOrder, id: docId });
+      form.resetFields();
+      closeDrawer();
     } catch (error) {
       message.error("Failed to save the order. Please try again.");
       console.error("Error saving order:", error);
@@ -169,7 +187,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item
-                label='Orario Consegna'
+                label='Orario Consegna (Oggi)'
                 name='orarioConsegna'
                 rules={[
                   { required: true, message: "Inserisci Orario Consegna" },
@@ -191,6 +209,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
                 ]}
               >
                 <GooglePlacesAutocomplete
+                  initialValue=''
                   placeholder='Inserisci Luogo Consegna'
                   onPlaceSelect={(address) =>
                     form.setFieldsValue({ luogoConsegna: address })
@@ -199,10 +218,11 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
               </Form.Item>
             </Col>
           </Row>
+
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item
-                label='Ora e Data Ritiro'
+                label='Data e Ora Ritiro'
                 name='oraRitiro'
                 rules={[
                   { required: false, message: "Inserisci Ora e Data Ritiro" },
@@ -223,6 +243,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
                 rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
               >
                 <GooglePlacesAutocomplete
+                  initialValue=''
                   placeholder='Inserisci Luogo Ritiro'
                   onPlaceSelect={(address) =>
                     form.setFieldsValue({ luogoRitiro: address })

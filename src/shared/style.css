@@ -1,0 +1,7 @@
+/* Highlight rows with a light blue background */
+.highlight-row {
+    background-color: #e6f7ff !important;
+    /* Ant Design light blue */
+   
+    transition: all 0.3s ease-in-out;
+}

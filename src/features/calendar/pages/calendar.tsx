@@ -4,21 +4,26 @@ import itIT from "antd/es/date-picker/locale/it_IT";
 import type { CalendarProps } from "antd";
 import { useNavigate } from "react-router-dom";
 import { Dayjs } from "dayjs";
+
+// Import aggregator interfaces + function from the new orderApi
 import {
   fetchOrderCounts,
-  OrderCount,
-  MonthlyOrderCount,
+  IDailyCount,
+  IMonthlyCount,
 } from "../../orders/api/orderApi";
 
+/**
+ * Page showing a calendar with daily consegna & ritiro counts + monthly totals.
+ */
 export const CalendarPage: React.FC = () => {
-  const [dailyCounts, setDailyCounts] = useState<OrderCount[]>([]);
-  const [monthlyCounts, setMonthlyCounts] = useState<MonthlyOrderCount[]>([]);
+  const [dailyCounts, setDailyCounts] = useState<IDailyCount[]>([]);
+  const [monthlyCounts, setMonthlyCounts] = useState<IMonthlyCount[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   const navigate = useNavigate();
 
   /**
-   * Fetch daily and monthly order counts.
+   * Fetch daily and monthly order counts on mount.
    */
   const loadOrderCounts = async () => {
     setLoading(true);
@@ -28,6 +33,7 @@ export const CalendarPage: React.FC = () => {
       setMonthlyCounts(monthlyCounts);
     } catch (error) {
       message.error("Errore nel caricare gli ordini.");
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -38,79 +44,86 @@ export const CalendarPage: React.FC = () => {
   }, []);
 
   /**
-   * Prepare data for specific dates.
+   * Find IDailyCount for the given date (YYYY-MM-DD).
    */
-  const getListData = (value: Dayjs) => {
-    const dateString = value.format("YYYY-MM-DD");
-    const orderData = dailyCounts.find((order) => order.date === dateString);
-
-    if (orderData) {
-      let orderName = orderData.count > 1 ? "ordini" : "ordine";
-      return [{ type: "success", content: `${orderData.count} ${orderName}` }];
-    }
-    return [];
+  const getDailyData = (value: Dayjs): IDailyCount | undefined => {
+    const dateStr = value.format("YYYY-MM-DD");
+    return dailyCounts.find((d) => d.date === dateStr);
   };
 
   /**
-   * Prepare data for specific months.
+   * Find IMonthlyCount for the given month (YYYY-MM).
    */
-  const getMonthData = (value: Dayjs) => {
-    const monthString = value.format("YYYY-MM");
-    const monthData = monthlyCounts.find(
-      (order) => order.month === monthString
-    );
-
-    return monthData ? monthData.count : null;
+  const getMonthlyData = (value: Dayjs): IMonthlyCount | undefined => {
+    const monthStr = value.format("YYYY-MM");
+    return monthlyCounts.find((m) => m.month === monthStr);
   };
 
   /**
-   * Render daily badges in the calendar.
+   * dateCellRender: Show deliveries (consegne) & pickups (ritiri).
    */
   const dateCellRender = (value: Dayjs) => {
-    const listData = getListData(value);
+    const dailyData = getDailyData(value);
+    if (!dailyData) return null; // No data for this day => nothing to show
+
+    const { consegne, ritiri } = dailyData;
+    const navigate = useNavigate();
+
     return (
-      <div style={{ padding: "5px" }}>
-        {listData.map((item) => (
+      <div
+        style={{
+          padding: "5px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "4px",
+        }}
+      >
+        {consegne > 0 && (
           <Button
-            size='middle'
-            key={item.content}
             type='primary'
-            onClick={() => navigate(`/?date=${value.format("YYYY-MM-DD")}`)}
+            size='small'
             style={{ width: "100%" }}
+            onClick={() => navigate(`/?date=${value.format("YYYY-MM-DD")}`)}
           >
-            {item.content}
+            {consegne} Consegne
           </Button>
-        ))}
+        )}
+        {ritiri > 0 && (
+          <Button
+            type='default'
+            size='small'
+            style={{ width: "100%" }}
+            onClick={() => navigate(`/?date=${value.format("YYYY-MM-DD")}`)}
+          >
+            {ritiri} Ritiri
+          </Button>
+        )}
       </div>
     );
   };
 
   /**
-   * Render monthly data in the calendar.
+   * monthCellRender: Show monthly total (deliveries + pickups).
    */
   const monthCellRender = (value: Dayjs) => {
-    const num = getMonthData(value);
+    const monthData = getMonthlyData(value);
+    if (!monthData) return null;
 
-    return num ? (
-      <ul
-        style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          textAlign: "center",
-        }}
-      >
-        <li>
-          <Badge
-            status='processing' // Use a visually appealing badge status
-            text={`${num} orders`}
-          />
-        </li>
-      </ul>
-    ) : null;
+    return (
+      <div style={{ textAlign: "center", padding: "5px" }}>
+        <Button
+          type='primary'
+          size='small'
+          style={{ width: "100%" }}
+          onClick={() => navigate(`/?month=${value.format("YYYY-MM")}`)}
+        >
+          {monthData.total} Totali
+        </Button>
+      </div>
+    );
   };
   /**
-   * Unified cell rendering logic.
+   * cellRender: unify date vs. month rendering for the AntD Calendar
    */
   const cellRender: CalendarProps<Dayjs>["cellRender"] = (current, info) => {
     if (info.type === "date") return dateCellRender(current);

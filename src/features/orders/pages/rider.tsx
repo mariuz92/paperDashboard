@@ -16,39 +16,53 @@ import {
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { getOrderById, updateOrder } from "../api/orderApi";
 import { IOrder, IOrderStatus } from "../../../types/interfaces";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
+import { Timestamp } from "firebase/firestore"; // if you're storing Timestamps
+import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 
 const { TextArea } = Input;
 const { Title } = Typography;
 
 const RiderUpdatePage: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // e.g. /order/:id
+  const { id } = useParams<{ id: string }>();
   const [form] = Form.useForm();
   const [order, setOrder] = useState<IOrder | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [showRadioSmarrite, setShowRadioSmarrite] = useState<boolean>(false);
 
-  // Fetch the order on mount
+  const queryParams = new URLSearchParams(location.search);
+  const riderName = queryParams.get("riderName") || "Rider Name";
+
   useEffect(() => {
     if (id) {
       fetchOrder(id);
     }
   }, [id]);
 
-  const fetchOrder = async (id: string) => {
+  const fetchOrder = async (orderId: string) => {
     setLoading(true);
     try {
-      const fetchedOrder = await getOrderById(id);
+      const fetchedOrder = await getOrderById(orderId);
       if (fetchedOrder) {
         setOrder(fetchedOrder);
+
+        // Convert Firestore Timestamps into Day.js objects
+        const orarioConsegnaDayjs = fetchedOrder.orarioConsegna
+          ? dayjs(fetchedOrder.orarioConsegna.seconds * 1000)
+          : null;
+
+        const oraRitiroDayjs = fetchedOrder.oraRitiro
+          ? dayjs(fetchedOrder.oraRitiro.seconds * 1000)
+          : null;
+
+        // Populate the form fields
         form.setFieldsValue({
           ...fetchedOrder,
-          orarioConsegna: fetchedOrder.orarioConsegna
-            ? dayjs(fetchedOrder.orarioConsegna)
-            : null,
-          oraRitiro: fetchedOrder.oraRitiro
-            ? dayjs(fetchedOrder.oraRitiro)
-            : null,
+          orarioConsegna: orarioConsegnaDayjs,
+          oraRitiro: oraRitiroDayjs,
+          // Make sure these are strings if your GPlaces component expects strings
+          luogoConsegna: fetchedOrder.luogoConsegna || "",
+          luogoRitiro: fetchedOrder.luogoRitiro || "",
         });
       }
     } catch (error) {
@@ -61,20 +75,32 @@ const RiderUpdatePage: React.FC = () => {
   const onFinish = async (values: Record<string, any>) => {
     if (!order) return;
 
-    const riderName = "Rider Name"; // Replace with actual rider name
+    // 2. Use riderName from the query in your note
     const newNote = `${riderName}: ${values.note}`;
     const updatedNote = order.note ? `${order.note}\n${newNote}` : newNote;
 
-    const updatedOrder = {
+    // Convert back to Firestore Timestamp if needed
+    const orarioConsegnaTimestamp = values.orarioConsegna
+      ? Timestamp.fromDate(values.orarioConsegna.toDate())
+      : null;
+
+    const oraRitiroTimestamp = values.oraRitiro
+      ? Timestamp.fromDate(values.oraRitiro.toDate())
+      : null;
+
+    // Build updated order
+    const updatedOrder: IOrder = {
       ...order,
       ...values,
       note: updatedNote,
       status: "Ritirato" as IOrderStatus,
+      orarioConsegna: orarioConsegnaTimestamp,
+      oraRitiro: oraRitiroTimestamp,
     };
 
     try {
       await updateOrder(order.id as string, updatedOrder);
-      message.success("Order updated successfully");
+      message.success("Ordine aggiornato con successo");
     } catch (error) {
       message.error("Failed to update order");
     }
@@ -97,7 +123,7 @@ const RiderUpdatePage: React.FC = () => {
           <Form.Item
             label='Canale Radio'
             name='canaleRadio'
-            rules={[{ required: false, message: "Inserisci Canale Radio" }]}
+            rules={[{ required: false }]}
           >
             <Input placeholder='Canale Radio' />
           </Form.Item>
@@ -118,36 +144,24 @@ const RiderUpdatePage: React.FC = () => {
           </Form.Item>
         </Col>
         <Col span={4}>
-          <Form.Item
-            label='Extra'
-            name='extra'
-            rules={[{ required: false, message: "Inserisci Numero di Extra" }]}
-          >
-            <InputNumber
-              disabled
-              placeholder='Radio Extra'
-              style={{ width: "100%" }}
-            />
+          <Form.Item label='Extra' name='extra' rules={[{ required: false }]}>
+            <InputNumber placeholder='Radio Extra' style={{ width: "100%" }} />
           </Form.Item>
         </Col>
         <Col span={4}>
           <Form.Item
             label='Saldo (€)'
             name='saldo'
-            rules={[{ required: false, message: "Inserisci Saldo" }]}
+            rules={[{ required: false }]}
           >
-            <InputNumber
-              disabled
-              placeholder='Saldo (€)'
-              style={{ width: "100%" }}
-            />
+            <InputNumber placeholder='Saldo (€)' style={{ width: "100%" }} />
           </Form.Item>
         </Col>
       </Row>
 
       <Title level={4}>Informazioni Consegna</Title>
       <Row gutter={16}>
-        <Col span={4}>
+        <Col span={8}>
           <Form.Item
             label='Orario Consegna'
             name='orarioConsegna'
@@ -161,34 +175,32 @@ const RiderUpdatePage: React.FC = () => {
             />
           </Form.Item>
         </Col>
-        <Col span={7}>
+
+        {/* Example of GooglePlacesAutocomplete for 'Luogo Consegna' */}
+        <Col span={12}>
           <Form.Item
             label='Luogo Consegna'
             name='luogoConsegna'
-            rules={[{ required: true, message: "Inserisci Luogo Consegna" }]}
+            rules={[{ required: false }]}
           >
-            <Input disabled placeholder='Luogo Consegna' />
+            <GooglePlacesAutocomplete
+              initialValue={form.getFieldValue("luogoConsegna") ?? ""}
+              placeholder='Inserisci Luogo Consegna'
+              onPlaceSelect={(address) =>
+                form.setFieldsValue({ luogoConsegna: address })
+              }
+            />
           </Form.Item>
         </Col>
+      </Row>
 
-        <Col
-          span={2}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ArrowRightOutlined style={{ fontSize: "24px", color: "#1890ff" }} />
-        </Col>
-
-        <Col span={4}>
+      <Title level={4}>Informazioni Ritiro</Title>
+      <Row gutter={16}>
+        <Col span={8}>
           <Form.Item
             label='Ora e Data Ritiro'
             name='oraRitiro'
-            rules={[
-              { required: false, message: "Inserisci Ora e Data Ritiro" },
-            ]}
+            rules={[{ required: true, message: "Inserisci Ora e Data Ritiro" }]}
           >
             <DatePicker
               showTime
@@ -198,25 +210,28 @@ const RiderUpdatePage: React.FC = () => {
             />
           </Form.Item>
         </Col>
-        <Col span={7}>
+
+        {/* 'Luogo Ritiro' text input instead of a second GooglePlacesAutocomplete */}
+        <Col span={12}>
           <Form.Item
             label='Luogo Ritiro'
             name='luogoRitiro'
-            rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
+            rules={[{ required: true, message: "Inserisci Luogo Ritiro" }]}
           >
-            <Input placeholder='Luogo Ritiro' />
+            <GooglePlacesAutocomplete
+              initialValue={form.getFieldValue("luogoRitiro") ?? ""}
+              placeholder='Inserisci Luogo Ritiro'
+              onPlaceSelect={(address) =>
+                form.setFieldsValue({ luogoRitiro: address })
+              }
+            />
           </Form.Item>
         </Col>
       </Row>
 
-      <Title level={4}>Note</Title>
       <Row gutter={16}>
         <Col span={24}>
-          <Form.Item
-            label='Note'
-            name='note'
-            rules={[{ required: false, message: "Inserisci Note" }]}
-          >
+          <Form.Item label='Note' name='note'>
             <TextArea placeholder='Note' />
           </Form.Item>
         </Col>
@@ -232,13 +247,13 @@ const RiderUpdatePage: React.FC = () => {
           </Form.Item>
         </Col>
         {showRadioSmarrite && (
-          <Col span={6}>
+          <Col span={10}>
             <Form.Item
               label='Numero di Radio Smarrite'
               name='radioSmarrite'
               rules={[
                 {
-                  required: showRadioSmarrite ? true : false,
+                  required: showRadioSmarrite,
                   message: "Inserisci Numero di Radio Smarrite",
                 },
               ]}

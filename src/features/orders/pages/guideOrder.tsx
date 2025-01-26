@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Form,
+  Input,
   InputNumber,
   Button,
   Row,
@@ -9,13 +10,13 @@ import {
   TimePicker,
   message,
   Typography,
-  Input,
 } from "antd";
+import { ArrowRightOutlined } from "@ant-design/icons";
+import { Timestamp } from "firebase/firestore";
+
+import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { saveOrder } from "../api/orderApi";
 import { IOrder } from "../../../types/interfaces";
-import { ArrowRightOutlined } from "@ant-design/icons";
-import { useActiveAuthProvider, useGetIdentity } from "@refinedev/core";
-import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -23,36 +24,34 @@ const { Title } = Typography;
 const GuideOrderPage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState<boolean>(false);
-  const authProvider = useActiveAuthProvider();
-  const { data: user } = useGetIdentity({
-    v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
-  });
-
-  useEffect(() => {
-    if (user) {
-      form.setFieldsValue({ nomeGuida: user.displayName });
-    }
-  }, [user, form]);
 
   const onFinish = async (values: Record<string, any>) => {
-    const newOrder: IOrder = {
-      ...values,
-      orarioConsegna: values.orarioConsegna
-        ? values.orarioConsegna.format("HH:mm")
-        : null,
-      oraRitiro: values.oraRitiro
-        ? values.oraRitiro.format("YYYY-MM-DD HH:mm")
-        : null,
-      status: "In Consegna",
-    };
-
     setLoading(true);
     try {
+      // Convert from Day.js to Firestore Timestamp (or null if not provided)
+      const orarioConsegnaTimestamp = values.orarioConsegna
+        ? Timestamp.fromDate(values.orarioConsegna.toDate())
+        : null;
+
+      const oraRitiroTimestamp = values.oraRitiro
+        ? Timestamp.fromDate(values.oraRitiro.toDate())
+        : null;
+
+      // Build the IOrder object
+      const newOrder: IOrder = {
+        ...values,
+        orarioConsegna: orarioConsegnaTimestamp,
+        oraRitiro: oraRitiroTimestamp,
+        status: "Presa in Carico", // Example default status
+      };
+
       await saveOrder(newOrder);
-      message.success("Ordine fatto");
+      message.success("Ordine inserito con successo!");
+
+      // Reset the form
       form.resetFields();
-      form.setFieldsValue({ nomeGuida: user.displayName }); // Reset the guide name
     } catch (error) {
+      console.error("Errore nell'inserimento dell'ordine:", error);
       message.error("Errore nell'inserimento dell'ordine");
     } finally {
       setLoading(false);
@@ -61,8 +60,19 @@ const GuideOrderPage: React.FC = () => {
 
   return (
     <Form form={form} layout='vertical' onFinish={onFinish}>
-      <Title level={4}>Informazioni Guida</Title>
+      {/* --- SECTION: Informazioni generali --- */}
+      <Title level={4}>Informazioni generali</Title>
       <Row gutter={16}>
+        <Col span={8}>
+          <Form.Item
+            label='Nome Guida / Gruppo'
+            name='nomeGuida'
+            rules={[{ required: true, message: "Inserisci Nome Guida" }]}
+          >
+            <Input placeholder='Nome Guida' />
+          </Form.Item>
+        </Col>
+
         <Col span={4}>
           <Form.Item
             label='Radioline'
@@ -77,11 +87,27 @@ const GuideOrderPage: React.FC = () => {
             />
           </Form.Item>
         </Col>
+
+        {/* 
+          If you'd like to re-enable these fields, just uncomment:
+          
+        <Col span={4}>
+          <Form.Item label="Extra" name="extra">
+            <InputNumber placeholder="Radio Extra" style={{ width: "100%" }} />
+          </Form.Item>
+        </Col>
+        <Col span={4}>
+          <Form.Item label="Saldo (€)" name="saldo">
+            <InputNumber placeholder="Saldo (€)" style={{ width: "100%" }} />
+          </Form.Item>
+        </Col>
+        */}
       </Row>
 
+      {/* --- SECTION: Informazioni Consegna --- */}
       <Title level={4}>Informazioni Consegna</Title>
       <Row gutter={16}>
-        <Col span={4}>
+        <Col span={8}>
           <Form.Item
             label='Orario Consegna'
             name='orarioConsegna'
@@ -95,13 +121,14 @@ const GuideOrderPage: React.FC = () => {
           </Form.Item>
         </Col>
 
-        <Col span={7}>
+        <Col span={12}>
           <Form.Item
             label='Luogo Consegna'
             name='luogoConsegna'
             rules={[{ required: true, message: "Inserisci Luogo Consegna" }]}
           >
             <GooglePlacesAutocomplete
+              initialValue=''
               placeholder='Inserisci Luogo Consegna'
               onPlaceSelect={(address) =>
                 form.setFieldsValue({ luogoConsegna: address })
@@ -109,25 +136,14 @@ const GuideOrderPage: React.FC = () => {
             />
           </Form.Item>
         </Col>
+      </Row>
 
-        <Col
-          span={2}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ArrowRightOutlined style={{ fontSize: "24px", color: "#1890ff" }} />
-        </Col>
-
-        <Col span={4}>
+      <Row gutter={16}>
+        <Col span={8}>
           <Form.Item
             label='Ora e Data Ritiro'
             name='oraRitiro'
-            rules={[
-              { required: false, message: "Inserisci Ora e Data Ritiro" },
-            ]}
+            rules={[{ required: false }]}
           >
             <DatePicker
               showTime
@@ -138,13 +154,14 @@ const GuideOrderPage: React.FC = () => {
           </Form.Item>
         </Col>
 
-        <Col span={7}>
+        <Col span={12}>
           <Form.Item
             label='Luogo Ritiro'
             name='luogoRitiro'
-            rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
+            rules={[{ required: false }]}
           >
             <GooglePlacesAutocomplete
+              initialValue=''
               placeholder='Inserisci Luogo Ritiro'
               onPlaceSelect={(address) =>
                 form.setFieldsValue({ luogoRitiro: address })
@@ -154,19 +171,17 @@ const GuideOrderPage: React.FC = () => {
         </Col>
       </Row>
 
+      {/* --- SECTION: Note --- */}
       <Title level={4}>Note</Title>
       <Row gutter={16}>
         <Col span={24}>
-          <Form.Item
-            label='Note'
-            name='note'
-            rules={[{ required: false, message: "Inserisci Note" }]}
-          >
+          <Form.Item label='Note' name='note'>
             <TextArea placeholder='Note' />
           </Form.Item>
         </Col>
       </Row>
 
+      {/* --- SUBMIT BUTTON --- */}
       <Row>
         <Col span={24} style={{ textAlign: "right" }}>
           <Form.Item>

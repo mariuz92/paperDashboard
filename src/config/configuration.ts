@@ -1,7 +1,7 @@
 // /Users/marius/Documents/dev/paper_ant_alex/auth-antd/src/configuration.ts
 
 export const CONFIG = {
-  appName: "Paper Alex",
+  appName: "YoungTour",
   logo: "/assets/logo.png",
   favicon: "/assets/favicon.ico",
   apiBaseUrl: "https://api.paperantalex.com",
