@@ -12,6 +12,7 @@ import {
   Dropdown,
   Popconfirm,
   Space,
+  Typography,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { FormInstance, MenuProps } from "antd";
@@ -28,16 +29,10 @@ import {
   MoreOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
-  CarryOutOutlined,
-  SyncOutlined,
-  ClockCircleOutlined,
-  PlusCircleOutlined,
-  SendOutlined,
-  RollbackOutlined,
   SwapRightOutlined,
   SwapOutlined,
-  SwapLeftOutlined,
   IssuesCloseOutlined,
+  UserAddOutlined,
 } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -47,6 +42,7 @@ import { IUser } from "../../../types/interfaces/IUser";
 import { getUsers } from "../../users/api/userApi";
 import "../../../shared/style.css";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
+import { useNavigate } from "react-router";
 
 /** Helper: Safely convert a `Timestamp|string|undefined` to a Dayjs object. */
 function dayjsValue(value?: Timestamp | string) {
@@ -201,19 +197,18 @@ const EditableCell: React.FC<EditableCellProps> = ({
 };
 
 /**
- * Decide which icon to render for "Tipo Ordine" based on your rules:
- *   1) If there's no canaleRadio => "New" icon
- *   2) If orarioConsegna and oraRitiro exist and are the same day => "same-day" icon
- *   3) If only orarioConsegna matches selectedDate => "deliver" icon
- *   4) If only oraRitiro matches selectedDate => "retrieve" icon
- *   (Adjust or add more rules as needed.)
+ * Render the type of order with icons and/or text based on the logic:
+ * 1. New Order (no `canaleRadio`)
+ * 2. Delivered and Retrieved on the same day
+ * 3. Only Delivered on the selected date
+ * 4. Only Retrieved on the selected date
  */
 function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
-  // 1) If no canaleRadio => new
+  // 1) If no canaleRadio => New Order
   if (!order.canaleRadio) {
     return (
       <span title='Nuovo Ordine'>
-        <IssuesCloseOutlined style={{ color: "blue", fontSize: 18 }} />
+        <Typography.Text>Nuovo</Typography.Text>
       </span>
     );
   }
@@ -221,46 +216,48 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
   const consegnaDay = dayjsValue(order.orarioConsegna);
   const ritiroDay = dayjsValue(order.oraRitiro);
 
-  // Both exist and are the same day
+  // 2) Both consegna and ritiro exist and are on the same day
   if (
     consegnaDay.isValid() &&
     ritiroDay.isValid() &&
     consegnaDay.isSame(ritiroDay, "day")
   ) {
     return (
-      <span title='Consegna e ritiro lo stesso giorno'>
-        <SwapOutlined style={{ color: "green", fontSize: 18 }} />
+      <span title='Consegna e Ritiro lo Stesso Giorno'>
+        <Typography.Text>Consegna & Ritiro</Typography.Text>
       </span>
     );
   }
 
-  // Only orarioConsegna is the selected day
+  // 3) Only orarioConsegna is on the selected day
   if (
     consegnaDay.isValid() &&
     consegnaDay.isSame(selectedDate, "day") &&
     (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title='Consegna in questa data'>
-        <SwapRightOutlined style={{ fontSize: 18 }} />
+      <span title='Consegna in Questa Data'>
+        <Typography.Text>Consegna</Typography.Text>
       </span>
     );
   }
 
-  // Only oraRitiro is the selected day
+  // 4) Only oraRitiro is on the selected day
   if (
     ritiroDay.isValid() &&
     ritiroDay.isSame(selectedDate, "day") &&
     (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title='Ritiro in questa data'>
-        <SwapLeftOutlined style={{ fontSize: 18 }} />
+      <span title='Ritiro in Questa Data'>
+        {/* If you prefer to have an icon, uncomment the next line and ensure the icon is imported */}
+        {/* <SwapLeftOutlined style={{ color: "red", marginRight: 4 }} /> */}
+        <Typography.Text>Ritiro</Typography.Text>
       </span>
     );
   }
 
-  // Default fallback: no special icon
+  // Default fallback: No special icon or label
   return <span>-</span>;
 }
 
@@ -276,6 +273,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
   const [riders, setRiders] = useState<IUser[]>([]);
 
   const isEditing = (index: number) => index === editingRowIndex;
+  const navigate = useNavigate(); // Initialize useNavigate
 
   useEffect(() => {
     const fetchRiders = async () => {
@@ -289,6 +287,10 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
     fetchRiders();
   }, []);
+
+  const handleNavigateToUsersPage = () => {
+    navigate("/Collaboratori"); // Adjust the path as per your routing setup
+  };
 
   /** Enter edit mode for row */
   const handleEdit = (index: number) => {
@@ -427,14 +429,27 @@ Grazie per la collaborazione! 💪`;
       label: "Assegna a",
       key: "share",
       icon: <ShareAltOutlined />,
-      children: riders.map((rider) => ({
-        label: (
-          <span onClick={() => handleShare(rider, index)}>
-            {rider.displayName}
-          </span>
-        ),
-        key: rider.id,
-      })),
+      children:
+        riders.length === 0
+          ? [
+              {
+                label: (
+                  <span onClick={handleNavigateToUsersPage}>
+                    <UserAddOutlined style={{ marginRight: 8 }} />
+                    Aggiungi Rider
+                  </span>
+                ),
+                key: "add_rider",
+              },
+            ]
+          : riders.map((rider) => ({
+              label: (
+                <span onClick={() => handleShare(rider, index)}>
+                  {rider.displayName}
+                </span>
+              ),
+              key: rider.id,
+            })),
     },
     {
       type: "divider",
@@ -463,7 +478,7 @@ Grazie per la collaborazione! 💪`;
       key: "tipoOrdine",
       // no dataIndex, we compute it with render
       render: (_, record) => renderOrderTypeIcon(record, selectedDate),
-      width: 80,
+      width: 120,
       fixed: "left",
     },
     {
@@ -473,13 +488,30 @@ Grazie per la collaborazione! 💪`;
       editable: true,
       required: true,
       fixed: "left",
-      width: 220,
+      width: 200,
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      editable: true,
+      required: true,
+      render: (status: IOrderStatus) => {
+        const colors: Record<IOrderStatus, string> = {
+          "In Consegna": "blue",
+          "Presa in Carico": "gold",
+          Consegnato: "green",
+          Ritirato: "purple",
+        };
+        return <Tag color={colors[status]}>{status}</Tag>;
+      },
     },
     {
       title: "Canale Radio",
       dataIndex: "canaleRadio",
       key: "canaleRadio",
       editable: true,
+      width: 150,
     },
     {
       title: "Orario Consegna",
@@ -515,6 +547,7 @@ Grazie per la collaborazione! 💪`;
       dataIndex: "radiolineConsegnate",
       key: "radiolineConsegnate",
       editable: true,
+      width: 100,
       render: (val) => val ?? 0,
     },
     {
@@ -522,6 +555,7 @@ Grazie per la collaborazione! 💪`;
       dataIndex: "extra",
       key: "extra",
       editable: true,
+      width: 100,
       render: (val) => val ?? 0,
     },
     {
@@ -529,24 +563,10 @@ Grazie per la collaborazione! 💪`;
       dataIndex: "saldo",
       key: "saldo",
       editable: true,
+      width: 100,
       render: (val) => `€${(val ?? 0).toFixed(2)}`,
     },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      editable: true,
-      required: true,
-      render: (status: IOrderStatus) => {
-        const colors: Record<IOrderStatus, string> = {
-          "In Consegna": "blue",
-          "Presa in Carico": "gold",
-          Consegnato: "green",
-          Ritirato: "purple",
-        };
-        return <Tag color={colors[status]}>{status}</Tag>;
-      },
-    },
+
     {
       title: "Note",
       dataIndex: "note",
@@ -559,6 +579,7 @@ Grazie per la collaborazione! 💪`;
       dataIndex: "lost",
       key: "lost",
       editable: true,
+      width: 130,
       render: (val) => val ?? 0,
     },
     {
