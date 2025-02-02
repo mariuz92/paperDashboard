@@ -33,6 +33,8 @@ import {
   theme,
 } from "antd";
 import { ExpendadedLoginFormTypes } from "../../../types/interfaces/extendedLoginForm";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 type LoginProps = LoginPageProps<LayoutProps, CardProps, FormProps>;
 /**
@@ -66,6 +68,8 @@ export const LoginPage: React.FC<LoginProps> = ({
   const { mutate: login, isLoading } = useLogin<ExpendadedLoginFormTypes>({
     v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
   });
+
+  useDocumentTitle(`Login | ${CONFIG.appName}`);
 
   const PageTitle =
     title === false ? null : (

@@ -4,6 +4,8 @@ import { Form, Input, Button, notification, Card, Typography } from "antd";
 import { validateInvitation } from "../../auth/api/invitationApi"; // Importa API per la validazione
 import { LockOutlined, MailOutlined, SafetyOutlined } from "@ant-design/icons";
 import { registerWithInvitation, updateEmailVerified } from "../api/authApi";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 const { Title } = Typography;
 
@@ -17,7 +19,7 @@ const JoinPage: React.FC = () => {
   const email = searchParams.get("email") || "";
   const tenant = searchParams.get("tenant") || "";
   const otp = searchParams.get("otp") || "";
-
+  useDocumentTitle(`Unisciti | ${CONFIG.appName}`);
   useEffect(() => {
     if (email && tenant && otp) {
       form.setFieldsValue({ email, tenant, otp });

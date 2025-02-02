@@ -15,6 +15,8 @@ import { auth } from "../../../config/firebaseConfig";
 import { updateProfile, updatePassword } from "firebase/auth";
 import { IUser } from "../../../types/interfaces/IUser";
 import { updateUser } from "../../users/api/userApi";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 export const ProfilePage: React.FC = () => {
   const [form] = Form.useForm();
@@ -22,7 +24,7 @@ export const ProfilePage: React.FC = () => {
   const [firebaseUser, setFirebaseUser] = useState(auth.currentUser);
   const [localUser, setLocalUser] = useState<any>(null);
   const [fileList, setFileList] = useState<any[]>([]);
-
+  useDocumentTitle(`Profilo | ${CONFIG.appName}`);
   // 1. Get user data from Local Storage on mount
   useEffect(() => {
     const localData = localStorage.getItem("userInfo");

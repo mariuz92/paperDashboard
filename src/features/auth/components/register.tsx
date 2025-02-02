@@ -33,6 +33,8 @@ import {
   theme,
 } from "antd";
 import { ExtendedRegisterFormTypes } from "../../../types/interfaces/extendedRegisterForm";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 type RegisterProps = RegisterPageProps<LayoutProps, CardProps, FormProps>;
 /**
@@ -65,6 +67,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
     useRegister<ExtendedRegisterFormTypes>({
       v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
     });
+  useDocumentTitle(`Register | ${CONFIG.appName}`);
 
   const PageTitle =
     title === false ? null : (
