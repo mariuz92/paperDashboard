@@ -7,6 +7,8 @@ import { IOrder } from "../../../types/interfaces";
 import { Timestamp } from "firebase/firestore";
 import OrderForm from "../components/orderForm";
 import OrderTable from "../components/orderTable";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -18,7 +20,7 @@ export const OrdersPage: React.FC = () => {
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-
+  useDocumentTitle(`Ordini | ${CONFIG.appName}`);
   /**
    * Fetch orders for the selected date range (start of day to end of day).
    * Convert the dayjs date range to Firestore Timestamps.

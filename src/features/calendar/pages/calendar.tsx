@@ -11,6 +11,8 @@ import {
   IDailyCount,
   IMonthlyCount,
 } from "../../orders/api/orderApi";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 /**
  * Page showing a calendar with daily consegna & ritiro counts + monthly totals.
@@ -19,7 +21,7 @@ export const CalendarPage: React.FC = () => {
   const [dailyCounts, setDailyCounts] = useState<IDailyCount[]>([]);
   const [monthlyCounts, setMonthlyCounts] = useState<IMonthlyCount[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
+  useDocumentTitle(`Calendario | ${CONFIG.appName}`);
   const navigate = useNavigate();
 
   /**

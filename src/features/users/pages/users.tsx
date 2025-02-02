@@ -4,6 +4,8 @@ import UserTable from "../components/userTable";
 import UserForm from "../components/userForm";
 import { getUsers, createUser, updateUser } from "../api/userApi";
 import { IUser } from "../../../types/interfaces/IUser";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -12,7 +14,7 @@ const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [userToEdit, setUserToEdit] = useState<IUser | null>(null);
-
+  useDocumentTitle(`Collaboratori | ${CONFIG.appName}`);
   useEffect(() => {
     fetchUsers();
   }, []);

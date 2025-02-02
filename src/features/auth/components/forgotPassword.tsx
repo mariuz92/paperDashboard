@@ -30,6 +30,8 @@ import {
   type FormProps,
   theme,
 } from "antd";
+import { CONFIG } from "../../../config/configuration";
+import { useDocumentTitle } from "@refinedev/react-router";
 
 type ResetPassworProps = ForgotPasswordPageProps<
   LayoutProps,
@@ -62,7 +64,7 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
 
   const { mutate: forgotPassword, isLoading } =
     useForgotPassword<ForgotPasswordFormTypes>();
-
+  useDocumentTitle(`Password dimenticata | ${CONFIG.appName}`);
   const PageTitle =
     title === false ? null : (
       <div
@@ -100,7 +102,7 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
       {...(contentProps ?? {})}
     >
       <Form<ForgotPasswordFormTypes>
-        layout="vertical"
+        layout='vertical'
         form={form}
         onFinish={(values) =>
           forgotPassword({ ...values, ...mutationVariables })
@@ -109,7 +111,7 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
         {...formProps}
       >
         <Form.Item
-          name="email"
+          name='email'
           label={translate("pages.forgotPassword.fields.email", "Email")}
           rules={[
             {
@@ -129,8 +131,8 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
           ]}
         >
           <Input
-            type="email"
-            size="large"
+            type='email'
+            size='large'
             placeholder={translate(
               "pages.forgotPassword.fields.email",
               "Email"
@@ -162,7 +164,7 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
                   fontWeight: "bold",
                   color: token.colorPrimaryTextHover,
                 }}
-                to="/login"
+                to='/login'
               >
                 {translate(
                   "pages.forgotPassword.signin",
@@ -179,9 +181,9 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
           }}
         >
           <Button
-            type="primary"
-            size="large"
-            htmlType="submit"
+            type='primary'
+            size='large'
+            htmlType='submit'
             loading={isLoading}
             block
           >
@@ -198,8 +200,8 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
   return (
     <Layout style={layoutStyles} {...(wrapperProps ?? {})}>
       <Row
-        justify="center"
-        align="middle"
+        justify='center'
+        align='middle'
         style={{
           padding: "16px 0",
           minHeight: "100dvh",

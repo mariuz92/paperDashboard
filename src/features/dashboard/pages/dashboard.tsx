@@ -31,6 +31,8 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 const { Title } = Typography;
 const { Content } = Layout;
 
@@ -71,7 +73,7 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     computeStats();
   }, [selectedMonth, orders]);
-
+  useDocumentTitle(`Dashboard | ${CONFIG.appName}`);
   /**
    * 1) Fetch orders from the API
    */

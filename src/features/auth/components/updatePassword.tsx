@@ -28,6 +28,8 @@ import {
   type FormProps,
   theme,
 } from "antd";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 type UpdatePasswordProps = UpdatePasswordPageProps<
   LayoutProps,
@@ -56,7 +58,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
     useUpdatePassword<UpdatePasswordFormTypes>({
       v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
     });
-
+  useDocumentTitle(`Richiedi password | ${CONFIG.appName}`);
   const PageTitle =
     title === false ? null : (
       <div
@@ -95,7 +97,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
       {...(contentProps ?? {})}
     >
       <Form<UpdatePasswordFormTypes>
-        layout="vertical"
+        layout='vertical'
         form={form}
         onFinish={(values) =>
           updatePassword({ ...values, ...mutationVariables })
@@ -104,7 +106,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
         {...formProps}
       >
         <Form.Item
-          name="password"
+          name='password'
           label={translate(
             "pages.updatePassword.fields.password",
             "New Password"
@@ -120,10 +122,10 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
           ]}
           style={{ marginBottom: "12px" }}
         >
-          <Input type="password" placeholder="●●●●●●●●" size="large" />
+          <Input type='password' placeholder='●●●●●●●●' size='large' />
         </Form.Item>
         <Form.Item
-          name="confirmPassword"
+          name='confirmPassword'
           label={translate(
             "pages.updatePassword.fields.confirmPassword",
             "Confirm New Password"
@@ -155,7 +157,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
             }),
           ]}
         >
-          <Input type="password" placeholder="●●●●●●●●" size="large" />
+          <Input type='password' placeholder='●●●●●●●●' size='large' />
         </Form.Item>
         <Form.Item
           style={{
@@ -163,9 +165,9 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
           }}
         >
           <Button
-            type="primary"
-            size="large"
-            htmlType="submit"
+            type='primary'
+            size='large'
+            htmlType='submit'
             loading={isLoading}
             block
           >
@@ -179,8 +181,8 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
   return (
     <Layout style={layoutStyles} {...(wrapperProps ?? {})}>
       <Row
-        justify="center"
-        align="middle"
+        justify='center'
+        align='middle'
         style={{
           padding: "16px 0",
           minHeight: "100dvh",

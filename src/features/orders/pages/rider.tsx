@@ -13,12 +13,14 @@ import {
   Typography,
   Switch,
 } from "antd";
-import { ArrowRightOutlined } from "@ant-design/icons";
+
 import { getOrderById, updateOrder } from "../api/orderApi";
 import { IOrder, IOrderStatus } from "../../../types/interfaces";
-import dayjs, { Dayjs } from "dayjs";
-import { Timestamp } from "firebase/firestore"; // if you're storing Timestamps
+import dayjs from "dayjs";
+import { Timestamp } from "firebase/firestore";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -32,7 +34,7 @@ const RiderUpdatePage: React.FC = () => {
 
   const queryParams = new URLSearchParams(location.search);
   const riderName = queryParams.get("riderName") || "Rider Name";
-
+  useDocumentTitle(`Rider | ${CONFIG.appName}`);
   useEffect(() => {
     if (id) {
       fetchOrder(id);
@@ -50,7 +52,6 @@ const RiderUpdatePage: React.FC = () => {
         const orarioConsegnaDayjs = fetchedOrder.orarioConsegna
           ? dayjs(fetchedOrder.orarioConsegna.seconds * 1000)
           : null;
-
         const oraRitiroDayjs = fetchedOrder.oraRitiro
           ? dayjs(fetchedOrder.oraRitiro.seconds * 1000)
           : null;
@@ -60,7 +61,6 @@ const RiderUpdatePage: React.FC = () => {
           ...fetchedOrder,
           orarioConsegna: orarioConsegnaDayjs,
           oraRitiro: oraRitiroDayjs,
-          // Make sure these are strings if your GPlaces component expects strings
           luogoConsegna: fetchedOrder.luogoConsegna || "",
           luogoRitiro: fetchedOrder.luogoRitiro || "",
         });
@@ -75,15 +75,14 @@ const RiderUpdatePage: React.FC = () => {
   const onFinish = async (values: Record<string, any>) => {
     if (!order) return;
 
-    // 2. Use riderName from the query in your note
+    // Append the rider's name to the note
     const newNote = `${riderName}: ${values.note}`;
     const updatedNote = order.note ? `${order.note}\n${newNote}` : newNote;
 
-    // Convert back to Firestore Timestamp if needed
+    // Convert Day.js objects to Firestore Timestamps (if provided)
     const orarioConsegnaTimestamp = values.orarioConsegna
       ? Timestamp.fromDate(values.orarioConsegna.toDate())
       : null;
-
     const oraRitiroTimestamp = values.oraRitiro
       ? Timestamp.fromDate(values.oraRitiro.toDate())
       : null;
@@ -109,8 +108,8 @@ const RiderUpdatePage: React.FC = () => {
   return (
     <Form form={form} layout='vertical' onFinish={onFinish}>
       <Title level={4}>Informazioni Guida</Title>
-      <Row gutter={16}>
-        <Col span={8}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
           <Form.Item
             label='Nome Guida / Gruppo'
             name='nomeGuida'
@@ -119,7 +118,7 @@ const RiderUpdatePage: React.FC = () => {
             <Input disabled placeholder='Nome Guida' />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={4}>
           <Form.Item
             label='Canale Radio'
             name='canaleRadio'
@@ -128,7 +127,7 @@ const RiderUpdatePage: React.FC = () => {
             <Input placeholder='Canale Radio' />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={4}>
           <Form.Item
             label='Radioline'
             name='radiolineConsegnate'
@@ -143,12 +142,12 @@ const RiderUpdatePage: React.FC = () => {
             />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={4}>
           <Form.Item label='Extra' name='extra' rules={[{ required: false }]}>
             <InputNumber placeholder='Radio Extra' style={{ width: "100%" }} />
           </Form.Item>
         </Col>
-        <Col span={4}>
+        <Col xs={24} md={4}>
           <Form.Item
             label='Saldo (€)'
             name='saldo'
@@ -160,24 +159,21 @@ const RiderUpdatePage: React.FC = () => {
       </Row>
 
       <Title level={4}>Informazioni Consegna</Title>
-      <Row gutter={16}>
-        <Col span={8}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
           <Form.Item
             label='Orario Consegna'
             name='orarioConsegna'
             rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
           >
             <TimePicker
-              disabled
               placeholder='Seleziona Orario Consegna'
               format='HH:mm'
               style={{ width: "100%" }}
             />
           </Form.Item>
         </Col>
-
-        {/* Example of GooglePlacesAutocomplete for 'Luogo Consegna' */}
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item
             label='Luogo Consegna'
             name='luogoConsegna'
@@ -195,8 +191,8 @@ const RiderUpdatePage: React.FC = () => {
       </Row>
 
       <Title level={4}>Informazioni Ritiro</Title>
-      <Row gutter={16}>
-        <Col span={8}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
           <Form.Item
             label='Ora e Data Ritiro'
             name='oraRitiro'
@@ -210,9 +206,7 @@ const RiderUpdatePage: React.FC = () => {
             />
           </Form.Item>
         </Col>
-
-        {/* 'Luogo Ritiro' text input instead of a second GooglePlacesAutocomplete */}
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item
             label='Luogo Ritiro'
             name='luogoRitiro'
@@ -229,17 +223,17 @@ const RiderUpdatePage: React.FC = () => {
         </Col>
       </Row>
 
-      <Row gutter={16}>
-        <Col span={24}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24}>
           <Form.Item label='Note' name='note'>
             <TextArea placeholder='Note' />
           </Form.Item>
         </Col>
       </Row>
 
-      <Row gutter={16}>
-        <Col span={4}>
-          <Form.Item label='Radio Smarrite'>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={6}>
+          <Form.Item label='Radio Smarrite ?'>
             <Switch
               checked={showRadioSmarrite}
               onChange={setShowRadioSmarrite}
@@ -247,7 +241,7 @@ const RiderUpdatePage: React.FC = () => {
           </Form.Item>
         </Col>
         {showRadioSmarrite && (
-          <Col span={10}>
+          <Col xs={24} md={10}>
             <Form.Item
               label='Numero di Radio Smarrite'
               name='radioSmarrite'
@@ -268,7 +262,7 @@ const RiderUpdatePage: React.FC = () => {
       </Row>
 
       <Row>
-        <Col span={24} style={{ textAlign: "right" }}>
+        <Col xs={24} style={{ textAlign: "right" }}>
           <Form.Item>
             <Button type='primary' htmlType='submit' loading={loading}>
               Aggiorna Ordine

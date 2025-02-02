@@ -11,12 +11,13 @@ import {
   message,
   Typography,
 } from "antd";
-import { ArrowRightOutlined } from "@ant-design/icons";
 import { Timestamp } from "firebase/firestore";
 
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { saveOrder } from "../api/orderApi";
 import { IOrder } from "../../../types/interfaces";
+import { useDocumentTitle } from "@refinedev/react-router";
+import { CONFIG } from "../../../config/configuration";
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -24,6 +25,7 @@ const { Title } = Typography;
 const GuideOrderPage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState<boolean>(false);
+  useDocumentTitle(`Crea Ordine | ${CONFIG.appName}`);
 
   const onFinish = async (values: Record<string, any>) => {
     setLoading(true);
@@ -62,8 +64,8 @@ const GuideOrderPage: React.FC = () => {
     <Form form={form} layout='vertical' onFinish={onFinish}>
       {/* --- SECTION: Informazioni generali --- */}
       <Title level={4}>Informazioni generali</Title>
-      <Row gutter={16}>
-        <Col span={8}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
           <Form.Item
             label='Nome Guida / Gruppo'
             name='nomeGuida'
@@ -73,7 +75,7 @@ const GuideOrderPage: React.FC = () => {
           </Form.Item>
         </Col>
 
-        <Col span={4}>
+        <Col xs={24} md={4}>
           <Form.Item
             label='Radioline'
             name='radiolineConsegnate'
@@ -88,26 +90,25 @@ const GuideOrderPage: React.FC = () => {
           </Form.Item>
         </Col>
 
-        {/* 
-          If you'd like to re-enable these fields, just uncomment:
-          
-        <Col span={4}>
-          <Form.Item label="Extra" name="extra">
-            <InputNumber placeholder="Radio Extra" style={{ width: "100%" }} />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item label="Saldo (€)" name="saldo">
-            <InputNumber placeholder="Saldo (€)" style={{ width: "100%" }} />
-          </Form.Item>
-        </Col>
+        {/*
+          // If you want to re-enable these fields, simply uncomment:
+          <Col xs={24} md={4}>
+            <Form.Item label="Extra" name="extra">
+              <InputNumber placeholder="Radio Extra" style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={4}>
+            <Form.Item label="Saldo (€)" name="saldo">
+              <InputNumber placeholder="Saldo (€)" style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
         */}
       </Row>
 
       {/* --- SECTION: Informazioni Consegna --- */}
       <Title level={4}>Informazioni Consegna</Title>
-      <Row gutter={16}>
-        <Col span={8}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
           <Form.Item
             label='Orario Consegna'
             name='orarioConsegna'
@@ -121,7 +122,7 @@ const GuideOrderPage: React.FC = () => {
           </Form.Item>
         </Col>
 
-        <Col span={12}>
+        <Col xs={24} md={12}>
           <Form.Item
             label='Luogo Consegna'
             name='luogoConsegna'
@@ -138,13 +139,9 @@ const GuideOrderPage: React.FC = () => {
         </Col>
       </Row>
 
-      <Row gutter={16}>
-        <Col span={8}>
-          <Form.Item
-            label='Ora e Data Ritiro'
-            name='oraRitiro'
-            rules={[{ required: false }]}
-          >
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
+          <Form.Item label='Ora e Data Ritiro' name='oraRitiro'>
             <DatePicker
               showTime
               placeholder='Seleziona Ora e Data Ritiro'
@@ -154,12 +151,8 @@ const GuideOrderPage: React.FC = () => {
           </Form.Item>
         </Col>
 
-        <Col span={12}>
-          <Form.Item
-            label='Luogo Ritiro'
-            name='luogoRitiro'
-            rules={[{ required: false }]}
-          >
+        <Col xs={24} md={12}>
+          <Form.Item label='Luogo Ritiro' name='luogoRitiro'>
             <GooglePlacesAutocomplete
               initialValue=''
               placeholder='Inserisci Luogo Ritiro'
@@ -173,8 +166,8 @@ const GuideOrderPage: React.FC = () => {
 
       {/* --- SECTION: Note --- */}
       <Title level={4}>Note</Title>
-      <Row gutter={16}>
-        <Col span={24}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24}>
           <Form.Item label='Note' name='note'>
             <TextArea placeholder='Note' />
           </Form.Item>
@@ -183,7 +176,7 @@ const GuideOrderPage: React.FC = () => {
 
       {/* --- SUBMIT BUTTON --- */}
       <Row>
-        <Col span={24} style={{ textAlign: "right" }}>
+        <Col xs={24} style={{ textAlign: "right" }}>
           <Form.Item>
             <Button type='primary' htmlType='submit' loading={loading}>
               Inserisci Ordine
