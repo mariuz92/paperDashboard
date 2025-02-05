@@ -376,17 +376,26 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
   const handleShare = (rider: IUser, index: number) => {
     const order = orders[index];
-    // console.log(
-    //   `Sharing order ${order.id} with ${rider.displayName} (${rider.phoneNumber})`
-    // );
-    // 1. Encode rider name for use in the URL
+    // Encode the rider name for use in the URL
     const encodedRiderName = encodeURIComponent(rider.displayName || "");
 
-    // 2. Construct URL with query param for the rider name
+    // Construct a URL for updating the order (if needed)
     const url = `${window.location.origin}/rider/${order.id}?riderName=${encodedRiderName}`;
 
-    // Build an engaging share message text
-    const shareMessage = `🚀 Ciao ${rider.displayName}! 
+    // Build Google Maps URLs for the delivery and pickup addresses
+    const googleMapsConsegna = order.luogoConsegna
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          order.luogoConsegna
+        )}`
+      : "N/A";
+    const googleMapsRitiro = order.luogoRitiro
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          order.luogoRitiro
+        )}`
+      : "N/A";
+
+    // Construct the share message including the Google Maps links
+    const shareMessage = `🚀 Ciao ${rider.displayName}!
 
 Ti affido un nuovo ordine con i seguenti dettagli: 📦
 
@@ -395,9 +404,9 @@ Ti affido un nuovo ordine con i seguenti dettagli: 📦
 👤 *Nome Guida:* ${order.nomeGuida || "N/A"}
 📡 *Canale Radio:* ${order.canaleRadio || "N/A"}
 📅 *Orario Consegna:* ${formatDateCell(order.orarioConsegna) || "N/A"}
-📍 *Luogo Consegna:* ${order.luogoConsegna || "N/A"}
+📍 *Luogo Consegna:* ${googleMapsConsegna}
 ⏰ *Ora Ritiro:* ${formatDateCell(order.oraRitiro) || "N/A"}
-🏠 *Luogo Ritiro:* ${order.luogoRitiro || "N/A"}
+🏠 *Luogo Ritiro:* ${googleMapsRitiro}
 🎧 *Radioline Consegnate:* ${order.radiolineConsegnate ?? 0}
 ➕ *Extra:* ${order.extra ?? 0}
 💰 *Saldo:* €${(order.saldo ?? 0).toFixed(2)}
@@ -409,9 +418,11 @@ Ti affido un nuovo ordine con i seguenti dettagli: 📦
 
 Grazie per la collaborazione! 💪`;
 
+    // Encode the complete message for use in the WhatsApp URL
     const encodedMessage = encodeURIComponent(shareMessage);
     const phoneNumber = rider.phoneNumber?.replace(/\D/g, "");
     const whatsappLink = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
+
     window.open(whatsappLink, "_blank");
   };
 
@@ -476,7 +487,6 @@ Grazie per la collaborazione! 💪`;
     {
       title: "Ordine",
       key: "tipoOrdine",
-      // no dataIndex, we compute it with render
       render: (_, record) => renderOrderTypeIcon(record, selectedDate),
       width: 120,
       fixed: "left",
@@ -489,6 +499,53 @@ Grazie per la collaborazione! 💪`;
       required: true,
       fixed: "left",
       width: 200,
+      sorter: (a, b) => (a.nomeGuida || "").localeCompare(b.nomeGuida || ""),
+      filterDropdown: ({
+        setSelectedKeys,
+        selectedKeys,
+        confirm,
+        clearFilters,
+      }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder='Cerca Nome Guida'
+            value={selectedKeys[0]}
+            onChange={(e) => {
+              setSelectedKeys(e.target.value ? [e.target.value] : []);
+              confirm({ closeDropdown: false });
+            }}
+            onPressEnter={() => confirm()}
+            style={{ marginBottom: 8, display: "block" }}
+          />
+          <Space>
+            <Button
+              type='primary'
+              onClick={() => confirm()}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Cerca
+            </Button>
+            <Button
+              onClick={() => {
+                clearFilters && clearFilters();
+                setSelectedKeys([]);
+                confirm();
+              }}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Reset
+            </Button>
+          </Space>
+        </div>
+      ),
+      onFilter: (value, record) =>
+        record.nomeGuida
+          ? record.nomeGuida
+              .toLowerCase()
+              .includes((value as string).toLowerCase())
+          : false,
     },
     {
       title: "Status",
@@ -496,6 +553,14 @@ Grazie per la collaborazione! 💪`;
       key: "status",
       editable: true,
       required: true,
+      sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
+      filters: [
+        { text: "Presa in Carico", value: "Presa in Carico" },
+        { text: "In Consegna", value: "In Consegna" },
+        { text: "Consegnato", value: "Consegnato" },
+        { text: "Ritirato", value: "Ritirato" },
+      ],
+      onFilter: (value, record) => record.status === value,
       render: (status: IOrderStatus) => {
         const colors: Record<IOrderStatus, string> = {
           "In Consegna": "blue",
@@ -528,12 +593,58 @@ Grazie per la collaborazione! 💪`;
       dataIndex: "luogoConsegna",
       key: "luogoConsegna",
       editable: true,
+      sorter: (a, b) =>
+        (a.luogoConsegna || "").localeCompare(b.luogoConsegna || ""),
+      filterDropdown: ({
+        setSelectedKeys,
+        selectedKeys,
+        confirm,
+        clearFilters,
+      }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder='Cerca Luogo Consegna'
+            value={selectedKeys[0]}
+            onChange={(e) => {
+              setSelectedKeys(e.target.value ? [e.target.value] : []);
+              confirm({ closeDropdown: false });
+            }}
+            onPressEnter={() => confirm()}
+            style={{ marginBottom: 8, display: "block" }}
+          />
+          <Space>
+            <Button
+              type='primary'
+              onClick={() => confirm()}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Cerca
+            </Button>
+            <Button
+              onClick={() => clearFilters && clearFilters()}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Reset
+            </Button>
+          </Space>
+        </div>
+      ),
+      onFilter: (value, record) =>
+        record.luogoConsegna
+          ? record.luogoConsegna
+              .toLowerCase()
+              .includes((value as string).toLowerCase())
+          : false,
     },
     {
       title: "Ora Ritiro",
       dataIndex: "oraRitiro",
       key: "oraRitiro",
       editable: true,
+      sorter: (a, b) =>
+        dayjsValue(a.oraRitiro).valueOf() - dayjsValue(b.oraRitiro).valueOf(),
       render: (val) => formatDateCell(val),
     },
     {
@@ -541,6 +652,50 @@ Grazie per la collaborazione! 💪`;
       dataIndex: "luogoRitiro",
       key: "luogoRitiro",
       editable: true,
+      sorter: (a, b) =>
+        (a.luogoRitiro || "").localeCompare(b.luogoRitiro || ""),
+      filterDropdown: ({
+        setSelectedKeys,
+        selectedKeys,
+        confirm,
+        clearFilters,
+      }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+            placeholder='Cerca Luogo Ritiro'
+            value={selectedKeys[0]}
+            onChange={(e) => {
+              setSelectedKeys(e.target.value ? [e.target.value] : []);
+              confirm({ closeDropdown: false });
+            }}
+            onPressEnter={() => confirm()}
+            style={{ marginBottom: 8, display: "block" }}
+          />
+          <Space>
+            <Button
+              type='primary'
+              onClick={() => confirm()}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Cerca
+            </Button>
+            <Button
+              onClick={() => clearFilters && clearFilters()}
+              size='small'
+              style={{ width: 90 }}
+            >
+              Reset
+            </Button>
+          </Space>
+        </div>
+      ),
+      onFilter: (value, record) =>
+        record.luogoRitiro
+          ? record.luogoRitiro
+              .toLowerCase()
+              .includes((value as string).toLowerCase())
+          : false,
     },
     {
       title: "Radioline",
@@ -566,7 +721,6 @@ Grazie per la collaborazione! 💪`;
       width: 100,
       render: (val) => `€${(val ?? 0).toFixed(2)}`,
     },
-
     {
       title: "Note",
       dataIndex: "note",
@@ -608,8 +762,7 @@ Grazie per la collaborazione! 💪`;
               type='text'
               style={{ display: "flex", alignItems: "center" }}
             >
-              Menu
-              <MoreOutlined />
+              Menu <MoreOutlined />
             </Button>
           </Dropdown>
         );

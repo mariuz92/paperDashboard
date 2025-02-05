@@ -23,7 +23,7 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
     }
   }, []);
 
-  const shouldRenderHeader = user && (user.displayName || user.photoURL);
+  const shouldRenderHeader = user;
 
   const handleMenuClick = async ({ key }: any) => {
     if (key === "profile") {

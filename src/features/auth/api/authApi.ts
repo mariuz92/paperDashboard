@@ -56,7 +56,7 @@ export const signUpWithEmail = async (
 ): Promise<{ firebaseUser: any; tenantId: string }> => {
   try {
     // 1. Check if the tenant exists by querying Firestore
-    const tenantKey = tenantName.toLowerCase().replace(/\s+/g, "-");
+    const tenantKey = tenantName.toUpperCase().replace(/\s+/g, "-");
     const tenantRef = doc(db, "tenants", tenantKey);
     const tenantSnap = await getDoc(tenantRef);
 
@@ -132,6 +132,9 @@ export const signInWithEmail = async (
     if (!tenant) {
       throw new Error("Tenant does not exist.");
     }
+    console.log("Tenant", tenantName);
+    console.log("email", email);
+    console.log("pass", password);
 
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -142,7 +145,7 @@ export const signInWithEmail = async (
 
     // Retrieve user info from DB
     const existingUser = await getUserById(firebaseUser.uid);
-
+    console.log("existingUser", existingUser?.tenantId);
     if (!existingUser) {
       throw new Error("User does not exist. Please register first.");
     }
