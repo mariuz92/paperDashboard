@@ -30,13 +30,13 @@ export const storeInvitation = async (
 export const sendInvitationEmail = async (
   email: string,
   otp: string,
-  tenantName: string
+  tenantID: string
 ): Promise<void> => {
   // Create an action link without OTP
   const actionCodeSettings: ActionCodeSettings = {
     url: `${baseUrl}/join?email=${encodeURIComponent(
       email
-    )}&tenant=${encodeURIComponent(tenantName)}`,
+    )}&tenant=${encodeURIComponent(tenantID)}`,
     handleCodeInApp: true,
   };
 
@@ -45,7 +45,7 @@ export const sendInvitationEmail = async (
   await setDoc(otpRef, {
     email,
     otp,
-    tenantName,
+    tenantID,
     createdAt: serverTimestamp(),
   });
 

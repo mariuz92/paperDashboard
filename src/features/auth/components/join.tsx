@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Form, Input, Button, notification, Card, Typography } from "antd";
-import { validateInvitation } from "../../auth/api/invitationApi"; // Importa API per la validazione
+import { validateInvitation } from "../../users/api/invitationApi"; // Importa API per la validazione
 import { LockOutlined, MailOutlined, SafetyOutlined } from "@ant-design/icons";
 import { registerWithInvitation, updateEmailVerified } from "../api/authApi";
 import { useDocumentTitle } from "@refinedev/react-router";
@@ -106,12 +106,12 @@ const JoinPage: React.FC = () => {
         <Title level={3} style={{ textAlign: "center" }}>
           Completa la tua registrazione
         </Title>
-        <Form form={form} layout='vertical' onFinish={onFinish}>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
           {!otpValid && (
             <>
               <Form.Item
-                name='email'
-                label='Email'
+                name="email"
+                label="Email"
                 rules={[
                   {
                     required: true,
@@ -124,8 +124,8 @@ const JoinPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name='tenant'
-                label='ID Tenant'
+                name="tenant"
+                label="ID Tenant"
                 rules={[
                   { required: true, message: "L'ID del tenant è richiesto" },
                 ]}
@@ -134,8 +134,8 @@ const JoinPage: React.FC = () => {
               </Form.Item>
 
               <Form.Item
-                name='otp'
-                label='Codice OTP'
+                name="otp"
+                label="Codice OTP"
                 style={{ textAlign: "center" }}
                 rules={[
                   { required: true, message: "L'OTP è richiesto" },
@@ -144,13 +144,13 @@ const JoinPage: React.FC = () => {
               >
                 <Input.OTP
                   length={6}
-                  inputMode='numeric'
+                  inputMode="numeric"
                   style={{ textAlign: "center" }}
                 />
               </Form.Item>
 
               <Button
-                type='primary'
+                type="primary"
                 onClick={handleOtpValidation}
                 loading={loading}
                 block
@@ -162,8 +162,8 @@ const JoinPage: React.FC = () => {
           {otpValid && (
             <>
               <Form.Item
-                name='password'
-                label='Password'
+                name="password"
+                label="Password"
                 rules={[
                   { required: true, message: "Inserisci una password" },
                   {
@@ -174,13 +174,13 @@ const JoinPage: React.FC = () => {
               >
                 <Input.Password
                   prefix={<LockOutlined />}
-                  placeholder='Inserisci la tua password'
+                  placeholder="Inserisci la tua password"
                 />
               </Form.Item>
 
               <Form.Item
-                name='confirmPassword'
-                label='Conferma Password'
+                name="confirmPassword"
+                label="Conferma Password"
                 dependencies={["password"]}
                 rules={[
                   { required: true, message: "Conferma la tua password" },
@@ -198,14 +198,14 @@ const JoinPage: React.FC = () => {
               >
                 <Input.Password
                   prefix={<LockOutlined />}
-                  placeholder='Conferma la tua password'
+                  placeholder="Conferma la tua password"
                 />
               </Form.Item>
 
               <Form.Item>
                 <Button
-                  type='primary'
-                  htmlType='submit'
+                  type="primary"
+                  htmlType="submit"
                   loading={loading}
                   block
                 >

@@ -19,8 +19,11 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
+  query,
   setDoc,
   updateDoc,
+  where,
 } from "firebase/firestore";
 
 // Helper to store user info in localStorage
@@ -52,22 +55,28 @@ const clearUserFromLocalStorage = () => {
 export const signUpWithEmail = async (
   email: string,
   password: string,
-  tenantName: string
+  tenantName: string,
+  name: string,
+  phoneNumber:number
 ): Promise<{ firebaseUser: any; tenantId: string }> => {
   try {
-    // 1. Check if the tenant exists by querying Firestore
-    const tenantKey = tenantName.toUpperCase().replace(/\s+/g, "-");
-    const tenantRef = doc(db, "tenants", tenantKey);
-    const tenantSnap = await getDoc(tenantRef);
+    // 1. Convert tenant name to a consistent format (e.g., uppercase)
+    const upperTenantName = tenantName.toUpperCase();
+
+    // 2. Query Firestore for an existing tenant whose 'name' field matches
+    const tenantsRef = collection(db, "tenants");
+    const tenantQuery = query(tenantsRef, where("name", "==", upperTenantName));
+    const tenantSnapshot = await getDocs(tenantQuery);
 
     let tenantId: string;
-    if (tenantSnap.exists()) {
-      // Tenant exists
-      tenantId = tenantSnap.id;
+    if (!tenantSnapshot.empty) {
+      // Tenant exists; grab the first matched doc
+      const existingTenantDoc = tenantSnapshot.docs[0];
+      tenantId = existingTenantDoc.id;
     } else {
-      // Tenant does not exist, create a new tenant with auto-generated ID
+      // Tenant does not exist; create a new tenant doc with auto-generated ID
       const newTenantRef = await addDoc(collection(db, "tenants"), {
-        name: tenantName.toUpperCase(),
+        name: upperTenantName,
         createdAt: new Date(),
         isActive: true,
         description: `Tenant for ${tenantName}`,
@@ -75,7 +84,7 @@ export const signUpWithEmail = async (
       tenantId = newTenantRef.id; // Retrieve auto-generated ID
     }
 
-    // 2. Create the Firebase user
+    // 3. Create the Firebase user
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -83,25 +92,25 @@ export const signUpWithEmail = async (
     );
     const firebaseUser = userCredential.user;
 
-    // 3. Create user object
+    // 4. Build the user object
     const newUser: IUser = {
       id: firebaseUser.uid,
       email: firebaseUser.email ?? "",
-      displayName: firebaseUser.displayName ?? "",
+      displayName: firebaseUser.displayName ?? name,
       photoURL: firebaseUser.photoURL || "",
       emailVerified: firebaseUser.emailVerified,
-      phoneNumber: firebaseUser.phoneNumber || "",
+      phoneNumber: firebaseUser.phoneNumber || phoneNumber.toString(),
       createdAt: new Date(),
       lastLoginAt: new Date(),
-      role: "",
+      role: !tenantSnapshot.empty ? "guide" : "admin",
       disabled: false,
-      tenantId, // Use auto-generated or existing tenant ID
+      tenantId, // Use the tenant ID we found or just created
     };
 
-    // 4. Save the user in Firestore
+    // 5. Save the user in Firestore
     await setDoc(doc(db, "users", firebaseUser.uid), newUser);
 
-    // 5. Store user info in localStorage
+    // 6. Store user info in localStorage
     storeUserInLocalStorage(newUser);
 
     return { firebaseUser, tenantId };
