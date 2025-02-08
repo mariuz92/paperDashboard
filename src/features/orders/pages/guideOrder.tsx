@@ -86,7 +86,7 @@ const GuideOrderPage: React.FC = () => {
   return (
     <>
       {/* CTA: Shown only if registration data is not present */}
-      {registrationData && (
+      {!registrationData && (
         <Row justify='start' style={{ marginBottom: 16 }}>
           <Col span={24}>
             <Card
