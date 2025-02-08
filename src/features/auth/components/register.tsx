@@ -103,7 +103,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
             return (
               <Button
                 key={provider.name}
-                type="default"
+                type='default'
                 block
                 icon={provider.icon}
                 style={{
@@ -158,15 +158,15 @@ export const RegisterPage: React.FC<RegisterProps> = ({
       {/* {renderProviders()} */}
       {!hideForm && (
         <Form<ExtendedRegisterFormTypes>
-          layout="vertical"
+          layout='vertical'
           form={form}
           onFinish={(values) => register({ ...mutationVariables, ...values })}
           requiredMark={false}
           {...formProps}
         >
           <Form.Item
-            name="name"
-            label="Name"
+            name='name'
+            label='Name'
             rules={[
               {
                 required: true,
@@ -174,29 +174,29 @@ export const RegisterPage: React.FC<RegisterProps> = ({
               },
             ]}
           >
-            <Input size="large" placeholder="Your Name and Surname" />
+            <Input size='large' placeholder='Your Name and Surname' />
           </Form.Item>
 
           {/* Phone Number */}
           <Form.Item
-            name="phoneNumber"
-            label="Phone Number"
+            name='phoneNumber'
+            label='Phone Number'
             rules={[
               {
                 required: true,
                 message: "Please enter your phone number",
               },
               {
-                pattern: /^[0-9]+$/,
+                type: "number",
                 message: "Please enter a valid phone number",
               },
             ]}
           >
-            <Input size="large" placeholder="+1 234 567 890" type="number" />
+            <Input size='large' placeholder='+1 234 567 890' type='number' />
           </Form.Item>
 
           <Form.Item
-            name="companyName"
+            name='companyName'
             label={translate("pages.register.company", "Company")}
             rules={[
               {
@@ -216,7 +216,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
             ]}
           >
             <Input
-              size="large"
+              size='large'
               placeholder={translate(
                 "pages.register.fields.company",
                 "Company"
@@ -225,7 +225,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
           </Form.Item>
 
           <Form.Item
-            name="email"
+            name='email'
             label={translate("pages.register.email", "Email")}
             rules={[
               {
@@ -245,13 +245,13 @@ export const RegisterPage: React.FC<RegisterProps> = ({
             ]}
           >
             <Input
-              size="large"
+              size='large'
               placeholder={translate("pages.register.fields.email", "Email")}
             />
           </Form.Item>
 
           <Form.Item
-            name="password"
+            name='password'
             label={translate("pages.register.fields.password", "Password")}
             rules={[
               {
@@ -264,11 +264,11 @@ export const RegisterPage: React.FC<RegisterProps> = ({
             ]}
             hasFeedback
           >
-            <Input.Password placeholder="●●●●●●●●" size="large" />
+            <Input.Password placeholder='●●●●●●●●' size='large' />
           </Form.Item>
 
           <Form.Item
-            name="confirmPassword"
+            name='confirmPassword'
             label={translate(
               "pages.register.fields.confirmPassword",
               "Confirm Password"
@@ -300,7 +300,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
               }),
             ]}
           >
-            <Input.Password placeholder="●●●●●●●●" size="large" />
+            <Input.Password placeholder='●●●●●●●●' size='large' />
           </Form.Item>
 
           <div
@@ -329,7 +329,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
                     fontWeight: "bold",
                     color: token.colorPrimaryTextHover,
                   }}
-                  to="/login"
+                  to='/login'
                 >
                   {translate(
                     "pages.register.signin",
@@ -342,9 +342,9 @@ export const RegisterPage: React.FC<RegisterProps> = ({
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Button
-              type="primary"
-              size="large"
-              htmlType="submit"
+              type='primary'
+              size='large'
+              htmlType='submit'
               loading={isLoading}
               block
             >
@@ -373,7 +373,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
                 fontWeight: "bold",
                 color: token.colorPrimaryTextHover,
               }}
-              to="/login"
+              to='/login'
             >
               {translate(
                 "pages.register.signin",
@@ -389,7 +389,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
   return (
     <Layout style={layoutStyles} {...(wrapperProps ?? {})}>
       <Row
-        justify="center"
+        justify='center'
         align={hideForm ? "top" : "middle"}
         style={{
           padding: "16px 0",

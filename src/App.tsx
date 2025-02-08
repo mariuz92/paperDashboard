@@ -82,6 +82,17 @@ const App: React.FC = () => {
         }
 
         await signInWithEmail(companyName, email, password);
+        const storedUser = await localStorage.getItem("userInfo");
+
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          if (user!.role == "guide") {
+            return {
+              success: true,
+              redirectTo: "/OrdineGuida",
+            };
+          }
+        }
         return {
           success: true,
           redirectTo: "/",
@@ -99,6 +110,16 @@ const App: React.FC = () => {
     register: async ({ email, password, companyName, name, phoneNumber }) => {
       try {
         await signUpWithEmail(email, password, companyName, name, phoneNumber);
+        const storedUser = await localStorage.getItem("userInfo");
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          if (user!.role == "guide") {
+            return {
+              success: true,
+              redirectTo: "/OrdineGuida",
+            };
+          }
+        }
         return {
           success: true,
           redirectTo: "/",
@@ -203,7 +224,7 @@ const App: React.FC = () => {
             <Routes>
               {/* Public Auth Routes */}
               <Route
-                path="/login"
+                path='/login'
                 element={
                   <AuthPage
                     title={
@@ -214,7 +235,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type="login"
+                    type='login'
                     formProps={{ initialValues: {} }}
                     providers={[
                       {
@@ -227,7 +248,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path="/register"
+                path='/register'
                 element={
                   <AuthPage
                     title={
@@ -238,7 +259,7 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type="register"
+                    type='register'
                     providers={[
                       {
                         name: "google",
@@ -250,7 +271,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path="/forgot-password"
+                path='/forgot-password'
                 element={
                   <AuthPage
                     title={
@@ -261,12 +282,12 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type="forgotPassword"
+                    type='forgotPassword'
                   />
                 }
               />
               <Route
-                path="/update-password"
+                path='/update-password'
                 element={
                   <AuthPage
                     title={
@@ -277,7 +298,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type="updatePassword"
+                    type='updatePassword'
                   />
                 }
               />
@@ -286,8 +307,8 @@ const App: React.FC = () => {
               <Route
                 element={
                   <Authenticated
-                    fallback={<Navigate to="/login" />}
-                    key="authenticated"
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
                   >
                     <ThemedLayoutV2
                       Header={ThemedHeaderV2}
@@ -306,37 +327,37 @@ const App: React.FC = () => {
                 }
               >
                 <Route index element={<OrdersPage />} />
-                <Route path="/Calendario" element={<CalendarPage />} />
-                <Route path="/Dashboard" element={<DashboardPage />} />
-                <Route path="/Profilo" element={<ProfilePage />} />
-                <Route path="/Collaboratori" element={<UsersPage />} />
+                <Route path='/Calendario' element={<CalendarPage />} />
+                <Route path='/Dashboard' element={<DashboardPage />} />
+                <Route path='/Profilo' element={<ProfilePage />} />
+                <Route path='/Collaboratori' element={<UsersPage />} />
                 {/* 404 inside default layout */}
-                <Route path="*" element={<ErrorComponent />} />
+                <Route path='*' element={<ErrorComponent />} />
               </Route>
 
               {/* Minimal Layout for Rider */}
               <Route
-                path="/rider"
+                path='/rider'
                 element={
                   <Authenticated
-                    fallback={<Navigate to="/login" />}
-                    key="authenticated"
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
                   >
                     <CustomOutlet />
                   </Authenticated>
                 }
               >
                 <Route index element={<RiderUpdatePage />} />
-                <Route path=":id" element={<RiderUpdatePage />} />
+                <Route path=':id' element={<RiderUpdatePage />} />
               </Route>
 
               {/* Minimal Layout for Guida */}
               <Route
-                path="/OrdineGuida"
+                path='/OrdineGuida'
                 element={
                   <Authenticated
-                    fallback={<Navigate to="/login" />}
-                    key="authenticated"
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
                   >
                     <CustomOutlet />
                   </Authenticated>
@@ -346,11 +367,11 @@ const App: React.FC = () => {
               </Route>
 
               <Route
-                path="/join"
+                path='/join'
                 element={
                   <Authenticated
-                    fallback={<Navigate to="/login" />}
-                    key="authenticated"
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
                   >
                     <CustomOutlet />
                   </Authenticated>

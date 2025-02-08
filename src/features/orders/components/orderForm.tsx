@@ -142,14 +142,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
             </Col>
             <Col span={6}>
               <Form.Item
-                label='Radioline'
+                label='Radioguide'
                 name='radiolineConsegnate'
                 rules={[
-                  { required: true, message: "Inserisci Numero di Radioline" },
+                  { required: true, message: "Inserisci Numero di Radioguide" },
                 ]}
               >
                 <InputNumber
-                  placeholder='Radioline Consegnate'
+                  placeholder='Radioguide Consegnate'
                   style={{ width: "100%" }}
                 />
               </Form.Item>

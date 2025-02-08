@@ -10,6 +10,7 @@ import {
   TimePicker,
   message,
   Typography,
+  Card,
 } from "antd";
 import { Timestamp } from "firebase/firestore";
 import { useNavigate } from "react-router-dom"; // for navigation to register page
@@ -18,6 +19,8 @@ import { saveOrder } from "../api/orderApi";
 import { IOrder } from "../../../types/interfaces";
 import { useDocumentTitle } from "@refinedev/react-router";
 import { CONFIG } from "../../../config/configuration";
+import { InfoCircleOutlined, SettingOutlined } from "@ant-design/icons";
+import Meta from "antd/es/card/Meta";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -31,13 +34,16 @@ const GuideOrderPage: React.FC = () => {
 
   // Check localStorage for registration data (e.g., saved during registration)
   useEffect(() => {
-    const storedData = localStorage.getItem("registrationData");
+    const storedData = localStorage.getItem("userInfo");
+    const email = localStorage.getItem("email");
     if (storedData) {
       const parsedData = JSON.parse(storedData);
       setRegistrationData(parsedData);
       form.setFieldsValue({
-        email: parsedData.email,
-        telefono: parsedData.telefono,
+        email: email,
+        phone: parsedData.phone,
+        role: parsedData.role,
+        nomeGuida: parsedData.displayName,
         // If desired, you can also auto-fill the name if stored, e.g.:
         // nomeGuida: parsedData.nome,
       });
@@ -80,16 +86,42 @@ const GuideOrderPage: React.FC = () => {
   return (
     <>
       {/* CTA: Shown only if registration data is not present */}
-      {!registrationData && (
-        <Row justify='end' style={{ marginBottom: "16px" }}>
-          <Col>
-            <Text>
-              Vuoi risparmiare tempo in futuro?{" "}
-              <Button type='link' onClick={() => navigate("/register")}>
-                Registrati qui
-              </Button>{" "}
-              per salvare le tue informazioni.
-            </Text>
+      {registrationData && (
+        <Row justify='start' style={{ marginBottom: 16 }}>
+          <Col span={24}>
+            <Card
+              style={{
+                border: `1px solid ${"#91d5ff"}`,
+              }}
+              actions={[
+                <Button
+                  key='register'
+                  type='primary'
+                  size='middle'
+                  onClick={() => navigate("/register")}
+                >
+                  Registrati
+                </Button>,
+                <Text>Oppure</Text>,
+                <Button
+                  type='primary'
+                  size='middle'
+                  onClick={() => navigate("/login")}
+                >
+                  Accedi
+                </Button>,
+              ]}
+            >
+              <Meta
+                avatar={<InfoCircleOutlined color='#91d5ff' />}
+                title={
+                  <Text strong style={{ fontSize: 16 }}>
+                    Vuoi risparmiare tempo in futuro?
+                  </Text>
+                }
+                description='Registrati per salvare le tue informazioni e velocizzare i prossimi ordini.'
+              />
+            </Card>
           </Col>
         </Row>
       )}
@@ -97,36 +129,9 @@ const GuideOrderPage: React.FC = () => {
       <Form form={form} layout='vertical' onFinish={onFinish}>
         {/* --- SECTION: Informazioni generali --- */}
         <Title level={4}>Informazioni generali</Title>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={8}>
-            <Form.Item
-              label='Nome Guida / Gruppo'
-              name='nomeGuida'
-              rules={[{ required: true, message: "Inserisci Nome Guida" }]}
-            >
-              <Input placeholder='Nome Guida' />
-            </Form.Item>
-          </Col>
-
-          <Col xs={24} md={4}>
-            <Form.Item
-              label='Radioline'
-              name='radiolineConsegnate'
-              rules={[
-                { required: true, message: "Inserisci Numero di Radioline" },
-              ]}
-            >
-              <InputNumber
-                placeholder='Radioline Consegnate'
-                style={{ width: "100%" }}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
         {/* New section for email and phone number */}
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={8}>
+          <Col xs={24} md={12}>
             <Form.Item
               label='Email'
               name='email'
@@ -139,15 +144,43 @@ const GuideOrderPage: React.FC = () => {
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={8}>
+          <Col xs={24} md={12}>
             <Form.Item
               label='Telefono'
-              name='telefono'
+              name='phone'
               rules={[
                 { required: true, message: "Inserisci il numero di telefono" },
+                { type: "number" },
               ]}
             >
               <Input placeholder='Numero di telefono' />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              label='Nome Guida / Gruppo'
+              name='nomeGuida'
+              rules={[{ required: true, message: "Inserisci Nome Guida" }]}
+            >
+              <Input placeholder='Nome Guida' />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} md={8}>
+            <Form.Item
+              label='Radioguide'
+              name='RadioguideConsegnate'
+              rules={[
+                { required: true, message: "Inserisci Numero di Radioguide" },
+              ]}
+            >
+              <InputNumber
+                placeholder='Radioguide da Consegnare'
+                style={{ width: "100%" }}
+              />
             </Form.Item>
           </Col>
         </Row>
@@ -169,7 +202,7 @@ const GuideOrderPage: React.FC = () => {
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12}>
+          <Col xs={24} md={16}>
             <Form.Item
               label='Luogo Consegna'
               name='luogoConsegna'
@@ -198,7 +231,7 @@ const GuideOrderPage: React.FC = () => {
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12}>
+          <Col xs={24} md={16}>
             <Form.Item label='Luogo Ritiro' name='luogoRitiro'>
               <GooglePlacesAutocomplete
                 initialValue=''
