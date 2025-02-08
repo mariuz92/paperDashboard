@@ -1,21 +1,14 @@
 import { Timestamp } from "firebase/firestore";
 
-export interface ICategory {
-  id: number;
-  title: string;
-}
-export interface IPost {
-  id: number;
-  title: string;
-  content: string;
-  status: "published" | "draft" | "rejected";
-  category: { id: number };
-}
+
 
 export type IOrderStatus =
   | "In Consegna"
   | "Presa in Carico"
   | "Consegnato"
+  | "Attesa ritiro"
+  | "Annullato"
+  | "In Ritiro"
   | "Ritirato";
 
 export interface IOrder {
@@ -50,6 +43,10 @@ const colors: Record<IOrderStatus, string> = {
   "In Consegna": "blue",
   "Presa in Carico": "gold",
   Consegnato: "green",
+  "Attesa ritiro": "orange",
+  "Annullato": "red",
+  "In Ritiro": "purple",
+  Ritirato: "cyan",
 };
 
 export interface IGetOrdersParams {
