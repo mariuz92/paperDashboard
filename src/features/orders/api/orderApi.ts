@@ -94,7 +94,10 @@ const buildBaseQuery = (
 
 /**
  * Fetch orders from Firestore with pagination, date filters, and sorting.
- * Expects Timestamps for startDate and endDate in IGetOrdersParams.
+ * If a date range is provided (startDate and endDate), orders will be fetched
+ * if either their delivery date (**orarioConsegna**) OR their retrieval date (**oraRitiro**)
+ * fall within the range. Additionally, orders with status "Attesa ritiro" that are missing
+ * the retrieval time are always included.
  *
  * @param {IGetOrdersParams} params
  * @returns {Promise<{ data: IOrder[]; total: number }>}
@@ -115,84 +118,152 @@ export const getOrders = async (
   } = params;
 
   try {
-    // 1. Build the base query (standard range, ordering, etc.)
-    let baseQuery = buildBaseQuery(
-      startDate,
-      endDate,
-      orderByField,
-      orderDirection
-    );
+    let mergedData: IOrder[] = [];
+    let total = 0;
 
-    // 2. Count total docs for pagination
-    const totalSnapshot = await getDocs(baseQuery);
-    const total = totalSnapshot.size;
+    if (startDate && endDate) {
+      // -----------------------------------------------------------
+      // 1. Run two queries:
+      //    a. Orders where the delivery date (orarioConsegna) is in range.
+      //    b. Orders where the retrieval date (oraRitiro) is in range.
+      // -----------------------------------------------------------
+      const consegnaQuery = query(
+        collection(db, "orders"),
+        where("orarioConsegna", ">=", startDate),
+        where("orarioConsegna", "<=", endDate),
+        orderBy(orderByField, orderDirection)
+      );
 
-    // 3. Skip / pagination
-    const offset = (page - 1) * pageSize;
-    let lastVisibleDoc = null;
+      const ritiroQuery = query(
+        collection(db, "orders"),
+        where("oraRitiro", ">=", startDate),
+        where("oraRitiro", "<=", endDate),
+        orderBy(orderByField, orderDirection)
+      );
 
-    if (offset > 0) {
-      const skipQuery = query(baseQuery, limit(offset));
-      const skipSnapshot = await getDocs(skipQuery);
+      const [consegnaSnap, ritiroSnap] = await Promise.all([
+        getDocs(consegnaQuery),
+        getDocs(ritiroQuery),
+      ]);
 
-      if (skipSnapshot.docs.length > 0) {
-        lastVisibleDoc = skipSnapshot.docs[skipSnapshot.docs.length - 1];
+      const consegnaData: IOrder[] = consegnaSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as IOrder),
+      }));
+
+      const ritiroData: IOrder[] = ritiroSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as IOrder),
+      }));
+
+      // Merge and deduplicate orders (an order may match both queries)
+      mergedData = [...consegnaData, ...ritiroData].filter(
+        (order, index, self) =>
+          self.findIndex((o) => o.id === order.id) === index
+      );
+
+      total = mergedData.length;
+
+      // -----------------------------------------------------------
+      // 2. Sort the merged results by the chosen date field.
+      //    For orders missing the field, treat the date as 0 (very early).
+      // -----------------------------------------------------------
+      mergedData.sort((a, b) => {
+        // Attempt to convert to Date if using a Firestore Timestamp.
+        const aField = a[orderByField as keyof IOrder];
+        const bField = b[orderByField as keyof IOrder];
+
+        const aDate =
+          aField && (aField as any).toDate
+            ? (aField as any).toDate()
+            : new Date(aField || 0);
+        const bDate =
+          bField && (bField as any).toDate
+            ? (bField as any).toDate()
+            : new Date(bField || 0);
+
+        return orderDirection === "asc"
+          ? aDate.getTime() - bDate.getTime()
+          : bDate.getTime() - aDate.getTime();
+      });
+
+      // -----------------------------------------------------------
+      // 3. Apply manual pagination.
+      // -----------------------------------------------------------
+      const startIdx = (page - 1) * pageSize;
+      mergedData = mergedData.slice(startIdx, startIdx + pageSize);
+    } else {
+      // -----------------------------------------------------------
+      // Fallback: If no date range is provided, use the standard base query.
+      // -----------------------------------------------------------
+      let baseQuery = buildBaseQuery(
+        startDate,
+        endDate,
+        orderByField,
+        orderDirection
+      );
+
+      // Count total docs for pagination.
+      const totalSnapshot = await getDocs(baseQuery);
+      total = totalSnapshot.size;
+
+      // Pagination: Skip docs if needed.
+      const offset = (page - 1) * pageSize;
+      let lastVisibleDoc = null;
+
+      if (offset > 0) {
+        const skipQuery = query(baseQuery, limit(offset));
+        const skipSnapshot = await getDocs(skipQuery);
+
+        if (skipSnapshot.docs.length > 0) {
+          lastVisibleDoc = skipSnapshot.docs[skipSnapshot.docs.length - 1];
+        }
       }
+
+      if (lastVisibleDoc) {
+        baseQuery = query(baseQuery, startAfter(lastVisibleDoc));
+      }
+
+      baseQuery = query(baseQuery, limit(pageSize));
+      const querySnapshot: QuerySnapshot<DocumentData> = await getDocs(
+        baseQuery
+      );
+      mergedData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as IOrder),
+      }));
     }
 
-    if (lastVisibleDoc) {
-      baseQuery = query(baseQuery, startAfter(lastVisibleDoc));
-    }
-
-    // Add the final limit for this page
-    baseQuery = query(baseQuery, limit(pageSize));
-
-    // 4. Get the main "range" orders
-    const querySnapshot: QuerySnapshot<DocumentData> = await getDocs(baseQuery);
-    let baseData: IOrder[] = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as IOrder),
-    }));
-
     // -----------------------------------------------------------
-    // 5. Always include orders with status="Attesa ritiro" AND
-    //    (missing oraRitiro OR missing luogoRitiro).
-    //    Firestore does not allow an actual OR in a single query,
-    //    so we do 2 queries and merge.
+    // 4. Always include orders with status "Attesa ritiro" that have missing oraRitiro.
     // -----------------------------------------------------------
-
-    // 5.1 Attesa ritiro AND missing oraRitiro
     const attesaRitiroNoTimeQuery = query(
       collection(db, "orders"),
       where("status", "==", "Attesa ritiro"),
       where("oraRitiro", "==", null)
     );
     const attesaRitiroNoTimeSnap = await getDocs(attesaRitiroNoTimeQuery);
-    const attesaRitiroNoTimeData = attesaRitiroNoTimeSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as IOrder),
-    }));
-
-    
-    // -----------------------------------------------------------
-    // 6. Combine the main query results + "Attesa ritiro" missing ritiro results
-    // -----------------------------------------------------------
-    let combinedData = [...baseData, ...attesaRitiroNoTimeData];
-
-    // Deduplicate combined data
-    combinedData = combinedData.filter(
-      (order, index, self) =>
-        self.findIndex((o) => o.id === order.id) === index
+    const attesaRitiroNoTimeData: IOrder[] = attesaRitiroNoTimeSnap.docs.map(
+      (doc) => ({
+        id: doc.id,
+        ...(doc.data() as IOrder),
+      })
     );
 
-    // 7. Return final data and total
+    // -----------------------------------------------------------
+    // 5. Merge the main results with the "Attesa ritiro" orders and deduplicate.
+    // -----------------------------------------------------------
+    let combinedData = [...mergedData, ...attesaRitiroNoTimeData];
+    combinedData = combinedData.filter(
+      (order, index, self) => self.findIndex((o) => o.id === order.id) === index
+    );
+
     return { data: combinedData, total };
   } catch (error) {
     console.error("Error fetching orders:", error);
     throw error;
   }
 };
-
 // // Example placeholder for your existing base query builder
 // function buildBaseQuery(
 //   startDate?: Date,
@@ -201,7 +272,7 @@ export const getOrders = async (
 //   orderDirection?: "asc" | "desc"
 // ) {
 //   let q = collection(db, "orders");
-//   // Set up your date-range, orderBy, etc. 
+//   // Set up your date-range, orderBy, etc.
 //   // e.g. q = query(q, where("orarioConsegna", ">=", startDate), ... );
 //   // e.g. q = query(q, orderBy(orderByField, orderDirection));
 //   return q;
