@@ -18,13 +18,13 @@ const JoinPage: React.FC = () => {
   // Estrai i parametri dall'URL
   const email = searchParams.get("email") || "";
   const tenant = searchParams.get("tenant") || "";
-  const otp = searchParams.get("otp") || "";
+  // const otp = searchParams.get("otp") || "";
   useDocumentTitle(`Unisciti | ${CONFIG.appName}`);
   useEffect(() => {
-    if (email && tenant && otp) {
-      form.setFieldsValue({ email, tenant, otp });
+    if (email && tenant) {
+      form.setFieldsValue({ email, tenant });
     }
-  }, [email, tenant, otp, form]);
+  }, [email, tenant, form]);
 
   // Gestione della validazione dell'OTP
   const handleOtpValidation = async () => {

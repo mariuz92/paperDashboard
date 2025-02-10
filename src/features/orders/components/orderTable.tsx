@@ -150,15 +150,15 @@ const EditableCell: React.FC<EditableCellProps> = ({
       case "select":
         return (
           <Select>
-            <Select.Option value='Presa in Carico'>
+            <Select.Option value="Presa in Carico">
               Presa in Carico
             </Select.Option>
-            <Select.Option value='In Consegna'>In Consegna</Select.Option>
-            <Select.Option value='Consegnato'>Consegnato</Select.Option>
-            <Select.Option value='Attesa ritiro'>Attesa ritiro</Select.Option>
-            <Select.Option value='In Ritiro'>In Ritiro</Select.Option>
-            <Select.Option value='Ritirato'>Ritirato</Select.Option>
-            <Select.Option value='Annullato'>Annullato</Select.Option>
+            <Select.Option value="In Consegna">In Consegna</Select.Option>
+            <Select.Option value="Consegnato">Consegnato</Select.Option>
+            <Select.Option value="Attesa ritiro">Attesa ritiro</Select.Option>
+            <Select.Option value="In Ritiro">In Ritiro</Select.Option>
+            <Select.Option value="Ritirato">Ritirato</Select.Option>
+            <Select.Option value="Annullato">Annullato</Select.Option>
           </Select>
         );
       case "number":
@@ -168,7 +168,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
           <DatePicker
             showTime
             style={{ width: "100%" }}
-            format='YYYY-MM-DD hh-mm'
+            format="YYYY-MM-DD hh-mm"
           />
         );
       case "places":
@@ -218,7 +218,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
   // 1) If no canaleRadio => New Order
   if (!order.canaleRadio) {
     return (
-      <span title='Nuovo Ordine'>
+      <span title="Nuovo Ordine">
         <Typography.Text>Nuovo</Typography.Text>
       </span>
     );
@@ -234,7 +234,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     consegnaDay.isSame(ritiroDay, "day")
   ) {
     return (
-      <span title='Consegna e Ritiro lo Stesso Giorno'>
+      <span title="Consegna e Ritiro lo Stesso Giorno">
         <Typography.Text>Consegna & Ritiro</Typography.Text>
       </span>
     );
@@ -247,7 +247,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title='Consegna in Questa Data'>
+      <span title="Consegna in Questa Data">
         <Typography.Text>Consegna</Typography.Text>
       </span>
     );
@@ -260,7 +260,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title='Ritiro in Questa Data'>
+      <span title="Ritiro in Questa Data">
         {/* If you prefer to have an icon, uncomment the next line and ensure the icon is imported */}
         {/* <SwapLeftOutlined style={{ color: "red", marginRight: 4 }} /> */}
         <Typography.Text>Ritiro</Typography.Text>
@@ -387,37 +387,41 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
   const handleShare = (rider: IUser, index: number) => {
     const order = orders[index];
-    // Encode the rider name for use in the URL
     const encodedRiderName = encodeURIComponent(rider.displayName || "");
-
-    // Construct a URL for updating the order (if needed)
     const url = `${window.location.origin}/rider/${order.id}?riderName=${encodedRiderName}`;
 
-    // Build Google Maps URLs for the delivery and pickup addresses
+    // Extract short address (optional: modify if you have a structured address)
+    const shortAddress = (address: string | undefined) =>
+      address ? address.split(",")[0] : "N/A"; // Takes only the first part of the address
+
+    // Generate Google Maps directions link for a smooth navigation experience
     const googleMapsConsegna = order.luogoConsegna
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
           order.luogoConsegna
         )}`
       : "N/A";
+
     const googleMapsRitiro = order.luogoRitiro
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
           order.luogoRitiro
         )}`
       : "N/A";
 
-    // Construct the share message including the Google Maps links
-    const shareMessage = `🚀 Ciao ${rider.displayName}!
+    // Construct the improved WhatsApp message
+    const shareMessage = `🚀 *Ciao ${rider.displayName}!* 
 
-Ti affido un nuovo ordine con i seguenti dettagli: 📦
+📦 *Nuovo ordine assegnato a te!*
 
 📋 *Dati Ordine*:
 -----------------------------------
 👤 *Nome Guida:* ${order.nomeGuida || "N/A"}
 📡 *Canale Radio:* ${order.canaleRadio || "N/A"}
 📅 *Orario Consegna:* ${formatDateCell(order.orarioConsegna) || "N/A"}
-📍 *Luogo Consegna:* ${googleMapsConsegna}
+
+📍 *Consegna:* [${shortAddress(order.luogoConsegna)}](${googleMapsConsegna})
 ⏰ *Ora Ritiro:* ${formatDateCell(order.oraRitiro) || "N/A"}
-🏠 *Luogo Ritiro:* ${googleMapsRitiro}
+🏠 *Ritiro:* [${shortAddress(order.luogoRitiro)}](${googleMapsRitiro})
+
 🎧 *Radioguide Consegnate:* ${order.radiolineConsegnate ?? 0}
 ➕ *Extra:* ${order.extra ?? 0}
 💰 *Saldo:* €${(order.saldo ?? 0).toFixed(2)}
@@ -425,11 +429,11 @@ Ti affido un nuovo ordine con i seguenti dettagli: 📦
 📝 *Note:* ${order.note || "Nessuna nota"}
 -----------------------------------
 
-🔗 Aggiorna l'ordine direttamente qui: ${url}
+🔗 *Aggiorna lo stato dell'ordine qui:* [🔄 Clicca qui](${url})
 
 Grazie per la collaborazione! 💪`;
 
-    // Encode the complete message for use in the WhatsApp URL
+    // Encode message and generate WhatsApp link
     const encodedMessage = encodeURIComponent(shareMessage);
     const phoneNumber = rider.phoneNumber?.replace(/\D/g, "");
     const whatsappLink = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
@@ -479,10 +483,10 @@ Grazie per la collaborazione! 💪`;
     {
       label: (
         <Popconfirm
-          title='Sei sicuro di voler eliminare questo ordine?'
+          title="Sei sicuro di voler eliminare questo ordine?"
           onConfirm={() => orders[index].id && handleDelete(orders[index].id!)}
-          okText='Sì'
-          cancelText='No'
+          okText="Sì"
+          cancelText="No"
         >
           <span>
             <DeleteOutlined /> Elimina
@@ -519,7 +523,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder='Cerca Nome Guida'
+            placeholder="Cerca Nome Guida"
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -530,9 +534,9 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type='primary'
+              type="primary"
               onClick={() => confirm()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Cerca
@@ -543,7 +547,7 @@ Grazie per la collaborazione! 💪`;
                 setSelectedKeys([]);
                 confirm();
               }}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Reset
@@ -617,7 +621,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder='Cerca Luogo Consegna'
+            placeholder="Cerca Luogo Consegna"
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -628,16 +632,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type='primary'
+              type="primary"
               onClick={() => confirm()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Reset
@@ -676,7 +680,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder='Cerca Luogo Ritiro'
+            placeholder="Cerca Luogo Ritiro"
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -687,16 +691,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type='primary'
+              type="primary"
               onClick={() => confirm()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Reset
@@ -760,12 +764,12 @@ Grazie per la collaborazione! 💪`;
         return editing ? (
           <div style={{ display: "flex", justifyContent: "space-evenly" }}>
             <Button
-              type='default'
+              type="default"
               onClick={() => handleSave(index)}
               icon={<SaveOutlined />}
             />
             <Button
-              type='text'
+              type="text"
               onClick={handleCancel}
               icon={<CloseOutlined />}
             />
@@ -773,7 +777,7 @@ Grazie per la collaborazione! 💪`;
         ) : (
           <Dropdown menu={{ items: getMenuItems(index) }} trigger={["click"]}>
             <Button
-              type='text'
+              type="text"
               style={{ display: "flex", alignItems: "center" }}
             >
               Menu <MoreOutlined />
@@ -837,14 +841,14 @@ Grazie per la collaborazione! 💪`;
         <Button
           icon={<FileExcelOutlined />}
           onClick={() => exportToExcel(orders)}
-          type='primary'
+          type="primary"
         >
           Esporta in Excel
         </Button>
         <Button
           icon={<FilePdfOutlined />}
           onClick={() => exportToPDF(orders)}
-          type='primary'
+          type="primary"
         >
           Esporta in PDF
         </Button>

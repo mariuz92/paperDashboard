@@ -224,7 +224,7 @@ const App: React.FC = () => {
             <Routes>
               {/* Public Auth Routes */}
               <Route
-                path='/login'
+                path="/login"
                 element={
                   <AuthPage
                     title={
@@ -235,7 +235,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type='login'
+                    type="login"
                     formProps={{ initialValues: {} }}
                     providers={[
                       {
@@ -248,7 +248,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path='/register'
+                path="/register"
                 element={
                   <AuthPage
                     title={
@@ -259,7 +259,7 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type='register'
+                    type="register"
                     providers={[
                       {
                         name: "google",
@@ -271,7 +271,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path='/forgot-password'
+                path="/forgot-password"
                 element={
                   <AuthPage
                     title={
@@ -282,12 +282,12 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type='forgotPassword'
+                    type="forgotPassword"
                   />
                 }
               />
               <Route
-                path='/update-password'
+                path="/update-password"
                 element={
                   <AuthPage
                     title={
@@ -298,7 +298,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type='updatePassword'
+                    type="updatePassword"
                   />
                 }
               />
@@ -307,8 +307,8 @@ const App: React.FC = () => {
               <Route
                 element={
                   <Authenticated
-                    fallback={<Navigate to='/login' />}
-                    key='authenticated'
+                    fallback={<Navigate to="/login" />}
+                    key="authenticated"
                   >
                     <ThemedLayoutV2
                       Header={ThemedHeaderV2}
@@ -327,56 +327,26 @@ const App: React.FC = () => {
                 }
               >
                 <Route index element={<OrdersPage />} />
-                <Route path='/Calendario' element={<CalendarPage />} />
-                <Route path='/Dashboard' element={<DashboardPage />} />
-                <Route path='/Profilo' element={<ProfilePage />} />
-                <Route path='/Collaboratori' element={<UsersPage />} />
+                <Route path="/Calendario" element={<CalendarPage />} />
+                <Route path="/Dashboard" element={<DashboardPage />} />
+                <Route path="/Profilo" element={<ProfilePage />} />
+                <Route path="/Collaboratori" element={<UsersPage />} />
                 {/* 404 inside default layout */}
-                <Route path='*' element={<ErrorComponent />} />
+                <Route path="*" element={<ErrorComponent />} />
               </Route>
 
               {/* Minimal Layout for Rider */}
-              <Route
-                path='/rider'
-                element={
-                  <Authenticated
-                    fallback={<Navigate to='/login' />}
-                    key='authenticated'
-                  >
-                    <CustomOutlet />
-                  </Authenticated>
-                }
-              >
+              <Route path="/rider" element={<CustomOutlet />}>
                 <Route index element={<RiderUpdatePage />} />
-                <Route path=':id' element={<RiderUpdatePage />} />
+                <Route path=":id" element={<RiderUpdatePage />} />
               </Route>
 
               {/* Minimal Layout for Guida */}
-              <Route
-                path='/OrdineGuida'
-                element={
-                  <Authenticated
-                    fallback={<Navigate to='/login' />}
-                    key='authenticated'
-                  >
-                    <CustomOutlet />
-                  </Authenticated>
-                }
-              >
+              <Route path="/OrdineGuida" element={<CustomOutlet />}>
                 <Route index element={<GuideOrderPage />} />
               </Route>
 
-              <Route
-                path='/join'
-                element={
-                  <Authenticated
-                    fallback={<Navigate to='/login' />}
-                    key='authenticated'
-                  >
-                    <CustomOutlet />
-                  </Authenticated>
-                }
-              >
+              <Route path="/join" element={<CustomOutlet />}>
                 <Route index element={<JoinPage />} />
               </Route>
             </Routes>
