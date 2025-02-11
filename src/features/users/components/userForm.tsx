@@ -151,7 +151,7 @@ const UserForm: React.FC<UserFormProps> = ({
     <>
       <FloatButton
         icon={<UserAddOutlined />}
-        type="primary"
+        type='primary'
         onClick={showDrawer}
         style={{ position: "fixed", bottom: 24, right: 24 }}
       />
@@ -162,19 +162,19 @@ const UserForm: React.FC<UserFormProps> = ({
         open={drawerVisible}
         bodyStyle={{ paddingBottom: 80 }}
       >
-        <Form form={form} layout="vertical" onFinish={onFinish}>
+        <Form form={form} layout='vertical' onFinish={onFinish}>
           <Form.Item
-            label="Nome"
-            name="displayName"
+            label='Nome'
+            name='displayName'
             rules={[
               { required: true, message: "Per favore inserisci il nome" },
             ]}
           >
-            <Input placeholder="Nome" />
+            <Input placeholder='Nome' />
           </Form.Item>
           <Form.Item
-            label="Email"
-            name="email"
+            label='Email'
+            name='email'
             rules={[
               { required: true, message: "Per favore inserisci l'email" },
               {
@@ -183,11 +183,11 @@ const UserForm: React.FC<UserFormProps> = ({
               },
             ]}
           >
-            <Input placeholder="Email" />
+            <Input placeholder='Email' />
           </Form.Item>
           <Form.Item
-            label="Numero di Telefono"
-            name="phoneNumber"
+            label='Numero di Telefono'
+            name='phoneNumber'
             rules={[
               {
                 required: true,
@@ -195,27 +195,27 @@ const UserForm: React.FC<UserFormProps> = ({
               },
             ]}
           >
-            <Input placeholder="Numero di Telefono" />
+            <Input placeholder='Numero di Telefono' />
           </Form.Item>
 
           {userToEdit && (
             <Form.Item
-              label="Ruolo"
-              name="role"
+              label='Ruolo'
+              name='role'
               rules={[
                 { required: true, message: "Per favore seleziona il ruolo" },
               ]}
             >
-              <Select placeholder="Seleziona un ruolo">
-                <Select.Option value="admin">Admin</Select.Option>
-                <Select.Option value="rider">Rider</Select.Option>
-                <Select.Option value="guide">Guida</Select.Option>
+              <Select placeholder='Seleziona un ruolo'>
+                <Select.Option value='admin'>Admin</Select.Option>
+                <Select.Option value='rider'>Rider</Select.Option>
+                <Select.Option value='guide'>Guida</Select.Option>
               </Select>
             </Form.Item>
           )}
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" loading={isLoading}>
+            <Button type='primary' htmlType='submit' loading={isLoading}>
               {userToEdit ? "Modifica Utente" : "Invia Invito"}
             </Button>
           </Form.Item>

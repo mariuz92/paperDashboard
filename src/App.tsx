@@ -45,6 +45,7 @@ import logo from "../src/images/youngtour.jpg";
 import { CONFIG } from "./config/configuration";
 import { auth } from "./config/firebaseConfig";
 import {
+  forgotPassword,
   signInWithEmail,
   signInWithGoogle,
   signOutUser,
@@ -54,6 +55,34 @@ import UsersPage from "./features/users/pages/users";
 import CustomOutlet from "./shared/components/customOutlet";
 const App: React.FC = () => {
   const authProvider: AuthProvider = {
+    forgotPassword: async ({ email }) => {
+      if (!email || typeof email !== "string") {
+        return {
+          success: false,
+          error: new Error(
+            "L'email non può essere vuota. Inserisci un'email valida."
+          ),
+        };
+      }
+
+      const response = await forgotPassword(email);
+
+      if (response.success) {
+        return {
+          success: true,
+          successNotification: {
+            message: response.message!,
+          },
+          redirectTo: "/login",
+        };
+      } else {
+        return {
+          success: false,
+          error: response.error!,
+        };
+      }
+    },
+
     check: async () => {
       const user = auth.currentUser || localStorage.getItem("email");
       if (user) {

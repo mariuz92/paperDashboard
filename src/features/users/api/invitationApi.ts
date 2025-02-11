@@ -34,7 +34,9 @@ export const sendInvitationEmail = async (
 ): Promise<void> => {
   // Create an action link without OTP
   const actionCodeSettings: ActionCodeSettings = {
-    url: `${baseUrl()}/join?email=${encodeURIComponent(email)}&tenant=${encodeURIComponent(tenantID)}`,
+    url: `${baseUrl()}/join?email=${encodeURIComponent(
+      email
+    )}&tenant=${encodeURIComponent(tenantID)}&OTP=${encodeURIComponent(otp)}`,
     handleCodeInApp: true,
   };
 

@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import {
   createUser,
@@ -57,7 +58,7 @@ export const signUpWithEmail = async (
   password: string,
   tenantName: string,
   name: string,
-  phoneNumber:number
+  phoneNumber: number
 ): Promise<{ firebaseUser: any; tenantId: string }> => {
   try {
     // 1. Convert tenant name to a consistent format (e.g., uppercase)
@@ -276,5 +277,38 @@ export const signInWithGoogle = async (tenantName: string) => {
   } catch (error) {
     console.error("Google sign-in failed:", error);
     throw error;
+  }
+};
+
+/**
+ * Invia un'email di reimpostazione della password all'utente.
+ * @param email - L'email dell'utente che richiede la reimpostazione della password.
+ * @returns Un oggetto con lo stato dell'operazione.
+ */
+export const forgotPassword = async (
+  email?: string
+): Promise<{ success: boolean; message?: string; error?: Error }> => {
+  try {
+    // Validate email before making the request
+    if (!email || typeof email !== "string" || email.trim() === "") {
+      throw new Error("Email non valida. Inserisci un'email corretta.");
+    }
+
+    await sendPasswordResetEmail(auth, email);
+
+    return {
+      success: true,
+      message:
+        "Email per la reimpostazione della password inviata con successo. Controlla la tua casella di posta.",
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: new Error(
+        error.message.includes("auth/invalid-email")
+          ? "L'email inserita non è valida. Verifica e riprova."
+          : "Invio dell'email di reimpostazione della password fallito. Riprova più tardi."
+      ),
+    };
   }
 };
