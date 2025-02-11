@@ -127,25 +127,22 @@ export const signUpWithEmail = async (
 export const updateEmailVerified = async (email: string): Promise<void> => {
   const userRef = doc(db, "users", email);
   await updateDoc(userRef, { emailVerified: true });
-  console.log(`Email verified successfully for ${email}`);
 };
 
 // Sign in with email and password
 export const signInWithEmail = async (
-  tenantName: string,
+  companyName: string,
   email: string,
   password: string
 ) => {
   try {
-    // Fetch tenant details by name
-    const tenant: ITenant | null = await getTenantByName(tenantName);
-    if (!tenant) {
-      throw new Error("Tenant does not exist.");
+    // Recupera i dettagli dell'azienda
+    const company: ITenant | null = await getTenantByName(companyName);
+    if (!company) {
+      throw new Error("L'azienda specificata non esiste.");
     }
-    console.log("Tenant", tenantName);
-    console.log("email", email);
-    console.log("pass", password);
 
+    // Effettua il login con Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email,
@@ -153,24 +150,50 @@ export const signInWithEmail = async (
     );
     const firebaseUser = userCredential.user;
 
-    // Retrieve user info from DB
+    // Recupera le informazioni dell'utente dal database
     const existingUser = await getUserById(firebaseUser.uid);
-    console.log("existingUser", existingUser?.tenantId);
     if (!existingUser) {
-      throw new Error("User does not exist. Please register first.");
+      throw new Error("L'utente non esiste. Registrati per continuare.");
     }
 
-    if (existingUser.tenantId !== tenant.id) {
-      throw new Error("User does not belong to the specified tenant.");
+    // Controlla se l'utente appartiene all'azienda specificata
+    if (existingUser.tenantId !== company.id) {
+      throw new Error("L'utente non appartiene all'azienda specificata.");
     }
 
-    // Store user info in localStorage
+    // Memorizza le informazioni dell'utente in localStorage
     storeUserInLocalStorage(existingUser);
 
     return firebaseUser;
-  } catch (error) {
-    console.error("Sign-in failed:", error);
-    throw error;
+  } catch (error: any) {
+    // Mappa gli errori Firebase in messaggi più comprensibili
+    let errorMessage =
+      "Si è verificato un errore durante l'accesso. Riprova più tardi.";
+
+    if (error.code) {
+      switch (error.code) {
+        case "auth/user-not-found":
+          errorMessage = "L'email inserita non è registrata.";
+          break;
+        case "auth/wrong-password":
+          errorMessage = "La password inserita non è corretta.";
+          break;
+        case "auth/invalid-email":
+          errorMessage =
+            "Formato email non valido. Inserisci un'email corretta.";
+          break;
+        case "auth/user-disabled":
+          errorMessage =
+            "Il tuo account è stato disabilitato. Contatta il supporto.";
+          break;
+        default:
+          errorMessage =
+            "Impossibile effettuare l'accesso. Controlla le credenziali e riprova.";
+          break;
+      }
+    }
+
+    throw new Error(errorMessage);
   }
 };
 // Sign out
@@ -229,20 +252,19 @@ export const onAuthStateChangedListener = (callback: (user: any) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-// Sign in with Google
-export const signInWithGoogle = async (tenantName: string) => {
+export const signInWithGoogle = async (companyName: string) => {
   try {
-    // Fetch tenant details by name
-    const tenant: ITenant | null = await getTenantByName(tenantName);
-    if (!tenant) {
-      throw new Error("Tenant does not exist.");
+    // Recupera i dettagli dell'azienda per nome
+    const company: ITenant | null = await getTenantByName(companyName);
+    if (!company) {
+      throw new Error("L'azienda non esiste.");
     }
 
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     const firebaseUser = result.user;
 
-    // Check if user exists in DB
+    // Controlla se l'utente esiste nel database
     const existingUser = await getUserById(firebaseUser.uid);
     if (!existingUser) {
       const newUser: IUser = {
@@ -254,29 +276,29 @@ export const signInWithGoogle = async (tenantName: string) => {
         phoneNumber: firebaseUser.phoneNumber || "",
         createdAt: new Date(),
         lastLoginAt: new Date(),
-        role: "", // Default role, can be modified
+        role: "", // Ruolo predefinito, può essere modificato
         disabled: false,
-        tenantId: tenant.id, // Use tenant ID from ITenant
+        tenantId: company.id, // Utilizza l'ID dell'azienda
       };
 
-      // Create user in database
+      // Crea un nuovo utente nel database
       await createUser(newUser);
 
-      // Store user info in localStorage
+      // Memorizza le informazioni dell'utente in localStorage
       storeUserInLocalStorage(newUser);
     } else {
-      if (existingUser.tenantId !== tenant.id) {
-        throw new Error("User does not belong to the specified tenant.");
+      if (existingUser.tenantId !== company.id) {
+        throw new Error("L'utente non appartiene all'azienda specificata.");
       }
 
-      // Optionally update `lastLoginAt` and store info in localStorage
+      // Opzionalmente aggiorna `lastLoginAt` e memorizza le informazioni
       storeUserInLocalStorage(existingUser);
     }
 
     return firebaseUser;
   } catch (error) {
-    console.error("Google sign-in failed:", error);
-    throw error;
+    console.error("❌ Accesso con Google fallito:", error);
+    throw new Error("Errore durante l'accesso con Google. Riprova più tardi.");
   }
 };
 
