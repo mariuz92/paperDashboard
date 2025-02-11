@@ -33,7 +33,7 @@ const RiderUpdatePage: React.FC = () => {
   const [showRadioSmarrite, setShowRadioSmarrite] = useState<boolean>(false);
 
   const queryParams = new URLSearchParams(location.search);
-  const riderName = queryParams.get("riderName") || "Rider Name";
+  const riderId = queryParams.get("riderId") || "";
   useDocumentTitle(`Rider | ${CONFIG.appName}`);
   useEffect(() => {
     if (id) {
@@ -44,7 +44,7 @@ const RiderUpdatePage: React.FC = () => {
   const fetchOrder = async (orderId: string) => {
     setLoading(true);
     try {
-      const fetchedOrder = await getOrderById(orderId);
+      const fetchedOrder = await getOrderById(orderId, riderId);
       if (fetchedOrder) {
         setOrder(fetchedOrder);
 
@@ -76,7 +76,7 @@ const RiderUpdatePage: React.FC = () => {
     if (!order) return;
 
     // Append the rider's name to the note
-    const newNote = `${riderName}: ${values.note}`;
+    const newNote = `Ordine per ${values.nomeGuida}: ${values.note}`;
     const updatedNote = order.note ? `${order.note}\n${newNote}` : newNote;
 
     // Convert Day.js objects to Firestore Timestamps (if provided)

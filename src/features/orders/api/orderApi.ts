@@ -283,19 +283,44 @@ export const getOrders = async (
  * @param id - The document ID of the order
  * @returns The order object if found, otherwise null.
  */
-export const getOrderById = async (id: string): Promise<IOrder | null> => {
+
+export const getOrderById = async (
+  orderId: string,
+  riderId: string
+): Promise<IOrder | null> => {
   try {
-    const docRef = doc(db, "orders", id);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return {
-        id: docSnap.id,
-        ...(docSnap.data() as IOrder),
-      };
-    } else {
-      console.log("No such document!");
+    // First, verify that the rider exists and has role "rider"
+    const riderRef = doc(db, "users", riderId);
+    const riderSnap = await getDoc(riderRef);
+
+    if (!riderSnap.exists() || riderSnap.data()?.role !== "rider") {
+      console.log("Unauthorized: Rider does not exist or is not a rider");
       return null;
     }
+
+    // Then, fetch the order and ensure the rider is assigned to it
+    const orderRef = doc(db, "orders", orderId);
+    const orderSnap = await getDoc(orderRef);
+
+    if (!orderSnap.exists()) {
+      console.log("No such order found!");
+      return null;
+    }
+
+    const orderData = orderSnap.data() as IOrder;
+
+    // if (orderData.riderId !== riderId) {
+    //   console.log(
+    //     "Unauthorized: This order is not assigned to the provided rider."
+    //   );
+    //   return null;
+    // }
+
+    // If all checks pass, return the order
+    return {
+      id: orderSnap.id,
+      ...orderData,
+    };
   } catch (error) {
     console.error("Error getting order:", error);
     throw new Error("Failed to get order");

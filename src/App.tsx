@@ -1,51 +1,57 @@
-import { Refine, type AuthProvider, Authenticated } from "@refinedev/core";
 import {
-  useNotificationProvider,
-  ErrorComponent,
-  RefineThemes,
-} from "@refinedev/antd";
-import {
-  GoogleOutlined,
+  AndroidOutlined,
+  CalendarOutlined,
   DashboardOutlined,
   FileOutlined,
-  CalendarOutlined,
-  AndroidOutlined,
+  GoogleOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
+import {
+  ErrorComponent,
+  RefineThemes,
+  useNotificationProvider,
+} from "@refinedev/antd";
+import {
+  AccessControlProvider,
+  Authenticated,
+  CanParams,
+  CanResponse,
+  Refine,
+  type AuthProvider,
+} from "@refinedev/core";
 
 import routerProvider, {
-  CatchAllNavigate,
-  UnsavedChangesNotifier,
   DocumentTitleHandler,
+  UnsavedChangesNotifier,
 } from "@refinedev/react-router";
 
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router";
+import "@refinedev/antd/dist/reset.css";
 import { App as AntdApp, ConfigProvider } from "antd";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
+import { AuthPage } from "./features/auth";
 import { ThemedLayoutV2 } from "./layout";
 import { ThemedHeaderV2 } from "./layout/header";
 import { ThemedTitleV2 } from "./layout/title";
-import { AuthPage } from "./features/auth";
-import "@refinedev/antd/dist/reset.css";
 
+import JoinPage from "./features/auth/components/join";
 import { CalendarPage } from "./features/calendar/pages/calendar";
 import { DashboardPage } from "./features/dashboard/pages/dashboard";
-import { OrdersPage } from "./features/orders/pages/orders";
-import { ProfilePage } from "./features/profile/pages/profile";
-import JoinPage from "./features/auth/components/join";
-import RiderUpdatePage from "./features/orders/pages/rider";
 import GuideOrderPage from "./features/orders/pages/guideOrder";
+import { OrdersPage } from "./features/orders/pages/orders";
+import RiderUpdatePage from "./features/orders/pages/rider";
+import { ProfilePage } from "./features/profile/pages/profile";
 
-import {
-  signUpWithEmail,
-  signInWithEmail,
-  signOutUser,
-  signInWithGoogle,
-} from "./features/auth/api/authApi";
-import { auth } from "./config/firebaseConfig";
+import logo from "../src/images/youngtour.jpg";
 import { CONFIG } from "./config/configuration";
+import { auth } from "./config/firebaseConfig";
+import {
+  signInWithEmail,
+  signInWithGoogle,
+  signOutUser,
+  signUpWithEmail,
+} from "./features/auth/api/authApi";
 import UsersPage from "./features/users/pages/users";
 import CustomOutlet from "./shared/components/customOutlet";
-import logo from "../src/images/youngtour.jpg";
 const App: React.FC = () => {
   const authProvider: AuthProvider = {
     check: async () => {
@@ -168,6 +174,39 @@ const App: React.FC = () => {
     },
   };
 
+  const accessControlProvider: AccessControlProvider = {
+    can: async ({
+      resource,
+      action,
+      params,
+    }: CanParams): Promise<CanResponse> => {
+      const user = auth.currentUser || localStorage.getItem("email");
+
+      // Define public pages that don't require authentication
+      const publicResources = ["OrdineGuida", "rider", "join"];
+
+      if (!user) {
+        if (resource && publicResources.includes(resource)) {
+          return { can: true };
+        } else {
+          return {
+            can: false,
+            reason: "Unauthorized",
+          };
+        }
+      }
+
+      // If the user is authenticated, allow access to all resources
+      return { can: true };
+    },
+    options: {
+      buttons: {
+        enableAccessControl: true,
+        hideIfUnauthorized: false, // Set to true if you want to hide buttons instead of disabling them
+      },
+    },
+  };
+
   return (
     <BrowserRouter>
       <ConfigProvider theme={RefineThemes.Blue}>
@@ -176,6 +215,7 @@ const App: React.FC = () => {
             authProvider={authProvider}
             routerProvider={routerProvider}
             // i18nProvider={i18nProvider}
+            accessControlProvider={accessControlProvider}
             resources={[
               {
                 name: "orders",
@@ -224,7 +264,7 @@ const App: React.FC = () => {
             <Routes>
               {/* Public Auth Routes */}
               <Route
-                path="/login"
+                path='/login'
                 element={
                   <AuthPage
                     title={
@@ -235,7 +275,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type="login"
+                    type='login'
                     formProps={{ initialValues: {} }}
                     providers={[
                       {
@@ -248,7 +288,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path="/register"
+                path='/register'
                 element={
                   <AuthPage
                     title={
@@ -259,7 +299,7 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type="register"
+                    type='register'
                     providers={[
                       {
                         name: "google",
@@ -271,7 +311,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path="/forgot-password"
+                path='/forgot-password'
                 element={
                   <AuthPage
                     title={
@@ -282,12 +322,12 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type="forgotPassword"
+                    type='forgotPassword'
                   />
                 }
               />
               <Route
-                path="/update-password"
+                path='/update-password'
                 element={
                   <AuthPage
                     title={
@@ -298,7 +338,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type="updatePassword"
+                    type='updatePassword'
                   />
                 }
               />
@@ -307,8 +347,8 @@ const App: React.FC = () => {
               <Route
                 element={
                   <Authenticated
-                    fallback={<Navigate to="/login" />}
-                    key="authenticated"
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
                   >
                     <ThemedLayoutV2
                       Header={ThemedHeaderV2}
@@ -327,26 +367,26 @@ const App: React.FC = () => {
                 }
               >
                 <Route index element={<OrdersPage />} />
-                <Route path="/Calendario" element={<CalendarPage />} />
-                <Route path="/Dashboard" element={<DashboardPage />} />
-                <Route path="/Profilo" element={<ProfilePage />} />
-                <Route path="/Collaboratori" element={<UsersPage />} />
+                <Route path='/Calendario' element={<CalendarPage />} />
+                <Route path='/Dashboard' element={<DashboardPage />} />
+                <Route path='/Profilo' element={<ProfilePage />} />
+                <Route path='/Collaboratori' element={<UsersPage />} />
                 {/* 404 inside default layout */}
-                <Route path="*" element={<ErrorComponent />} />
+                <Route path='*' element={<ErrorComponent />} />
               </Route>
 
               {/* Minimal Layout for Rider */}
-              <Route path="/rider" element={<CustomOutlet />}>
+              <Route path='/rider' element={<CustomOutlet />}>
                 <Route index element={<RiderUpdatePage />} />
-                <Route path=":id" element={<RiderUpdatePage />} />
+                <Route path=':id' element={<RiderUpdatePage />} />
               </Route>
 
               {/* Minimal Layout for Guida */}
-              <Route path="/OrdineGuida" element={<CustomOutlet />}>
+              <Route path='/OrdineGuida' element={<CustomOutlet />}>
                 <Route index element={<GuideOrderPage />} />
               </Route>
 
-              <Route path="/join" element={<CustomOutlet />}>
+              <Route path='/join' element={<CustomOutlet />}>
                 <Route index element={<JoinPage />} />
               </Route>
             </Routes>
