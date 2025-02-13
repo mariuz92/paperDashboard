@@ -89,7 +89,8 @@ const GuideOrderPage: React.FC = () => {
 
       // Create order object, but omit email and phone
       const newOrder: IOrder = {
-        ...omitKeys(values, ["email", "phone"]),
+        ...omitKeys(values, ["email"]),
+        telefonoGuida: values["phone"],
         orarioConsegna: orarioConsegnaTimestamp,
         oraRitiro: oraRitiroTimestamp,
         note: values["note"] ?? "",

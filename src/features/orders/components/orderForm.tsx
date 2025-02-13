@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Form,
   Input,
@@ -13,13 +13,16 @@ import {
   FloatButton,
   Typography,
 } from "antd";
-import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Timestamp } from "firebase/firestore";
 
 import { saveOrder } from "../api/orderApi"; // Firebase saveOrder function
 import { IOrder } from "../../../types/interfaces/index";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
+import { getUsers } from "../../users/api/userApi";
+import { IUser } from "../../../types/interfaces/IUser";
+import { Select } from "antd/lib";
 
 const { Title } = Typography;
 
@@ -33,7 +36,21 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
 
   const showDrawer = () => setDrawerVisible(true);
   const closeDrawer = () => setDrawerVisible(false);
+  const [guides, setGuides] = useState<IUser[]>([]);
 
+  /** Fetch all users with role = "guide" */
+  useEffect(() => {
+    const fetchGuides = async () => {
+      try {
+        const data = await getUsers("guide");
+        setGuides(data);
+      } catch (error) {
+        console.error("Error fetching guides:", error);
+        message.error("Impossibile recuperare le guide.");
+      }
+    };
+    fetchGuides();
+  }, []);
   /**
    * Handles form submission:
    *  - Converts time/date fields to Firestore Timestamps
@@ -73,10 +90,11 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
     // 3) Build the order object matching IOrder but with Timestamps
     const newOrder: Omit<IOrder, "id"> = {
       nomeGuida: values.nomeGuida || "",
+      telefonoGuida: values.telefonoGuida || "",
       canaleRadio: values.canaleRadio || "",
       orarioConsegna,
       luogoConsegna: values.luogoConsegna || "",
-      oraRitiro: oraRitiro || undefined,
+      oraRitiro: oraRitiro || null,
       luogoRitiro: values.luogoRitiro || "",
       saldo: values.saldo || 0,
       radiolineConsegnate: values.radiolineConsegnate || 0,
@@ -98,16 +116,31 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
     }
   };
 
+  const handleGuideChange = (guideId: string) => {
+    const selectedGuide = guides.find((g) => g.id === guideId);
+    if (selectedGuide) {
+      form.setFieldsValue({
+        nomeGuida: selectedGuide.displayName,
+        telefonoGuida: selectedGuide.phoneNumber || "", // fallback if no phone
+      });
+    } else {
+      form.setFieldsValue({
+        nomeGuida: "",
+        telefonoGuida: "",
+      });
+    }
+  };
+
   return (
     <>
       <FloatButton
         icon={<PlusOutlined />}
-        type='primary'
+        type="primary"
         onClick={showDrawer}
         style={{ position: "fixed", bottom: 24, right: 24 }}
       />
       <Drawer
-        title='Crea Ordine'
+        title="Crea Ordine"
         width={720}
         onClose={closeDrawer}
         open={drawerVisible}
@@ -115,7 +148,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
       >
         <Form
           form={form}
-          layout='vertical'
+          layout="vertical"
           onFinish={onFinish}
           style={{ marginBottom: "20px" }}
         >
@@ -124,58 +157,90 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
           <Row gutter={16} style={{ paddingBottom: 24 }}>
             <Col span={12}>
               <Form.Item
-                label='Nome Guida / Gruppo'
-                name='nomeGuida'
-                rules={[{ required: true, message: "Inserisci Nome Guida" }]}
+                label="Seleziona Guida"
+                rules={[{ required: true, message: "Seleziona Guida" }]}
               >
-                <Input placeholder='Nome Guida' />
+                <Select
+                  style={{ width: "100%" }}
+                  placeholder="Seleziona Guida"
+                  onChange={handleGuideChange}
+                  allowClear
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.children as unknown as string)
+                      ?.toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                >
+                  {guides.map((guide) => (
+                    <Select.Option key={guide.id} value={guide.id}>
+                      {guide.displayName}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item name="nomeGuida" hidden>
+                <Input />
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Telefono Guida"
+                name="telefonoGuida"
+                rules={[{ required: false }]}
+              >
+                <Input placeholder="Telefono Guida" readOnly />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16} style={{ paddingBottom: 24 }}>
             <Col span={6}>
               <Form.Item
-                label='Canale'
-                name='canaleRadio'
+                label="Canale"
+                name="canaleRadio"
                 rules={[{ required: false, message: "Inserisci Canale Radio" }]}
               >
-                <Input placeholder='Canale Radio' />
+                <Input placeholder="Canale Radio" />
               </Form.Item>
             </Col>
             <Col span={6}>
               <Form.Item
-                label='Radioguide'
-                name='radiolineConsegnate'
+                label="Radioguide"
+                name="radiolineConsegnate"
                 rules={[
                   { required: true, message: "Inserisci Numero di Radioguide" },
                 ]}
               >
                 <InputNumber
-                  placeholder='Radioguide Consegnate'
+                  placeholder="Radioguide Consegnate"
                   style={{ width: "100%" }}
                 />
               </Form.Item>
             </Col>
             <Col span={4}>
               <Form.Item
-                label='Extra'
-                name='extra'
+                label="Extra"
+                name="extra"
                 rules={[
                   { required: false, message: "Inserisci Numero di Extra" },
                 ]}
               >
                 <InputNumber
-                  placeholder='Radio Extra'
+                  placeholder="Radio Extra"
                   style={{ width: "100%" }}
                 />
               </Form.Item>
             </Col>
             <Col span={6}>
               <Form.Item
-                label='Saldo (€)'
-                name='saldo'
+                label="Saldo (€)"
+                name="saldo"
                 rules={[{ required: false, message: "Inserisci Saldo" }]}
               >
                 <InputNumber
-                  placeholder='Saldo (€)'
+                  placeholder="Saldo (€)"
                   style={{ width: "100%" }}
                 />
               </Form.Item>
@@ -187,30 +252,30 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item
-                label='Orario Consegna (Oggi)'
-                name='orarioConsegna'
+                label="Orario Consegna (Oggi)"
+                name="orarioConsegna"
                 rules={[
                   { required: true, message: "Inserisci Orario Consegna" },
                 ]}
               >
                 <TimePicker
-                  placeholder='Seleziona Orario Consegna'
-                  format='HH:mm'
+                  placeholder="Seleziona Orario Consegna"
+                  format="HH:mm"
                   style={{ width: "100%" }}
                 />
               </Form.Item>
             </Col>
             <Col span={16}>
               <Form.Item
-                label='Luogo Consegna'
-                name='luogoConsegna'
+                label="Luogo Consegna"
+                name="luogoConsegna"
                 rules={[
                   { required: true, message: "Inserisci Luogo Consegna" },
                 ]}
               >
                 <GooglePlacesAutocomplete
-                  initialValue=''
-                  placeholder='Inserisci Luogo Consegna'
+                  initialValue=""
+                  placeholder="Inserisci Luogo Consegna"
                   onPlaceSelect={(address) =>
                     form.setFieldsValue({ luogoConsegna: address })
                   }
@@ -222,29 +287,29 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item
-                label='Data e Ora Ritiro'
-                name='oraRitiro'
+                label="Data e Ora Ritiro"
+                name="oraRitiro"
                 rules={[
                   { required: false, message: "Inserisci Ora e Data Ritiro" },
                 ]}
               >
                 <DatePicker
                   showTime
-                  placeholder='Seleziona Ora e Data Ritiro'
-                  format='YYYY-MM-DD HH:mm'
+                  placeholder="Seleziona Ora e Data Ritiro"
+                  format="YYYY-MM-DD HH:mm"
                   style={{ width: "100%" }}
                 />
               </Form.Item>
             </Col>
             <Col span={16}>
               <Form.Item
-                label='Luogo Ritiro'
-                name='luogoRitiro'
+                label="Luogo Ritiro"
+                name="luogoRitiro"
                 rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
               >
                 <GooglePlacesAutocomplete
-                  initialValue=''
-                  placeholder='Inserisci Luogo Ritiro'
+                  initialValue=""
+                  placeholder="Inserisci Luogo Ritiro"
                   onPlaceSelect={(address) =>
                     form.setFieldsValue({ luogoRitiro: address })
                   }
@@ -256,11 +321,11 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
           <Row gutter={16}>
             <Col span={24}>
               <Form.Item
-                label='Note'
-                name='note'
+                label="Note"
+                name="note"
                 rules={[{ required: false, message: "Inserisci Note" }]}
               >
-                <Input.TextArea placeholder='Note' />
+                <Input.TextArea placeholder="Note" />
               </Form.Item>
             </Col>
           </Row>
@@ -269,7 +334,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
           <Row>
             <Col span={24} style={{ textAlign: "right" }}>
               <Form.Item>
-                <Button type='primary' htmlType='submit'>
+                <Button type="primary" htmlType="submit">
                   Aggiungi Ordine
                 </Button>
               </Form.Item>

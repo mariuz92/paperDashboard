@@ -16,6 +16,8 @@ export interface IOrder {
 
   nomeGuida?: string;
 
+  telefonoGuida?: string;
+
   canaleRadio?: string;
 
   orarioConsegna?: Timestamp | Dayjs;

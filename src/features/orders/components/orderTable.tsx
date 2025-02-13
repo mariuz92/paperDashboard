@@ -415,6 +415,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
 📋 *Dati Ordine*:
 -----------------------------------
 👤 *Nome Guida:* ${order.nomeGuida || "N/A"}
+☎️ *Telefono Guida:* ${order.telefonoGuida || "N/A"}
 📡 *Canale Radio:* ${order.canaleRadio || "N/A"}
 📅 *Orario Consegna:* ${formatDateCell(order.orarioConsegna) || "N/A"}
 
