@@ -67,18 +67,22 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
       {shouldRenderHeader && (
         <Space>
           <Dropdown
-            placement='bottomRight'
+            placement="bottomRight"
             arrow
             menu={{ items: menuItems, onClick: handleMenuClick }}
             trigger={["click"]}
           >
             <Button
-              type='text'
+              type="text"
               style={{ display: "flex", alignItems: "center" }}
             >
               <Avatar
                 size={"default"}
-                src={user?.photoURL}
+                src={
+                  user?.photoURL && user.photoURL.length > 0
+                    ? user.photoURL
+                    : "src/images/youngtour_logo.png"
+                }
                 style={{ marginRight: 8 }}
               />
               {user?.displayName || user?.email}

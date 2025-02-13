@@ -67,6 +67,34 @@ export const createUser = async (user: Omit<IUser, "id">): Promise<string> => {
   }
 };
 
+// Function to check if a user exists in Firestore and create if not
+export const ensureUserExists = async (user: Omit<IUser, "id">): Promise<string> => {
+  try {
+    const usersRef = collection(db, "users");
+
+    // Query for a user with the same email OR name
+    const userQuery = query(
+      usersRef,
+      where("email", "==", user.email) // You can add more conditions if needed
+    );
+
+    const querySnapshot = await getDocs(userQuery);
+
+    if (!querySnapshot.empty) {
+      // User already exists, return the existing user's ID
+      const existingUser = querySnapshot.docs[0];
+      return existingUser.id;
+    }
+
+    // If user not found, create a new one
+    const docRef = await addDoc(usersRef, user);
+    return docRef.id;
+  } catch (error) {
+    console.error("Error checking or creating user:", error);
+    throw new Error("Failed to check or create user");
+  }
+};
+
 // Get user by ID
 export const getUserById = async (id: string): Promise<IUser | null> => {
   try {

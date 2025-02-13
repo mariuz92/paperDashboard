@@ -40,8 +40,6 @@ import GuideOrderPage from "./features/orders/pages/guideOrder";
 import { OrdersPage } from "./features/orders/pages/orders";
 import RiderUpdatePage from "./features/orders/pages/rider";
 import { ProfilePage } from "./features/profile/pages/profile";
-
-import logo from "../src/images/youngtour.jpg";
 import { CONFIG } from "./config/configuration";
 import { auth } from "./config/firebaseConfig";
 import {
@@ -286,25 +284,25 @@ const App: React.FC = () => {
               warnWhenUnsavedChanges: true,
               title: {
                 text: CONFIG.appName,
-                icon: logo,
+                icon: CONFIG.logo,
               },
             }}
           >
             <Routes>
               {/* Public Auth Routes */}
               <Route
-                path='/login'
+                path="/login"
                 element={
                   <AuthPage
                     title={
                       <ThemedTitleV2
-                        image={logo}
+                        image={CONFIG.logo}
                         icon={<AndroidOutlined />}
                         text={CONFIG.appName}
                         collapsed={false}
                       />
                     }
-                    type='login'
+                    type="login"
                     formProps={{ initialValues: {} }}
                     providers={[
                       {
@@ -317,18 +315,18 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path='/register'
+                path="/register"
                 element={
                   <AuthPage
                     title={
                       <ThemedTitleV2
                         icon={<AndroidOutlined />}
-                        image={logo}
+                        image={CONFIG.logo}
                         text={CONFIG.appName}
                         collapsed={true}
                       />
                     }
-                    type='register'
+                    type="register"
                     providers={[
                       {
                         name: "google",
@@ -340,34 +338,34 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path='/forgot-password'
+                path="/forgot-password"
                 element={
                   <AuthPage
                     title={
                       <ThemedTitleV2
                         icon={<AndroidOutlined />}
-                        image={logo}
+                        image={CONFIG.logo}
                         text={CONFIG.appName}
                         collapsed={true}
                       />
                     }
-                    type='forgotPassword'
+                    type="forgotPassword"
                   />
                 }
               />
               <Route
-                path='/update-password'
+                path="/update-password"
                 element={
                   <AuthPage
                     title={
                       <ThemedTitleV2
                         icon={<AndroidOutlined />}
-                        image={logo}
+                        image={CONFIG.logo}
                         text={CONFIG.appName}
                         collapsed={false}
                       />
                     }
-                    type='updatePassword'
+                    type="updatePassword"
                   />
                 }
               />
@@ -376,15 +374,15 @@ const App: React.FC = () => {
               <Route
                 element={
                   <Authenticated
-                    fallback={<Navigate to='/login' />}
-                    key='authenticated'
+                    fallback={<Navigate to="/login" />}
+                    key="authenticated"
                   >
                     <ThemedLayoutV2
                       Header={ThemedHeaderV2}
                       Title={({ collapsed }) => (
                         <ThemedTitleV2
                           collapsed={collapsed}
-                          image={logo}
+                          image={CONFIG.logo}
                           icon={<AndroidOutlined />}
                           text={CONFIG.appName}
                         />
@@ -396,26 +394,26 @@ const App: React.FC = () => {
                 }
               >
                 <Route index element={<OrdersPage />} />
-                <Route path='/Calendario' element={<CalendarPage />} />
-                <Route path='/Dashboard' element={<DashboardPage />} />
-                <Route path='/Profilo' element={<ProfilePage />} />
-                <Route path='/Collaboratori' element={<UsersPage />} />
+                <Route path="/Calendario" element={<CalendarPage />} />
+                <Route path="/Dashboard" element={<DashboardPage />} />
+                <Route path="/Profilo" element={<ProfilePage />} />
+                <Route path="/Collaboratori" element={<UsersPage />} />
                 {/* 404 inside default layout */}
-                <Route path='*' element={<ErrorComponent />} />
+                <Route path="*" element={<ErrorComponent />} />
               </Route>
 
               {/* Minimal Layout for Rider */}
-              <Route path='/rider' element={<CustomOutlet />}>
+              <Route path="/rider" element={<CustomOutlet />}>
                 <Route index element={<RiderUpdatePage />} />
-                <Route path=':id' element={<RiderUpdatePage />} />
+                <Route path=":id" element={<RiderUpdatePage />} />
               </Route>
 
               {/* Minimal Layout for Guida */}
-              <Route path='/OrdineGuida' element={<CustomOutlet />}>
+              <Route path="/OrdineGuida" element={<CustomOutlet />}>
                 <Route index element={<GuideOrderPage />} />
               </Route>
 
-              <Route path='/join' element={<CustomOutlet />}>
+              <Route path="/join" element={<CustomOutlet />}>
                 <Route index element={<JoinPage />} />
               </Route>
             </Routes>
