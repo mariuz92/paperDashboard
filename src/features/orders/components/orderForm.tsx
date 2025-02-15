@@ -37,7 +37,8 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
   const showDrawer = () => setDrawerVisible(true);
   const closeDrawer = () => setDrawerVisible(false);
   const [guides, setGuides] = useState<IUser[]>([]);
-
+  // NEW: track whether we’re in “manual mode” (typing a new guide) or not
+  const [isManualGuide, setIsManualGuide] = useState(false);
   /** Fetch all users with role = "guide" */
   useEffect(() => {
     const fetchGuides = async () => {
@@ -116,18 +117,38 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
     }
   };
 
-  const handleGuideChange = (guideId: string) => {
-    const selectedGuide = guides.find((g) => g.id === guideId);
-    if (selectedGuide) {
-      form.setFieldsValue({
-        nomeGuida: selectedGuide.displayName,
-        telefonoGuida: selectedGuide.phoneNumber || "", // fallback if no phone
-      });
-    } else {
+  /**
+   * Handler for guide selection changes in the Select.
+   * If the user chooses “manual”, we let them type name & phone.
+   * Otherwise we auto-fill from the chosen guide.
+   */
+  const handleGuideChange = (value: string) => {
+    if (value === "manual") {
+      // Switch to manual entry mode
+      setIsManualGuide(true);
+      // Clear out any auto-filled fields from a previous selection
       form.setFieldsValue({
         nomeGuida: "",
         telefonoGuida: "",
       });
+    } else {
+      // They picked an existing guide from the list
+      setIsManualGuide(false);
+
+      // Find the chosen guide object
+      const selectedGuide = guides.find((g) => g.id === value);
+      if (selectedGuide) {
+        form.setFieldsValue({
+          nomeGuida: selectedGuide.displayName,
+          telefonoGuida: selectedGuide.phoneNumber || "",
+        });
+      } else {
+        // Safety fallback
+        form.setFieldsValue({
+          nomeGuida: "",
+          telefonoGuida: "",
+        });
+      }
     }
   };
 
@@ -158,43 +179,77 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
             <Col span={12}>
               <Form.Item
                 label="Seleziona Guida"
-                rules={[{ required: true, message: "Seleziona Guida" }]}
+                name="guideSelection"
+                rules={[
+                  {
+                    required: true,
+                    message: "Seleziona Guida o inserisci manualmente",
+                  },
+                ]}
               >
                 <Select
                   style={{ width: "100%" }}
-                  placeholder="Seleziona Guida"
+                  placeholder="Seleziona o aggiungi manualmente"
                   onChange={handleGuideChange}
                   allowClear
                   showSearch
+                  // only needed if you want custom filtering
                   filterOption={(input, option) =>
                     (option?.children as unknown as string)
                       ?.toLowerCase()
                       .includes(input.toLowerCase())
                   }
                 >
+                  {/* Render known guides from fetch */}
                   {guides.map((guide) => (
                     <Select.Option key={guide.id} value={guide.id}>
                       {guide.displayName}
                     </Select.Option>
                   ))}
+
+                  {/* Manual entry option */}
+                  <Select.Option key="manual" value="manual">
+                    ➕ Aggiungi Guida Manualmente
+                  </Select.Option>
                 </Select>
               </Form.Item>
+            </Col>
 
-              <Form.Item name="nomeGuida" hidden>
-                <Input />
+            <Col span={12}>
+              {/* Nome Guida (always displayed). If the user picked a known guide, it auto-fills (readOnly optional). */}
+              <Form.Item
+                label="Nome Guida"
+                name="nomeGuida"
+                rules={[
+                  {
+                    required: true,
+                    message: "Inserisci il nome della guida",
+                  },
+                ]}
+              >
+                <Input
+                  placeholder="Nome Guida"
+                  // readOnly if not manual
+                  readOnly={!isManualGuide}
+                />
               </Form.Item>
             </Col>
+          </Row>
+          <Row gutter={16} style={{ paddingBottom: 24 }}>
             <Col span={12}>
               <Form.Item
                 label="Telefono Guida"
                 name="telefonoGuida"
                 rules={[{ required: false }]}
               >
-                <Input placeholder="Telefono Guida" readOnly />
+                <Input
+                  placeholder="Telefono Guida"
+                  // readOnly if not manual
+                  readOnly={!isManualGuide}
+                />
               </Form.Item>
             </Col>
           </Row>
-
           <Row gutter={16} style={{ paddingBottom: 24 }}>
             <Col span={6}>
               <Form.Item
