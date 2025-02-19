@@ -44,6 +44,10 @@ const storeUserInLocalStorage = (user: IUser) => {
   localStorage.setItem("userInfo", JSON.stringify(userInfo));
   localStorage.setItem("tenantId", user.tenantId);
 };
+const storeChannelsUsage = (channels: number, iddleChannels: number[]) => {
+  localStorage.setItem("channels", JSON.stringify(channels));
+  localStorage.setItem("Iddlechannels", JSON.stringify(iddleChannels));
+};
 
 // Helper to clear user info from localStorage
 const clearUserFromLocalStorage = () => {
@@ -76,13 +80,23 @@ export const signUpWithEmail = async (
       tenantId = existingTenantDoc.id;
     } else {
       // Tenant does not exist; create a new tenant doc with auto-generated ID
-      const newTenantRef = await addDoc(collection(db, "tenants"), {
+      const newTenantData: ITenant = {
+        id: "", // This will be assigned after adding the document
         name: upperTenantName,
         createdAt: new Date(),
         isActive: true,
         description: `Tenant for ${tenantName}`,
-      });
-      tenantId = newTenantRef.id; // Retrieve auto-generated ID
+        channelsNum: 35,
+        iddleChannels: [],
+      };
+      const newTenantRef = await addDoc(
+        collection(db, "tenants"),
+        newTenantData
+      );
+      tenantId = newTenantRef.id;
+
+      // Update `id` field inside Firestore after the document is created
+      await updateDoc(doc(db, "tenants", tenantId), { id: tenantId });
     }
 
     // 3. Create the Firebase user
@@ -141,7 +155,7 @@ export const signInWithEmail = async (
     if (!company) {
       throw new Error("L'azienda specificata non esiste.");
     }
-
+    storeChannelsUsage(company.channelsNum ?? 0, company.iddleChannels ?? []);
     // Effettua il login con Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(
       auth,

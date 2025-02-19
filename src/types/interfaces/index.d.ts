@@ -1,7 +1,5 @@
 import { Timestamp } from "firebase/firestore";
 
-
-
 export type IOrderStatus =
   | "In Consegna"
   | "Presa in Carico"
@@ -28,7 +26,7 @@ export interface IOrder {
 
   luogoRitiro?: string;
 
-  radiolineConsegnate?: number;
+  radioguideConsegnate?: number;
 
   extra?: number;
 
@@ -46,7 +44,7 @@ const colors: Record<IOrderStatus, string> = {
   "Presa in Carico": "gold",
   Consegnato: "green",
   "Attesa ritiro": "orange",
-  "Annullato": "red",
+  Annullato: "red",
   "In Ritiro": "purple",
   Ritirato: "cyan",
 };

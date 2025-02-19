@@ -21,6 +21,7 @@ import { useDocumentTitle } from "@refinedev/react-router";
 import { CONFIG } from "../../../config/configuration";
 import { PlusOutlined } from "@ant-design/icons";
 import { saveOrder, updateOrder } from "../api/orderApi";
+import { updateFreeChannels } from "../helper/updateFreeChannels";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -35,12 +36,35 @@ export const OrdersPage: React.FC = () => {
 
   // State for controlling the OrderDrawer
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<"create" | "view">("create");
+  type Mode = "create" | "view" | "edit";
+  const [drawerMode, setDrawerMode] = useState<Mode>("view");
+
   const [selectedOrder, setSelectedOrder] = useState<IOrder | undefined>(
     undefined
   );
 
-  type Mode = "create" | "view" | "edit";
+  // Function to retrieve and parse total channels and iddle channels from localStorage
+  const getChannelDataFromStorage = (): {
+    totalChannels: number;
+    iddleChannels: number[];
+  } => {
+    // Retrieve total channels from localStorage, parse it and convert to a number.
+    const storedChannels = localStorage.getItem("channels");
+    const totalChannels: number = storedChannels
+      ? Number(JSON.parse(storedChannels))
+      : 0;
+
+    // Retrieve iddle channels from localStorage, parse it to get an array.
+    const storedIddleChannels = localStorage.getItem("Iddlechannels");
+    const iddleChannels: number[] = storedIddleChannels
+      ? JSON.parse(storedIddleChannels)
+      : [];
+
+    return { totalChannels, iddleChannels };
+  };
+
+  // Usage example: retrieving channel data then updating free channels list
+  const { totalChannels, iddleChannels } = getChannelDataFromStorage();
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -59,6 +83,9 @@ export const OrdersPage: React.FC = () => {
       });
 
       setOrders(data);
+
+      // Update free channels list using the available orders
+      updateFreeChannels(totalChannels, iddleChannels, data);
     } catch (error) {
       message.error("Failed to fetch orders.");
       console.error("Error fetching orders:", error);
@@ -124,8 +151,8 @@ export const OrdersPage: React.FC = () => {
   };
 
   // Open the drawer in view mode (for a given order)
-  const openViewDrawer = (order: IOrder) => {
-    setDrawerMode("view");
+  const openViewDrawer = (order: IOrder, mode?: "view" | "edit") => {
+    setDrawerMode(mode || "view");
     setSelectedOrder(order);
     setDrawerVisible(true);
   };
@@ -133,12 +160,12 @@ export const OrdersPage: React.FC = () => {
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
-        <Row justify="space-between" align="middle">
+        <Row justify='space-between' align='middle'>
           <Title level={2} style={{ margin: 0 }}>
             Gestione Ordini
           </Title>
           <DatePicker
-            format="DD/MM/YYYY"
+            format='DD/MM/YYYY'
             style={{ width: 200 }}
             value={selectedDate}
             onChange={onDateChange}
@@ -149,8 +176,8 @@ export const OrdersPage: React.FC = () => {
       <Content>
         {/* Button to open the create order drawer */}
         <FloatButton
-          type="primary"
-          tooltip="Aggiungi Ordine"
+          type='primary'
+          tooltip='Aggiungi Ordine'
           icon={<PlusOutlined />}
           onClick={openCreateDrawer}
         ></FloatButton>
@@ -169,7 +196,11 @@ export const OrdersPage: React.FC = () => {
           visible={drawerVisible}
           mode={drawerMode}
           order={selectedOrder}
-          onClose={() => setDrawerVisible(false)}
+          onClose={() => {
+            setDrawerVisible(false);
+            setDrawerMode("view"); // Reset mode on close
+          }}
+          onModeChange={(newMode) => setDrawerMode(newMode)}
           onSubmit={handleSubmit}
         />
       </Content>

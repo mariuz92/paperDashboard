@@ -13,7 +13,6 @@ import {
   Popconfirm,
   Space,
   Typography,
-  Drawer,
   Row,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
@@ -32,10 +31,9 @@ import {
   UserAddOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
-import * as XLSX from "xlsx";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { JSX } from "react/jsx-runtime";
 import { IUser } from "../../../types/interfaces/IUser";
 import { getUsers } from "../../users/api/userApi";
 import "../../../shared/style.css";
@@ -90,16 +88,6 @@ interface OrderTableProps {
   onRowClick?: (order: IOrder, mode?: "view" | "edit") => void;
 }
 
-/** Convert data to Excel sheet */
-const exportToExcel = (orders: IOrder[]) => {
-  const worksheet = XLSX.utils.json_to_sheet(orders);
-  const workbook = XLSX.utils.book_new();
-  const now = new Date();
-  const formattedDate = now.toLocaleDateString("it-IT").replace(/\//g, "-"); // Format: DD-MM-YYYY
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Orders");
-  XLSX.writeFile(workbook, `ordini_${formattedDate}.xlsx`);
-};
-
 /** Convert data to PDF (landscape) */
 const exportToPDF = (orders: IOrder[]) => {
   const doc = new jsPDF("landscape");
@@ -110,7 +98,7 @@ const exportToPDF = (orders: IOrder[]) => {
     { header: "Luogo Consegna", dataKey: "luogoConsegna" },
     { header: "Ora Ritiro", dataKey: "oraRitiro" },
     { header: "Luogo Ritiro", dataKey: "luogoRitiro" },
-    { header: "Radioguida", dataKey: "radiolineConsegnate" },
+    { header: "Radioguida", dataKey: "radioguideConsegnate" },
     { header: "Extra", dataKey: "extra" },
     { header: "Saldo", dataKey: "saldo" },
     { header: "Note", dataKey: "note" },
@@ -123,7 +111,7 @@ const exportToPDF = (orders: IOrder[]) => {
     luogoConsegna: order.luogoConsegna || "",
     oraRitiro: formatDateCell(order.oraRitiro),
     luogoRitiro: order.luogoRitiro || "",
-    radiolineConsegnate: order.radiolineConsegnate ?? 0,
+    radioguideConsegnate: order.radioguideConsegnate ?? 0,
     extra: order.extra ?? 0,
     saldo: order.saldo?.toFixed(2) ?? "0.00",
     note: order.note || "Nessuna nota",
@@ -153,15 +141,15 @@ const EditableCell: React.FC<EditableCellProps> = ({
       case "select":
         return (
           <Select>
-            <Select.Option value="Presa in Carico">
+            <Select.Option value='Presa in Carico'>
               Presa in Carico
             </Select.Option>
-            <Select.Option value="In Consegna">In Consegna</Select.Option>
-            <Select.Option value="Consegnato">Consegnato</Select.Option>
-            <Select.Option value="Attesa ritiro">Attesa ritiro</Select.Option>
-            <Select.Option value="In Ritiro">In Ritiro</Select.Option>
-            <Select.Option value="Ritirato">Ritirato</Select.Option>
-            <Select.Option value="Annullato">Annullato</Select.Option>
+            <Select.Option value='In Consegna'>In Consegna</Select.Option>
+            <Select.Option value='Consegnato'>Consegnato</Select.Option>
+            <Select.Option value='Attesa ritiro'>Attesa ritiro</Select.Option>
+            <Select.Option value='In Ritiro'>In Ritiro</Select.Option>
+            <Select.Option value='Ritirato'>Ritirato</Select.Option>
+            <Select.Option value='Annullato'>Annullato</Select.Option>
           </Select>
         );
       case "number":
@@ -171,7 +159,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
           <DatePicker
             showTime
             style={{ width: "100%" }}
-            format="YYYY-MM-DD hh-mm"
+            format='YYYY-MM-DD hh-mm'
           />
         );
       case "places":
@@ -221,7 +209,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
   // 1) If no canaleRadio => New Order
   if (!order.canaleRadio) {
     return (
-      <span title="Nuovo Ordine">
+      <span title='Nuovo Ordine'>
         <Typography.Text>Nuovo</Typography.Text>
       </span>
     );
@@ -237,7 +225,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     consegnaDay.isSame(ritiroDay, "day")
   ) {
     return (
-      <span title="Consegna e Ritiro lo Stesso Giorno">
+      <span title='Consegna e Ritiro lo Stesso Giorno'>
         <Typography.Text>Consegna & Ritiro</Typography.Text>
       </span>
     );
@@ -250,7 +238,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title="Consegna in Questa Data">
+      <span title='Consegna in Questa Data'>
         <Typography.Text>Consegna</Typography.Text>
       </span>
     );
@@ -263,7 +251,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title="Ritiro in Questa Data">
+      <span title='Ritiro in Questa Data'>
         {/* If you prefer to have an icon, uncomment the next line and ensure the icon is imported */}
         {/* <SwapLeftOutlined style={{ color: "red", marginRight: 4 }} /> */}
         <Typography.Text>Ritiro</Typography.Text>
@@ -358,7 +346,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
 ⏰ *Ora Ritiro:* ${formatDateCell(order.oraRitiro) || "N/A"}
 🏠 *Ritiro:* [${shortAddress(order.luogoRitiro)}](${googleMapsRitiro})
 
-🎧 *Radioguide Consegnate:* ${order.radiolineConsegnate ?? 0}
+🎧 *Radioguide Consegnate:* ${order.radioguideConsegnate ?? 0}
 ➕ *Extra:* ${order.extra ?? 0}
 💰 *Saldo:* €${(order.saldo ?? 0).toFixed(2)}
 📄 *Stato:* ${order.status || "N/A"}
@@ -420,10 +408,10 @@ Grazie per la collaborazione! 💪`;
     {
       label: (
         <Popconfirm
-          title="Sei sicuro di voler eliminare questo ordine?"
+          title='Sei sicuro di voler eliminare questo ordine?'
           onConfirm={() => order.id && handleDelete(order.id)}
-          okText="Sì"
-          cancelText="No"
+          okText='Sì'
+          cancelText='No'
         >
           <span>
             <DeleteOutlined /> Elimina
@@ -458,7 +446,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Nome Guida"
+            placeholder='Cerca Nome Guida'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -469,9 +457,9 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
@@ -482,7 +470,7 @@ Grazie per la collaborazione! 💪`;
                 setSelectedKeys([]);
                 confirm();
               }}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -501,7 +489,7 @@ Grazie per la collaborazione! 💪`;
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 120,
+      width: 130,
       sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
       filters: [
         { text: "Presa in Carico", value: "Presa in Carico" },
@@ -549,7 +537,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Luogo Consegna"
+            placeholder='Cerca Luogo Consegna'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -560,16 +548,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -608,7 +596,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Luogo Ritiro"
+            placeholder='Cerca Luogo Ritiro'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -619,16 +607,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -649,10 +637,10 @@ Grazie per la collaborazione! 💪`;
       fixed: "right",
       width: 120,
       render: (_, record) => (
-        <Row justify="center">
+        <Row justify='center'>
           <Button
-            type="text"
-            shape="circle"
+            type='text'
+            shape='circle'
             onClick={() => onRowClick && onRowClick(record, "view")}
           >
             <EyeOutlined style={{ marginRight: 4 }} />
@@ -662,12 +650,9 @@ Grazie per la collaborazione! 💪`;
             trigger={["click"]}
           >
             <Button
-              shape="circle"
-              type="text"
+              shape='circle'
+              type='text'
               style={{ display: "flex", alignItems: "center" }}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
             >
               <MoreOutlined />
             </Button>
@@ -683,27 +668,22 @@ Grazie per la collaborazione! 💪`;
         style={{ marginBottom: 16, display: "flex", justifyContent: "end" }}
       >
         <Button
-          icon={<FileExcelOutlined />}
-          onClick={() => exportToExcel(orders)}
-          type="primary"
-        >
-          Esporta in Excel
-        </Button>
-        <Button
           icon={<FilePdfOutlined />}
           onClick={() => exportToPDF(orders)}
-          type="primary"
+          type='primary'
         >
-          Esporta in PDF
+          Esporta PDF
         </Button>
       </Space>
       <Table<IOrder>
+        virtual
         bordered
         dataSource={orders}
         columns={columns}
         rowKey={(record) => record.id as string}
         loading={loading}
-        scroll={{ x: 800 }}
+        tableLayout='fixed'
+        scroll={{ x: 1200, y: 2000 }}
       />
     </>
   );

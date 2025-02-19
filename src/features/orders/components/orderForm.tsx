@@ -13,7 +13,6 @@ import {
   Typography,
   Select,
   Descriptions,
-  FloatButton,
 } from "antd";
 import dayjs from "dayjs";
 import { Timestamp } from "firebase/firestore";
@@ -21,14 +20,8 @@ import { IOrder } from "../../../types/interfaces/index";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { getUsers } from "../../users/api/userApi";
 import { IUser } from "../../../types/interfaces/IUser";
-import {
-  CheckOutlined,
-  EditFilled,
-  PlusOutlined,
-  RollbackOutlined,
-  SaveFilled,
-  SaveOutlined,
-} from "@ant-design/icons";
+import { CheckOutlined, EditFilled, SaveFilled } from "@ant-design/icons";
+import { IOrderStatus } from "../../../types/interfaces/index";
 
 const { Title } = Typography;
 
@@ -41,6 +34,10 @@ interface OrderDrawerProps {
   order?: IOrder; // Used in view/edit modes
   onClose: () => void;
   /**
+   * onModeChange allows the parent to update the mode (e.g., from "view" to "edit").
+   */
+  onModeChange: (mode: Mode) => void;
+  /**
    * onSubmit will be called with the processed order data.
    * The parent component can decide whether to call saveOrder (for create)
    * or updateOrder (for edit) based on the mode.
@@ -51,26 +48,68 @@ interface OrderDrawerProps {
   ) => Promise<void>;
 }
 
+const orderStatuses: IOrderStatus[] = [
+  "Presa in Carico",
+  "In Consegna",
+  "Consegnato",
+  "Attesa ritiro",
+  "In Ritiro",
+  "Ritirato",
+  "Annullato",
+];
+
 const OrderDrawer: React.FC<OrderDrawerProps> = ({
   visible,
   mode,
   order,
   onClose,
+  onModeChange,
   onSubmit,
 }) => {
   const [form] = Form.useForm();
   const [guides, setGuides] = useState<IUser[]>([]);
   const [isManualGuide, setIsManualGuide] = useState(false);
+  const [freeChannels, setFreeChannels] = useState<number[]>([]);
 
-  // We'll use an internal state for mode so we can switch from view to edit
-  const [currentMode, setCurrentMode] = useState<Mode>(mode);
+  // Load free channels from localStorage whenever the drawer is opened
   useEffect(() => {
-    setCurrentMode(mode);
-  }, [mode]);
+    if (visible) {
+      const storedFreeChannels = localStorage.getItem("freeChannels");
+      if (storedFreeChannels) {
+        try {
+          const parsedChannels = JSON.parse(storedFreeChannels);
+          setFreeChannels(parsedChannels);
+        } catch (error) {
+          console.error("Error parsing freeChannels from localStorage", error);
+          setFreeChannels([]);
+        }
+      } else {
+        setFreeChannels([]);
+      }
+    }
+  }, [visible]);
 
-  // Fetch guides only in create/edit modes
+  // When the drawer opens or the mode/order changes, pre-populate or reset the form.
   useEffect(() => {
-    if (currentMode === "create" || currentMode === "edit") {
+    if ((mode === "edit" || mode === "view") && order) {
+      form.setFieldsValue({
+        ...order,
+        // Convert Timestamps to dayjs objects for DatePicker/TimePicker
+        orarioConsegna: order.orarioConsegna
+          ? dayjs(order.orarioConsegna.toDate())
+          : undefined,
+        oraRitiro: order.oraRitiro
+          ? dayjs(order.oraRitiro.toDate())
+          : undefined,
+      });
+    } else if (mode === "create") {
+      form.resetFields();
+    }
+  }, [mode, order, form]);
+
+  // Fetch guides only when in create or edit mode.
+  useEffect(() => {
+    if (mode === "create" || mode === "edit") {
       const fetchGuides = async () => {
         try {
           const data = await getUsers("guide");
@@ -82,29 +121,11 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       };
       fetchGuides();
     }
-  }, [currentMode]);
+  }, [mode]);
 
-  // When the drawer opens or the mode/order changes, pre-populate or reset the form
-  useEffect(() => {
-    if ((currentMode === "edit" || currentMode === "view") && order) {
-      form.setFieldsValue({
-        ...order,
-        // Convert Timestamps to dayjs objects for the pickers
-        orarioConsegna: order.orarioConsegna
-          ? dayjs(order.orarioConsegna.toDate())
-          : undefined,
-        oraRitiro: order.oraRitiro
-          ? dayjs(order.oraRitiro.toDate())
-          : undefined,
-      });
-    } else if (currentMode === "create") {
-      form.resetFields();
-    }
-  }, [currentMode, order, form]);
-
-  // Handle guide selection changes in create/edit modes
+  // Handle guide selection changes in create/edit modes.
   const handleGuideChange = (value: string) => {
-    if (value === "manual") {
+    if (value === "") {
       setIsManualGuide(true);
       form.setFieldsValue({
         nomeGuida: "",
@@ -127,12 +148,11 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
     }
   };
 
-  // Process the form submission: convert date/time fields & call onSubmit
+  // Process the form submission: convert date/time fields & call onSubmit.
   const handleFinish = async (values: any) => {
-    // Process orarioConsegna (from TimePicker)
     let orarioConsegna: Timestamp | null = null;
     if (values.orarioConsegna) {
-      const time = values.orarioConsegna; // dayjs object from TimePicker
+      const time = values.orarioConsegna;
       const mergedDateTime = dayjs()
         .hour(time.hour())
         .minute(time.minute())
@@ -141,7 +161,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       orarioConsegna = Timestamp.fromDate(mergedDateTime.toDate());
     }
 
-    // Process oraRitiro (from DatePicker with time)
     let oraRitiro: Timestamp | null = null;
     if (values.oraRitiro) {
       oraRitiro = Timestamp.fromDate(values.oraRitiro.toDate());
@@ -161,107 +180,107 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       oraRitiro: oraRitiro,
       luogoRitiro: values.luogoRitiro || "",
       saldo: values.saldo || 0,
-      radiolineConsegnate: values.radiolineConsegnate || 0,
+      radioguideConsegnate: values.radioguideConsegnate || 0,
       extra: values.extra || 0,
       note: values.note || "",
       status: values.status || "Presa in Carico",
     };
 
     try {
-      await onSubmit(orderData, currentMode === "create" ? "create" : "edit");
+      await onSubmit(orderData, mode === "create" ? "create" : "edit");
       message.success(
-        currentMode === "create"
+        mode === "create"
           ? "Ordine creato con successo!"
           : "Ordine aggiornato con successo!"
       );
-      if (currentMode === "create") {
+      if (mode === "create") {
         form.resetFields();
       }
-      onClose();
+      onClose(); // Parent should reset the mode on close.
     } catch (error) {
       console.error("Errore durante l'invio dell'ordine:", error);
       message.error("Errore, riprova.");
     }
   };
 
-  // Render a read-only view for the "view" mode
-
+  // Render a read-only view for the "view" mode.
   const renderViewMode = () => (
     <div>
       <Descriptions
         bordered
         column={1}
-        size="middle"
+        size='middle'
         style={{ backgroundColor: "#fafafa", padding: "24px", borderRadius: 4 }}
       >
-        <Descriptions.Item label="Nome Guida">
+        <Descriptions.Item label='Nome Guida'>
           {order?.nomeGuida || "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Telefono Guida">
+        <Descriptions.Item label='Telefono Guida'>
           {order?.telefonoGuida || "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Status">
+        <Descriptions.Item label='Status'>
           {order?.status || "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Canale Radio">
+        <Descriptions.Item label='Canale Radio'>
           {order?.canaleRadio || "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Radioguide">
-          {order?.radiolineConsegnate || 0}
+        <Descriptions.Item label='Radioguide'>
+          {order?.radioguideConsegnate || 0}
         </Descriptions.Item>
-
-        <Descriptions.Item label="Extra">{order?.extra || 0}</Descriptions.Item>
-        <Descriptions.Item label="Saldo (€)">
+        <Descriptions.Item label='Extra'>{order?.extra || 0}</Descriptions.Item>
+        <Descriptions.Item label='Saldo (€)'>
           {order?.saldo || 0}
         </Descriptions.Item>
-        <Descriptions.Item label="Orario Consegna">
+        <Descriptions.Item label='Orario Consegna'>
           {order?.orarioConsegna
             ? dayjs(order.orarioConsegna.toDate()).format("HH:mm")
             : "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Luogo Consegna">
+        <Descriptions.Item label='Luogo Consegna'>
           {order?.luogoConsegna || "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Data e Ora Ritiro">
+        <Descriptions.Item label='Data e Ora Ritiro'>
           {order?.oraRitiro
             ? dayjs(order.oraRitiro.toDate()).format("YYYY-MM-DD HH:mm")
             : "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Luogo Ritiro">
+        <Descriptions.Item label='Luogo Ritiro'>
           {order?.luogoRitiro || "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Note">{order?.note || "-"}</Descriptions.Item>
+        <Descriptions.Item label='Note'>{order?.note || "-"}</Descriptions.Item>
       </Descriptions>
       <div style={{ marginTop: 16, textAlign: "right" }}>
-        <FloatButton
-          type="primary"
+        {/* Call parent's onModeChange to switch to edit mode */}
+        <Button
+          type='primary'
           icon={<EditFilled />}
-          tooltip="Modifica Ordine"
-          onClick={() => setCurrentMode("edit")}
-        ></FloatButton>
+          onClick={() => onModeChange("edit")}
+        >
+          Modifica
+        </Button>
       </div>
     </div>
   );
 
-  // Render the form for create and edit modes
+  // Render the form for create and edit modes.
   const renderForm = () => (
-    <Form form={form} layout="vertical" onFinish={handleFinish}>
-      {currentMode === "create" && (
+    <Form form={form} layout='vertical' onFinish={handleFinish}>
+      {mode === "create" && (
         <Row gutter={16} style={{ paddingBottom: 24 }}>
           <Col span={12}>
             <Form.Item
-              label="Seleziona Guida"
-              name="guideSelection"
+              label='Seleziona Guida'
+              name='guideSelection'
               rules={[
                 {
-                  required: true,
+                  required: false,
                   message: "Seleziona Guida o inserisci manualmente",
                 },
               ]}
             >
               <Select
                 style={{ width: "100%" }}
-                placeholder="Seleziona o aggiungi manualmente"
+                placeholder='Seleziona '
                 onChange={handleGuideChange}
                 allowClear
                 showSearch
@@ -276,9 +295,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
                     {guide.displayName}
                   </Select.Option>
                 ))}
-                <Select.Option key="manual" value="manual">
-                  ➕ Aggiungi Guida Manualmente
-                </Select.Option>
               </Select>
             </Form.Item>
           </Col>
@@ -289,98 +305,125 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       <Row gutter={16} style={{ paddingBottom: 24 }}>
         <Col span={12}>
           <Form.Item
-            label="Nome Guida"
-            name="nomeGuida"
+            label='Nome Guida'
+            name='nomeGuida'
             rules={[
               { required: true, message: "Inserisci il nome della guida" },
             ]}
           >
-            <Input placeholder="Nome Guida" disabled={currentMode === "view"} />
+            <Input placeholder='Nome Guida' disabled={mode === "view"} />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item label="Telefono Guida" name="telefonoGuida">
-            <Input
-              placeholder="Telefono Guida"
-              disabled={currentMode === "view"}
-            />
+          <Form.Item label='Telefono Guida' name='telefonoGuida'>
+            <Input placeholder='Telefono Guida' disabled={mode === "view"} />
           </Form.Item>
         </Col>
       </Row>
 
       <Row gutter={16} style={{ paddingBottom: 24 }}>
         <Col span={6}>
-          <Form.Item label="Canale" name="canaleRadio">
-            <Input
-              placeholder="Canale Radio"
-              disabled={currentMode === "view"}
-            />
+          <Form.Item label='Canale' name='canaleRadio'>
+            <Select
+              placeholder='Seleziona Canale Radio'
+              disabled={mode === "view"}
+            >
+              {/* Map the free channels from localStorage */}
+              {freeChannels.map((channel) => (
+                <Select.Option key={channel} value={channel.toString()}>
+                  {channel}
+                </Select.Option>
+              ))}
+            </Select>
           </Form.Item>
         </Col>
         <Col span={6}>
           <Form.Item
-            label="Radioguide"
-            name="radiolineConsegnate"
+            label='Radioguide'
+            name='radioguideConsegnate'
             rules={[
               { required: true, message: "Inserisci Numero di Radioguide" },
             ]}
           >
             <InputNumber
-              placeholder="Radioguide Consegnate"
+              placeholder='Radioguide Consegnate'
               style={{ width: "100%" }}
-              disabled={currentMode === "view"}
+              disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
         <Col span={4}>
-          <Form.Item label="Extra" name="extra">
+          <Form.Item label='Extra' name='extra'>
             <InputNumber
-              placeholder="Radio Extra"
+              placeholder='Radio Extra'
               style={{ width: "100%" }}
-              disabled={currentMode === "view"}
+              disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
         <Col span={6}>
-          <Form.Item label="Saldo (€)" name="saldo">
+          <Form.Item label='Saldo (€)' name='saldo'>
             <InputNumber
-              placeholder="Saldo (€)"
+              placeholder='Saldo (€)'
               style={{ width: "100%" }}
-              disabled={currentMode === "view"}
+              disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
       </Row>
 
       <Title level={4}>Informazioni Ordine</Title>
+      <Row>
+        <Col span={8}>
+          <Form.Item
+            label='Stato Ordine'
+            name='status'
+            rules={[
+              { required: false, message: "Seleziona lo stato dell'ordine" },
+            ]}
+          >
+            <Select placeholder='Seleziona Stato'>
+              {orderStatuses.map((status) => (
+                <Select.Option key={status} value={status}>
+                  {status}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Col>
+      </Row>
       <Row gutter={16}>
         <Col span={8}>
           <Form.Item
-            label="Orario Consegna (Oggi)"
-            name="orarioConsegna"
+            label='Orario Consegna (Oggi)'
+            name='orarioConsegna'
             rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
           >
             <TimePicker
-              placeholder="Seleziona Orario Consegna"
-              format="HH:mm"
+              placeholder='Inserisci Orario Consegna'
+              format='HH:mm'
               style={{ width: "100%" }}
-              disabled={currentMode === "view"}
+              disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
         <Col span={16}>
           <Form.Item
-            label="Luogo Consegna"
-            name="luogoConsegna"
+            label='Luogo Consegna'
+            name='luogoConsegna'
             rules={[{ required: true, message: "Inserisci Luogo Consegna" }]}
           >
             <GooglePlacesAutocomplete
-              initialValue=""
-              placeholder="Inserisci Luogo Consegna"
+              initialValue={
+                form.getFieldValue("luogoConsegna") ??
+                order?.luogoConsegna ??
+                ""
+              }
+              placeholder='Inserisci Luogo Consegna'
               onPlaceSelect={(address) =>
                 form.setFieldsValue({ luogoConsegna: address })
               }
-              disabled={currentMode === "view"}
+              disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
@@ -388,25 +431,27 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
 
       <Row gutter={16}>
         <Col span={8}>
-          <Form.Item label="Data e Ora Ritiro" name="oraRitiro">
+          <Form.Item label='Data e Ora Ritiro' name='oraRitiro'>
             <DatePicker
               showTime
-              placeholder="Seleziona Ora e Data Ritiro"
-              format="YYYY-MM-DD HH:mm"
+              placeholder='Inserisci Ora e Data Ritiro'
+              format='YYYY-MM-DD HH:mm'
               style={{ width: "100%" }}
-              disabled={currentMode === "view"}
+              disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
         <Col span={16}>
-          <Form.Item label="Luogo Ritiro" name="luogoRitiro">
+          <Form.Item label='Luogo Ritiro' name='luogoRitiro'>
             <GooglePlacesAutocomplete
-              initialValue=""
-              placeholder="Inserisci Luogo Ritiro"
+              initialValue={
+                form.getFieldValue("luogoRitiro") ?? order?.luogoRitiro ?? ""
+              }
+              placeholder='Inserisci Luogo Ritiro'
               onPlaceSelect={(address) =>
                 form.setFieldsValue({ luogoRitiro: address })
               }
-              disabled={currentMode === "view"}
+              disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
@@ -414,40 +459,32 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
 
       <Row gutter={16}>
         <Col span={24}>
-          <Form.Item label="Note" name="note">
-            <Input.TextArea
-              placeholder="Note"
-              disabled={currentMode === "view"}
-            />
+          <Form.Item label='Note' name='note'>
+            <Input.TextArea placeholder='Note' disabled={mode === "view"} />
           </Form.Item>
         </Col>
       </Row>
 
-      {currentMode !== "view" && (
-        <FloatButton.Group style={{ insetInlineEnd: 24 }}>
-          {currentMode === "edit" ? (
-            <>
-              <FloatButton
-                type="primary"
-                icon={<SaveFilled />}
-                onClick={() => form.submit()}
-                tooltip="Aggiorna"
-              />
-              <FloatButton
-                icon={<RollbackOutlined />}
-                onClick={() => setCurrentMode("view")}
-                tooltip="Annulla"
-              />
-            </>
+      {mode !== "view" && (
+        <div style={{ marginTop: 16, textAlign: "right" }}>
+          {mode === "edit" ? (
+            <Button
+              type='primary'
+              icon={<SaveFilled />}
+              onClick={() => form.submit()}
+            >
+              Aggiorna
+            </Button>
           ) : (
-            <FloatButton
-              type="primary"
+            <Button
+              type='primary'
               icon={<CheckOutlined />}
               onClick={() => form.submit()}
-              tooltip="Crea Ordine"
-            />
+            >
+              Crea Ordine
+            </Button>
           )}
-        </FloatButton.Group>
+        </div>
       )}
     </Form>
   );
@@ -455,9 +492,9 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
   return (
     <Drawer
       title={
-        currentMode === "create"
+        mode === "create"
           ? "Crea Ordine"
-          : currentMode === "edit"
+          : mode === "edit"
           ? "Modifica Ordine"
           : "Dettagli Ordine"
       }
@@ -466,7 +503,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       open={visible}
       bodyStyle={{ paddingBottom: 80 }}
     >
-      {currentMode === "view" ? renderViewMode() : renderForm()}
+      {mode === "view" ? renderViewMode() : renderForm()}
     </Drawer>
   );
 };

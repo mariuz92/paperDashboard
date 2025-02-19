@@ -6,4 +6,6 @@ export interface ITenant {
   updatedAt?: Date; // Optional date when the tenant was last updated
   isActive: boolean; // Indicates if the tenant is currently active
   description?: string; // Optional description about the tenant
+  channelsNum?: number;
+  iddleChannels: number[];
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { LoadScript, StandaloneSearchBox } from "@react-google-maps/api";
+import { useLoadScript, StandaloneSearchBox } from "@react-google-maps/api";
 import { Input } from "antd";
 import { EUROPE_BOUNDS, GOOGLE_MAPS_API_KEY } from "../utils/googleMaps";
 
@@ -7,22 +7,29 @@ interface AutocompleteProps {
   disabled?: boolean;
   placeholder: string;
   onPlaceSelect: (address: string) => void;
-  initialValue: string; // default to empty string if not provided
+  initialValue?: string; // Default to empty string if not provided
 }
+
+const LIBRARIES: ("places" | "maps")[] = ["places", "maps"]; // ✅ Static Array
 
 const GooglePlacesAutocomplete: React.FC<AutocompleteProps> = ({
   placeholder,
   onPlaceSelect,
   disabled,
-  initialValue = "", // default to empty string if not provided
+  initialValue = "", // ✅ Default to empty string if not provided
 }) => {
   const [searchBox, setSearchBox] =
     useState<google.maps.places.SearchBox | null>(null);
-
   const [inputValue, setInputValue] = useState<string>(initialValue);
 
+  // ✅ Load Google Maps only once using `useLoadScript`
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: LIBRARIES,
+    language: "it",
+  });
+
   useEffect(() => {
-    // If the initialValue changes (or on mount), sync local state
     setInputValue(initialValue);
   }, [initialValue]);
 
@@ -32,32 +39,30 @@ const GooglePlacesAutocomplete: React.FC<AutocompleteProps> = ({
       if (places && places.length > 0) {
         const place = places[0];
         const address = place.formatted_address || "";
-        setInputValue(address); // Update input field
-        onPlaceSelect(address); // Callback to parent component
+        setInputValue(address);
+        onPlaceSelect(address);
       }
     }
   };
 
+  if (loadError) return <p>Errore nel caricamento della mappa</p>;
+  if (!isLoaded) return <p>Caricamento mappa...</p>;
+
   return (
-    <LoadScript
-      googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-      libraries={["places", "maps"]}
-      language="it"
+    <StandaloneSearchBox
+      onLoad={(ref) => setSearchBox(ref)}
+      onPlacesChanged={handlePlacesChanged}
+      options={{
+        bounds: EUROPE_BOUNDS,
+      }}
     >
-      <StandaloneSearchBox
-        onLoad={(ref) => setSearchBox(ref)}
-        onPlacesChanged={handlePlacesChanged}
-        options={{
-          bounds: EUROPE_BOUNDS,
-        }}
-      >
-        <Input
-          placeholder={placeholder}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-        />
-      </StandaloneSearchBox>
-    </LoadScript>
+      <Input
+        placeholder={placeholder}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        disabled={disabled}
+      />
+    </StandaloneSearchBox>
   );
 };
 
