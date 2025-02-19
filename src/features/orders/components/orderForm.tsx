@@ -10,132 +10,108 @@ import {
   TimePicker,
   message,
   Drawer,
-  FloatButton,
   Typography,
+  Select,
+  Descriptions,
+  FloatButton,
 } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Timestamp } from "firebase/firestore";
-
-import { saveOrder } from "../api/orderApi"; // Firebase saveOrder function
 import { IOrder } from "../../../types/interfaces/index";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { getUsers } from "../../users/api/userApi";
 import { IUser } from "../../../types/interfaces/IUser";
-import { Select } from "antd/lib";
+import {
+  CheckOutlined,
+  EditFilled,
+  PlusOutlined,
+  RollbackOutlined,
+  SaveFilled,
+  SaveOutlined,
+} from "@ant-design/icons";
 
 const { Title } = Typography;
 
-interface OrderFormProps {
-  addOrder: (order: IOrder) => void;
+// Define the available modes
+type Mode = "create" | "view" | "edit";
+
+interface OrderDrawerProps {
+  visible: boolean;
+  mode: Mode;
+  order?: IOrder; // Used in view/edit modes
+  onClose: () => void;
+  /**
+   * onSubmit will be called with the processed order data.
+   * The parent component can decide whether to call saveOrder (for create)
+   * or updateOrder (for edit) based on the mode.
+   */
+  onSubmit: (
+    orderData: Partial<IOrder>,
+    mode: "create" | "edit"
+  ) => Promise<void>;
 }
 
-const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
+const OrderDrawer: React.FC<OrderDrawerProps> = ({
+  visible,
+  mode,
+  order,
+  onClose,
+  onSubmit,
+}) => {
   const [form] = Form.useForm();
-  const [drawerVisible, setDrawerVisible] = useState(false);
-
-  const showDrawer = () => setDrawerVisible(true);
-  const closeDrawer = () => setDrawerVisible(false);
   const [guides, setGuides] = useState<IUser[]>([]);
-  // NEW: track whether we’re in “manual mode” (typing a new guide) or not
   const [isManualGuide, setIsManualGuide] = useState(false);
-  /** Fetch all users with role = "guide" */
+
+  // We'll use an internal state for mode so we can switch from view to edit
+  const [currentMode, setCurrentMode] = useState<Mode>(mode);
   useEffect(() => {
-    const fetchGuides = async () => {
-      try {
-        const data = await getUsers("guide");
-        setGuides(data);
-      } catch (error) {
-        console.error("Error fetching guides:", error);
-        message.error("Impossibile recuperare le guide.");
-      }
-    };
-    fetchGuides();
-  }, []);
-  /**
-   * Handles form submission:
-   *  - Converts time/date fields to Firestore Timestamps
-   *  - Saves data to Firebase
-   */
-  const onFinish = async (values: Record<string, any>) => {
-    // 1) Convert orarioConsegna (TimePicker) into a full Date, then to Timestamp
-    //    We assume "today" as the date portion if you only have a TimePicker.
-    //    If you want the user to pick an actual date, replace TimePicker with a DatePicker + showTime.
-    let orarioConsegna: Timestamp | null = null;
-    if (values.orarioConsegna) {
-      // Dayjs time from TimePicker
-      const time = values.orarioConsegna;
-      // Merge today's date with the selected time
-      const mergedDateTime = dayjs()
-        .hour(time.hour())
-        .minute(time.minute())
-        .second(0)
-        .millisecond(0);
-      orarioConsegna = Timestamp.fromDate(mergedDateTime.toDate());
+    setCurrentMode(mode);
+  }, [mode]);
+
+  // Fetch guides only in create/edit modes
+  useEffect(() => {
+    if (currentMode === "create" || currentMode === "edit") {
+      const fetchGuides = async () => {
+        try {
+          const data = await getUsers("guide");
+          setGuides(data);
+        } catch (error) {
+          console.error("Error fetching guides:", error);
+          message.error("Impossibile recuperare le guide.");
+        }
+      };
+      fetchGuides();
     }
+  }, [currentMode]);
 
-    // 2) Convert oraRitiro (DatePicker w/ time) to Timestamp
-    let oraRitiro: Timestamp | null = null;
-    if (values.oraRitiro) {
-      // Dayjs date+time from DatePicker
-      const dateTime = values.oraRitiro;
-      oraRitiro = Timestamp.fromDate(dateTime.toDate());
-    }
-
-    // If either field is required, handle that here:
-    if (!orarioConsegna) {
-      message.error("Orario Consegna (Time) is required!");
-      return;
-    }
-
-    // 3) Build the order object matching IOrder but with Timestamps
-    const newOrder: Omit<IOrder, "id"> = {
-      nomeGuida: values.nomeGuida || "",
-      telefonoGuida: values.telefonoGuida || "",
-      canaleRadio: values.canaleRadio || "",
-      orarioConsegna,
-      luogoConsegna: values.luogoConsegna || "",
-      oraRitiro: oraRitiro || null,
-      luogoRitiro: values.luogoRitiro || "",
-      saldo: values.saldo || 0,
-      radiolineConsegnate: values.radiolineConsegnate || 0,
-      extra: values.extra || 0,
-      note: values.note || "",
-      status: "Presa in Carico", // Default status
-    };
-
-    try {
-      // 4) Save the order to Firebase, then update local state
-      const docId = await saveOrder(newOrder);
-      message.success("Order saved successfully!");
-      addOrder({ ...newOrder, id: docId });
+  // When the drawer opens or the mode/order changes, pre-populate or reset the form
+  useEffect(() => {
+    if ((currentMode === "edit" || currentMode === "view") && order) {
+      form.setFieldsValue({
+        ...order,
+        // Convert Timestamps to dayjs objects for the pickers
+        orarioConsegna: order.orarioConsegna
+          ? dayjs(order.orarioConsegna.toDate())
+          : undefined,
+        oraRitiro: order.oraRitiro
+          ? dayjs(order.oraRitiro.toDate())
+          : undefined,
+      });
+    } else if (currentMode === "create") {
       form.resetFields();
-      closeDrawer();
-    } catch (error) {
-      message.error("Failed to save the order. Please try again.");
-      console.error("Error saving order:", error);
     }
-  };
+  }, [currentMode, order, form]);
 
-  /**
-   * Handler for guide selection changes in the Select.
-   * If the user chooses “manual”, we let them type name & phone.
-   * Otherwise we auto-fill from the chosen guide.
-   */
+  // Handle guide selection changes in create/edit modes
   const handleGuideChange = (value: string) => {
     if (value === "manual") {
-      // Switch to manual entry mode
       setIsManualGuide(true);
-      // Clear out any auto-filled fields from a previous selection
       form.setFieldsValue({
         nomeGuida: "",
         telefonoGuida: "",
       });
     } else {
-      // They picked an existing guide from the list
       setIsManualGuide(false);
-
-      // Find the chosen guide object
       const selectedGuide = guides.find((g) => g.id === value);
       if (selectedGuide) {
         form.setFieldsValue({
@@ -143,7 +119,6 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
           telefonoGuida: selectedGuide.phoneNumber || "",
         });
       } else {
-        // Safety fallback
         form.setFieldsValue({
           nomeGuida: "",
           telefonoGuida: "",
@@ -152,253 +127,348 @@ const OrderForm: React.FC<OrderFormProps> = ({ addOrder }) => {
     }
   };
 
-  return (
-    <>
-      <FloatButton
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={showDrawer}
-        style={{ position: "fixed", bottom: 24, right: 24 }}
-      />
-      <Drawer
-        title="Crea Ordine"
-        width={720}
-        onClose={closeDrawer}
-        open={drawerVisible}
-        bodyStyle={{ paddingBottom: 80 }}
+  // Process the form submission: convert date/time fields & call onSubmit
+  const handleFinish = async (values: any) => {
+    // Process orarioConsegna (from TimePicker)
+    let orarioConsegna: Timestamp | null = null;
+    if (values.orarioConsegna) {
+      const time = values.orarioConsegna; // dayjs object from TimePicker
+      const mergedDateTime = dayjs()
+        .hour(time.hour())
+        .minute(time.minute())
+        .second(0)
+        .millisecond(0);
+      orarioConsegna = Timestamp.fromDate(mergedDateTime.toDate());
+    }
+
+    // Process oraRitiro (from DatePicker with time)
+    let oraRitiro: Timestamp | null = null;
+    if (values.oraRitiro) {
+      oraRitiro = Timestamp.fromDate(values.oraRitiro.toDate());
+    }
+
+    if (!orarioConsegna) {
+      message.error("Orario Consegna (Time) is required!");
+      return;
+    }
+
+    const orderData: Partial<IOrder> = {
+      nomeGuida: values.nomeGuida || "",
+      telefonoGuida: values.telefonoGuida || "",
+      canaleRadio: values.canaleRadio || "",
+      orarioConsegna,
+      luogoConsegna: values.luogoConsegna || "",
+      oraRitiro: oraRitiro,
+      luogoRitiro: values.luogoRitiro || "",
+      saldo: values.saldo || 0,
+      radiolineConsegnate: values.radiolineConsegnate || 0,
+      extra: values.extra || 0,
+      note: values.note || "",
+      status: values.status || "Presa in Carico",
+    };
+
+    try {
+      await onSubmit(orderData, currentMode === "create" ? "create" : "edit");
+      message.success(
+        currentMode === "create"
+          ? "Ordine creato con successo!"
+          : "Ordine aggiornato con successo!"
+      );
+      if (currentMode === "create") {
+        form.resetFields();
+      }
+      onClose();
+    } catch (error) {
+      console.error("Errore durante l'invio dell'ordine:", error);
+      message.error("Errore, riprova.");
+    }
+  };
+
+  // Render a read-only view for the "view" mode
+
+  const renderViewMode = () => (
+    <div>
+      <Descriptions
+        bordered
+        column={1}
+        size="middle"
+        style={{ backgroundColor: "#fafafa", padding: "24px", borderRadius: 4 }}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={onFinish}
-          style={{ marginBottom: "20px" }}
-        >
-          {/* First Row */}
-          <Title level={4}>Informazioni Guida</Title>
-          <Row gutter={16} style={{ paddingBottom: 24 }}>
-            <Col span={12}>
-              <Form.Item
-                label="Seleziona Guida"
-                name="guideSelection"
-                rules={[
-                  {
-                    required: true,
-                    message: "Seleziona Guida o inserisci manualmente",
-                  },
-                ]}
-              >
-                <Select
-                  style={{ width: "100%" }}
-                  placeholder="Seleziona o aggiungi manualmente"
-                  onChange={handleGuideChange}
-                  allowClear
-                  showSearch
-                  // only needed if you want custom filtering
-                  filterOption={(input, option) =>
-                    (option?.children as unknown as string)
-                      ?.toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                >
-                  {/* Render known guides from fetch */}
-                  {guides.map((guide) => (
-                    <Select.Option key={guide.id} value={guide.id}>
-                      {guide.displayName}
-                    </Select.Option>
-                  ))}
+        <Descriptions.Item label="Nome Guida">
+          {order?.nomeGuida || "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Telefono Guida">
+          {order?.telefonoGuida || "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Status">
+          {order?.status || "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Canale Radio">
+          {order?.canaleRadio || "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Radioguide">
+          {order?.radiolineConsegnate || 0}
+        </Descriptions.Item>
 
-                  {/* Manual entry option */}
-                  <Select.Option key="manual" value="manual">
-                    ➕ Aggiungi Guida Manualmente
+        <Descriptions.Item label="Extra">{order?.extra || 0}</Descriptions.Item>
+        <Descriptions.Item label="Saldo (€)">
+          {order?.saldo || 0}
+        </Descriptions.Item>
+        <Descriptions.Item label="Orario Consegna">
+          {order?.orarioConsegna
+            ? dayjs(order.orarioConsegna.toDate()).format("HH:mm")
+            : "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Luogo Consegna">
+          {order?.luogoConsegna || "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Data e Ora Ritiro">
+          {order?.oraRitiro
+            ? dayjs(order.oraRitiro.toDate()).format("YYYY-MM-DD HH:mm")
+            : "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Luogo Ritiro">
+          {order?.luogoRitiro || "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Note">{order?.note || "-"}</Descriptions.Item>
+      </Descriptions>
+      <div style={{ marginTop: 16, textAlign: "right" }}>
+        <FloatButton
+          type="primary"
+          icon={<EditFilled />}
+          tooltip="Modifica Ordine"
+          onClick={() => setCurrentMode("edit")}
+        ></FloatButton>
+      </div>
+    </div>
+  );
+
+  // Render the form for create and edit modes
+  const renderForm = () => (
+    <Form form={form} layout="vertical" onFinish={handleFinish}>
+      {currentMode === "create" && (
+        <Row gutter={16} style={{ paddingBottom: 24 }}>
+          <Col span={12}>
+            <Form.Item
+              label="Seleziona Guida"
+              name="guideSelection"
+              rules={[
+                {
+                  required: true,
+                  message: "Seleziona Guida o inserisci manualmente",
+                },
+              ]}
+            >
+              <Select
+                style={{ width: "100%" }}
+                placeholder="Seleziona o aggiungi manualmente"
+                onChange={handleGuideChange}
+                allowClear
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.children as unknown as string)
+                    ?.toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              >
+                {guides.map((guide) => (
+                  <Select.Option key={guide.id} value={guide.id}>
+                    {guide.displayName}
                   </Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
+                ))}
+                <Select.Option key="manual" value="manual">
+                  ➕ Aggiungi Guida Manualmente
+                </Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+      )}
 
-            <Col span={12}>
-              {/* Nome Guida (always displayed). If the user picked a known guide, it auto-fills (readOnly optional). */}
-              <Form.Item
-                label="Nome Guida"
-                name="nomeGuida"
-                rules={[
-                  {
-                    required: true,
-                    message: "Inserisci il nome della guida",
-                  },
-                ]}
-              >
-                <Input
-                  placeholder="Nome Guida"
-                  // readOnly if not manual
-                  readOnly={!isManualGuide}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16} style={{ paddingBottom: 24 }}>
-            <Col span={12}>
-              <Form.Item
-                label="Telefono Guida"
-                name="telefonoGuida"
-                rules={[{ required: false }]}
-              >
-                <Input
-                  placeholder="Telefono Guida"
-                  // readOnly if not manual
-                  readOnly={!isManualGuide}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16} style={{ paddingBottom: 24 }}>
-            <Col span={6}>
-              <Form.Item
-                label="Canale"
-                name="canaleRadio"
-                rules={[{ required: false, message: "Inserisci Canale Radio" }]}
-              >
-                <Input placeholder="Canale Radio" />
-              </Form.Item>
-            </Col>
-            <Col span={6}>
-              <Form.Item
-                label="Radioguide"
-                name="radiolineConsegnate"
-                rules={[
-                  { required: true, message: "Inserisci Numero di Radioguide" },
-                ]}
-              >
-                <InputNumber
-                  placeholder="Radioguide Consegnate"
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={4}>
-              <Form.Item
-                label="Extra"
-                name="extra"
-                rules={[
-                  { required: false, message: "Inserisci Numero di Extra" },
-                ]}
-              >
-                <InputNumber
-                  placeholder="Radio Extra"
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={6}>
-              <Form.Item
-                label="Saldo (€)"
-                name="saldo"
-                rules={[{ required: false, message: "Inserisci Saldo" }]}
-              >
-                <InputNumber
-                  placeholder="Saldo (€)"
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+      <Title level={4}>Informazioni Guida</Title>
+      <Row gutter={16} style={{ paddingBottom: 24 }}>
+        <Col span={12}>
+          <Form.Item
+            label="Nome Guida"
+            name="nomeGuida"
+            rules={[
+              { required: true, message: "Inserisci il nome della guida" },
+            ]}
+          >
+            <Input placeholder="Nome Guida" disabled={currentMode === "view"} />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item label="Telefono Guida" name="telefonoGuida">
+            <Input
+              placeholder="Telefono Guida"
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
 
-          {/* Second Row */}
-          <Title level={4}>Informazioni Ordine</Title>
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                label="Orario Consegna (Oggi)"
-                name="orarioConsegna"
-                rules={[
-                  { required: true, message: "Inserisci Orario Consegna" },
-                ]}
-              >
-                <TimePicker
-                  placeholder="Seleziona Orario Consegna"
-                  format="HH:mm"
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={16}>
-              <Form.Item
-                label="Luogo Consegna"
-                name="luogoConsegna"
-                rules={[
-                  { required: true, message: "Inserisci Luogo Consegna" },
-                ]}
-              >
-                <GooglePlacesAutocomplete
-                  initialValue=""
-                  placeholder="Inserisci Luogo Consegna"
-                  onPlaceSelect={(address) =>
-                    form.setFieldsValue({ luogoConsegna: address })
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+      <Row gutter={16} style={{ paddingBottom: 24 }}>
+        <Col span={6}>
+          <Form.Item label="Canale" name="canaleRadio">
+            <Input
+              placeholder="Canale Radio"
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={6}>
+          <Form.Item
+            label="Radioguide"
+            name="radiolineConsegnate"
+            rules={[
+              { required: true, message: "Inserisci Numero di Radioguide" },
+            ]}
+          >
+            <InputNumber
+              placeholder="Radioguide Consegnate"
+              style={{ width: "100%" }}
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={4}>
+          <Form.Item label="Extra" name="extra">
+            <InputNumber
+              placeholder="Radio Extra"
+              style={{ width: "100%" }}
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={6}>
+          <Form.Item label="Saldo (€)" name="saldo">
+            <InputNumber
+              placeholder="Saldo (€)"
+              style={{ width: "100%" }}
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
 
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item
-                label="Data e Ora Ritiro"
-                name="oraRitiro"
-                rules={[
-                  { required: false, message: "Inserisci Ora e Data Ritiro" },
-                ]}
-              >
-                <DatePicker
-                  showTime
-                  placeholder="Seleziona Ora e Data Ritiro"
-                  format="YYYY-MM-DD HH:mm"
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={16}>
-              <Form.Item
-                label="Luogo Ritiro"
-                name="luogoRitiro"
-                rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
-              >
-                <GooglePlacesAutocomplete
-                  initialValue=""
-                  placeholder="Inserisci Luogo Ritiro"
-                  onPlaceSelect={(address) =>
-                    form.setFieldsValue({ luogoRitiro: address })
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+      <Title level={4}>Informazioni Ordine</Title>
+      <Row gutter={16}>
+        <Col span={8}>
+          <Form.Item
+            label="Orario Consegna (Oggi)"
+            name="orarioConsegna"
+            rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
+          >
+            <TimePicker
+              placeholder="Seleziona Orario Consegna"
+              format="HH:mm"
+              style={{ width: "100%" }}
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={16}>
+          <Form.Item
+            label="Luogo Consegna"
+            name="luogoConsegna"
+            rules={[{ required: true, message: "Inserisci Luogo Consegna" }]}
+          >
+            <GooglePlacesAutocomplete
+              initialValue=""
+              placeholder="Inserisci Luogo Consegna"
+              onPlaceSelect={(address) =>
+                form.setFieldsValue({ luogoConsegna: address })
+              }
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
 
-          <Row gutter={16}>
-            <Col span={24}>
-              <Form.Item
-                label="Note"
-                name="note"
-                rules={[{ required: false, message: "Inserisci Note" }]}
-              >
-                <Input.TextArea placeholder="Note" />
-              </Form.Item>
-            </Col>
-          </Row>
+      <Row gutter={16}>
+        <Col span={8}>
+          <Form.Item label="Data e Ora Ritiro" name="oraRitiro">
+            <DatePicker
+              showTime
+              placeholder="Seleziona Ora e Data Ritiro"
+              format="YYYY-MM-DD HH:mm"
+              style={{ width: "100%" }}
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={16}>
+          <Form.Item label="Luogo Ritiro" name="luogoRitiro">
+            <GooglePlacesAutocomplete
+              initialValue=""
+              placeholder="Inserisci Luogo Ritiro"
+              onPlaceSelect={(address) =>
+                form.setFieldsValue({ luogoRitiro: address })
+              }
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
 
-          {/* Submit Button */}
-          <Row>
-            <Col span={24} style={{ textAlign: "right" }}>
-              <Form.Item>
-                <Button type="primary" htmlType="submit">
-                  Aggiungi Ordine
-                </Button>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Drawer>
-    </>
+      <Row gutter={16}>
+        <Col span={24}>
+          <Form.Item label="Note" name="note">
+            <Input.TextArea
+              placeholder="Note"
+              disabled={currentMode === "view"}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      {currentMode !== "view" && (
+        <FloatButton.Group style={{ insetInlineEnd: 24 }}>
+          {currentMode === "edit" ? (
+            <>
+              <FloatButton
+                type="primary"
+                icon={<SaveFilled />}
+                onClick={() => form.submit()}
+                tooltip="Aggiorna"
+              />
+              <FloatButton
+                icon={<RollbackOutlined />}
+                onClick={() => setCurrentMode("view")}
+                tooltip="Annulla"
+              />
+            </>
+          ) : (
+            <FloatButton
+              type="primary"
+              icon={<CheckOutlined />}
+              onClick={() => form.submit()}
+              tooltip="Crea Ordine"
+            />
+          )}
+        </FloatButton.Group>
+      )}
+    </Form>
+  );
+
+  return (
+    <Drawer
+      title={
+        currentMode === "create"
+          ? "Crea Ordine"
+          : currentMode === "edit"
+          ? "Modifica Ordine"
+          : "Dettagli Ordine"
+      }
+      width={720}
+      onClose={onClose}
+      open={visible}
+      bodyStyle={{ paddingBottom: 80 }}
+    >
+      {currentMode === "view" ? renderViewMode() : renderForm()}
+    </Drawer>
   );
 };
 
-export default OrderForm;
+export default OrderDrawer;

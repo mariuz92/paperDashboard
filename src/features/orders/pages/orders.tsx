@@ -1,14 +1,26 @@
+// src/pages/orders/OrdersPage.tsx
 import React, { useState, useEffect } from "react";
-import { Layout, Typography, DatePicker, Row, message } from "antd";
+import {
+  Layout,
+  Typography,
+  DatePicker,
+  Row,
+  Button,
+  message,
+  FloatButton,
+} from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { getOrders } from "../api/orderApi"; // API to fetch orders
+import { getOrders } from "../api/orderApi";
 import { IOrder } from "../../../types/interfaces";
 import { Timestamp } from "firebase/firestore";
-import OrderForm from "../components/orderForm";
+
 import OrderTable from "../components/orderTable";
+import OrderDrawer from "../components/orderForm";
 import { useDocumentTitle } from "@refinedev/react-router";
 import { CONFIG } from "../../../config/configuration";
+import { PlusOutlined } from "@ant-design/icons";
+import { saveOrder, updateOrder } from "../api/orderApi";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -16,19 +28,23 @@ const { Title } = Typography;
 export const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs()); // Default to "today"
-
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   useDocumentTitle(`Ordini | ${CONFIG.appName}`);
-  /**
-   * Fetch orders for the selected date range (start of day to end of day).
-   * Convert the dayjs date range to Firestore Timestamps.
-   */
+
+  // State for controlling the OrderDrawer
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"create" | "view">("create");
+  const [selectedOrder, setSelectedOrder] = useState<IOrder | undefined>(
+    undefined
+  );
+
+  type Mode = "create" | "view" | "edit";
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      // Convert the selected Dayjs date to JS Date, then to Firestore Timestamp.
       const startOfDay = selectedDate.startOf("day").toDate();
       const endOfDay = selectedDate.endOf("day").toDate();
 
@@ -43,8 +59,6 @@ export const OrdersPage: React.FC = () => {
       });
 
       setOrders(data);
-      // Optionally show a success message
-      // message.success(`Orders for ${selectedDate.format("DD/MM/YYYY")} loaded.`);
     } catch (error) {
       message.error("Failed to fetch orders.");
       console.error("Error fetching orders:", error);
@@ -53,9 +67,7 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  /**
-   * Sync the selected date with the "date" query parameter (e.g. ?date=YYYY-MM-DD).
-   */
+  // Sync the selected date with the query parameter
   useEffect(() => {
     const dateParam = searchParams.get("date");
     if (dateParam) {
@@ -67,26 +79,19 @@ export const OrdersPage: React.FC = () => {
         setSelectedDate(dayjs());
       }
     }
-    // If there's no ?date=..., we keep today's date by default.
   }, [searchParams]);
 
-  /**
-   * Whenever selectedDate changes, fetch orders again.
-   */
+  // Fetch orders whenever the selected date changes
   useEffect(() => {
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
-  /**
-   * Handle date picker changes and update the query param (?date=...).
-   */
+  // Handle DatePicker changes
   const onDateChange = (date: Dayjs | null) => {
     if (date) {
       setSelectedDate(date);
       navigate(`/?date=${date.format("YYYY-MM-DD")}`);
     } else {
-      // If user clears the date, revert to "today"
       const today = dayjs();
       setSelectedDate(today);
       navigate(`/?date=${today.format("YYYY-MM-DD")}`);
@@ -94,17 +99,46 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
+  // Callback for when an order is submitted from the drawer (create or edit)
+  const handleSubmit = async (orderData: Partial<IOrder>, mode: Mode) => {
+    if (mode === "create") {
+      // Create new order
+      const docId = await saveOrder(orderData as Omit<IOrder, "id">);
+      setOrders((prev) => [...prev, { ...orderData, id: docId } as IOrder]);
+    } else if (mode === "edit" && selectedOrder) {
+      // Update existing order
+      await updateOrder(selectedOrder.id as string, orderData);
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === selectedOrder.id ? { ...order, ...orderData } : order
+        )
+      );
+    }
+  };
+
+  // Open the drawer in create mode
+  const openCreateDrawer = () => {
+    setDrawerMode("create");
+    setSelectedOrder(undefined);
+    setDrawerVisible(true);
+  };
+
+  // Open the drawer in view mode (for a given order)
+  const openViewDrawer = (order: IOrder) => {
+    setDrawerMode("view");
+    setSelectedOrder(order);
+    setDrawerVisible(true);
+  };
+
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
-        <Row justify='space-between' align='middle'>
+        <Row justify="space-between" align="middle">
           <Title level={2} style={{ margin: 0 }}>
             Gestione Ordini
           </Title>
-
-          {/* DatePicker with day/month/year format */}
           <DatePicker
-            format='DD/MM/YYYY'
+            format="DD/MM/YYYY"
             style={{ width: 200 }}
             value={selectedDate}
             onChange={onDateChange}
@@ -113,19 +147,34 @@ export const OrdersPage: React.FC = () => {
       </Header>
 
       <Content>
-        {/* Form to add a new order */}
-        <OrderForm
-          addOrder={(newOrder) => setOrders((prev) => [...prev, newOrder])}
-        />
+        {/* Button to open the create order drawer */}
+        <FloatButton
+          type="primary"
+          tooltip="Aggiungi Ordine"
+          icon={<PlusOutlined />}
+          onClick={openCreateDrawer}
+        ></FloatButton>
 
-        {/* Table showing fetched orders */}
+        {/* Order table; assume it calls onRowClick(order) when a row is clicked */}
         <OrderTable
           orders={orders}
           setOrders={setOrders}
           loading={loading}
           selectedDate={selectedDate}
+          onRowClick={openViewDrawer} // You might need to extend OrderTable to support this prop.
+        />
+
+        {/* Unified OrderDrawer component */}
+        <OrderDrawer
+          visible={drawerVisible}
+          mode={drawerMode}
+          order={selectedOrder}
+          onClose={() => setDrawerVisible(false)}
+          onSubmit={handleSubmit}
         />
       </Content>
     </Layout>
   );
 };
+
+export default OrdersPage;

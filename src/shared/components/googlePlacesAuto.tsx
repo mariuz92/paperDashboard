@@ -4,6 +4,7 @@ import { Input } from "antd";
 import { EUROPE_BOUNDS, GOOGLE_MAPS_API_KEY } from "../utils/googleMaps";
 
 interface AutocompleteProps {
+  disabled?: boolean;
   placeholder: string;
   onPlaceSelect: (address: string) => void;
   initialValue: string; // default to empty string if not provided
@@ -12,6 +13,7 @@ interface AutocompleteProps {
 const GooglePlacesAutocomplete: React.FC<AutocompleteProps> = ({
   placeholder,
   onPlaceSelect,
+  disabled,
   initialValue = "", // default to empty string if not provided
 }) => {
   const [searchBox, setSearchBox] =
@@ -40,7 +42,7 @@ const GooglePlacesAutocomplete: React.FC<AutocompleteProps> = ({
     <LoadScript
       googleMapsApiKey={GOOGLE_MAPS_API_KEY}
       libraries={["places", "maps"]}
-      language='it'
+      language="it"
     >
       <StandaloneSearchBox
         onLoad={(ref) => setSearchBox(ref)}

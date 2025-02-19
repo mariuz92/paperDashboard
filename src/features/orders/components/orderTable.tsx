@@ -13,6 +13,8 @@ import {
   Popconfirm,
   Space,
   Typography,
+  Drawer,
+  Row,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { FormInstance, MenuProps } from "antd";
@@ -23,16 +25,12 @@ import { updateOrder, deleteOrder } from "../api/orderApi";
 import {
   EditOutlined,
   DeleteOutlined,
-  ShareAltOutlined,
-  SaveOutlined,
-  CloseOutlined,
   MoreOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
-  SwapRightOutlined,
-  SwapOutlined,
-  IssuesCloseOutlined,
+  ShareAltOutlined,
   UserAddOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -85,6 +83,11 @@ interface OrderTableProps {
   setOrders: React.Dispatch<React.SetStateAction<IOrder[]>>;
   loading: boolean;
   selectedDate: Dayjs;
+  /**
+   * onRowClick will be called when a row or its menu “Modifica” action is clicked.
+   * The parent component can then open the unified OrderDrawer in either view or edit mode.
+   */
+  onRowClick?: (order: IOrder, mode?: "view" | "edit") => void;
 }
 
 /** Convert data to Excel sheet */
@@ -278,14 +281,10 @@ const OrderTable: React.FC<OrderTableProps> = ({
   setOrders,
   loading,
   selectedDate,
+  onRowClick,
 }) => {
-  const [form] = Form.useForm();
-  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-  const [riders, setRiders] = useState<IUser[]>([]);
-
-  const isEditing = (index: number) => index === editingRowIndex;
-  const navigate = useNavigate(); // Initialize useNavigate
-
+  const navigate = useNavigate();
+  const [riders, setRiders] = useState<any[]>([]);
   useEffect(() => {
     const fetchRiders = async () => {
       try {
@@ -303,75 +302,11 @@ const OrderTable: React.FC<OrderTableProps> = ({
     navigate("/Collaboratori"); // Adjust the path as per your routing setup
   };
 
-  /** Enter edit mode for row */
-  const handleEdit = (index: number) => {
-    const rowData = { ...orders[index] };
-
-    // Convert orarioConsegna and oraRitiro to Dayjs if they exist
-    if (rowData.orarioConsegna) {
-      rowData.orarioConsegna = dayjsValue(rowData.orarioConsegna);
-    }
-    if (rowData.oraRitiro) {
-      rowData.oraRitiro = dayjsValue(rowData.oraRitiro);
-    }
-
-    form.setFieldsValue(rowData);
-    setEditingRowIndex(index);
-  };
-
-  /** Cancel editing */
-  const handleCancel = () => {
-    setEditingRowIndex(null);
-  };
-
   /** Helper: Format a `Timestamp|string` nicely for display in European format. */
   function formatDateCell(value?: Timestamp | string) {
     const d = dayjsValue(value);
     return d.isValid() ? d.format("DD/MM/YYYY HH:mm") : "";
   }
-
-  /** Save updated row */
-  const handleSave = async (index: number) => {
-    try {
-      const updatedRow = (await form.validateFields()) as Partial<IOrder>;
-
-      // 1. If orarioConsegna is a Dayjs, convert it to a Firestore Timestamp.
-      if (dayjs.isDayjs(updatedRow.orarioConsegna)) {
-        const dayjsValue = updatedRow.orarioConsegna as Dayjs;
-        updatedRow.orarioConsegna = Timestamp.fromDate(dayjsValue.toDate());
-      }
-
-      // 2. If oraRitiro is a Dayjs, convert it to a Firestore Timestamp.
-      if (dayjs.isDayjs(updatedRow.oraRitiro)) {
-        const dayjsValue = updatedRow.oraRitiro as Dayjs;
-        updatedRow.oraRitiro = Timestamp.fromDate(dayjsValue.toDate());
-      }
-
-      // Remove any undefined fields
-      Object.entries(updatedRow).forEach(([k, v]) => {
-        if (v === undefined) {
-          delete updatedRow[k as keyof IOrder];
-        }
-      });
-
-      // Merge updated fields into the existing order
-      const updatedOrders = [...orders];
-      const mergedOrder = { ...updatedOrders[index], ...updatedRow };
-
-      // Update Firestore
-      await updateOrder(mergedOrder.id as string, updatedRow);
-
-      // Update local state
-      updatedOrders[index] = mergedOrder;
-      setOrders(updatedOrders);
-
-      setEditingRowIndex(null);
-      message.success("Ordine salvato con successo!");
-    } catch (error) {
-      console.error("Error saving row:", error);
-      message.error("Failed to save the order.");
-    }
-  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -442,11 +377,12 @@ Grazie per la collaborazione! 💪`;
     window.open(whatsappLink, "_blank");
   };
 
-  /** Build the menu items (Edit, Share, Delete) */
-  const getMenuItems = (index: number): MenuProps["items"] => [
+  // Build the menu items for each row.
+  // For "Modifica" we delegate to the parent's onRowClick callback (in "edit" mode).
+  const getMenuItems = (order: IOrder, index: number) => [
     {
       label: (
-        <span onClick={() => handleEdit(index)}>
+        <span onClick={() => onRowClick && onRowClick(order, "edit")}>
           <EditOutlined /> Modifica
         </span>
       ),
@@ -480,12 +416,12 @@ Grazie per la collaborazione! 💪`;
     },
     {
       type: "divider",
-    },
+    } as const,
     {
       label: (
         <Popconfirm
           title="Sei sicuro di voler eliminare questo ordine?"
-          onConfirm={() => orders[index].id && handleDelete(orders[index].id!)}
+          onConfirm={() => order.id && handleDelete(order.id)}
           okText="Sì"
           cancelText="No"
         >
@@ -499,7 +435,7 @@ Grazie per la collaborazione! 💪`;
   ];
 
   // Build columns
-  const columns: EditableColumnType<IOrder>[] = [
+  const columns: ColumnType<IOrder>[] = [
     {
       title: "Ordine",
       key: "tipoOrdine",
@@ -511,10 +447,8 @@ Grazie per la collaborazione! 💪`;
       title: "Nome Guida",
       dataIndex: "nomeGuida",
       key: "nomeGuida",
-      editable: true,
-      required: true,
       fixed: "left",
-      width: 200,
+      width: 180,
       sorter: (a, b) => (a.nomeGuida || "").localeCompare(b.nomeGuida || ""),
       filterDropdown: ({
         setSelectedKeys,
@@ -567,8 +501,7 @@ Grazie per la collaborazione! 💪`;
       title: "Status",
       dataIndex: "status",
       key: "status",
-      editable: true,
-      required: true,
+      width: 120,
       sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
       filters: [
         { text: "Presa in Carico", value: "Presa in Carico" },
@@ -590,18 +523,12 @@ Grazie per la collaborazione! 💪`;
         return <Tag color={colors[status]}>{status}</Tag>;
       },
     },
-    {
-      title: "Canale Radio",
-      dataIndex: "canaleRadio",
-      key: "canaleRadio",
-      editable: true,
-      width: 150,
-    },
+
     {
       title: "Orario Consegna",
       dataIndex: "orarioConsegna",
       key: "orarioConsegna",
-      editable: true,
+      width: 150,
       sorter: (a, b) =>
         dayjsValue(a.orarioConsegna).valueOf() -
         dayjsValue(b.orarioConsegna).valueOf(),
@@ -611,7 +538,7 @@ Grazie per la collaborazione! 💪`;
       title: "Luogo Consegna",
       dataIndex: "luogoConsegna",
       key: "luogoConsegna",
-      editable: true,
+      width: 160,
       sorter: (a, b) =>
         (a.luogoConsegna || "").localeCompare(b.luogoConsegna || ""),
       filterDropdown: ({
@@ -661,7 +588,7 @@ Grazie per la collaborazione! 💪`;
       title: "Ora Ritiro",
       dataIndex: "oraRitiro",
       key: "oraRitiro",
-      editable: true,
+      width: 150,
       sorter: (a, b) =>
         dayjsValue(a.oraRitiro).valueOf() - dayjsValue(b.oraRitiro).valueOf(),
       render: (val) => formatDateCell(val),
@@ -670,7 +597,7 @@ Grazie per la collaborazione! 💪`;
       title: "Luogo Ritiro",
       dataIndex: "luogoRitiro",
       key: "luogoRitiro",
-      editable: true,
+      width: 160,
       sorter: (a, b) =>
         (a.luogoRitiro || "").localeCompare(b.luogoRitiro || ""),
       filterDropdown: ({
@@ -717,122 +644,38 @@ Grazie per la collaborazione! 💪`;
           : false,
     },
     {
-      title: "Radioguide",
-      dataIndex: "radiolineConsegnate",
-      key: "radiolineConsegnate",
-      editable: true,
-      width: 100,
-      render: (val) => val ?? 0,
-    },
-    {
-      title: "Extra",
-      dataIndex: "extra",
-      key: "extra",
-      editable: true,
-      width: 100,
-      render: (val) => val ?? 0,
-    },
-    {
-      title: "Saldo (€)",
-      dataIndex: "saldo",
-      key: "saldo",
-      editable: true,
-      width: 100,
-      render: (val) => `€${(val ?? 0).toFixed(2)}`,
-    },
-    {
-      title: "Note",
-      dataIndex: "note",
-      key: "note",
-      editable: true,
-      render: (val) => val || "Nessuna nota",
-    },
-    {
-      title: "Radio Perse",
-      dataIndex: "lost",
-      key: "lost",
-      editable: true,
-      width: 130,
-      render: (val) => val ?? 0,
-    },
-    {
       title: "Azione",
       key: "action",
       fixed: "right",
       width: 120,
-      render: (_, __, index) => {
-        const editing = isEditing(index);
-        return editing ? (
-          <div style={{ display: "flex", justifyContent: "space-evenly" }}>
+      render: (_, record) => (
+        <Row justify="center">
+          <Button
+            type="text"
+            shape="circle"
+            onClick={() => onRowClick && onRowClick(record, "view")}
+          >
+            <EyeOutlined style={{ marginRight: 4 }} />
+          </Button>
+          <Dropdown
+            menu={{ items: getMenuItems(record, orders.indexOf(record)) }}
+            trigger={["click"]}
+          >
             <Button
-              type="default"
-              onClick={() => handleSave(index)}
-              icon={<SaveOutlined />}
-            />
-            <Button
-              type="text"
-              onClick={handleCancel}
-              icon={<CloseOutlined />}
-            />
-          </div>
-        ) : (
-          <Dropdown menu={{ items: getMenuItems(index) }} trigger={["click"]}>
-            <Button
+              shape="circle"
               type="text"
               style={{ display: "flex", alignItems: "center" }}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
             >
-              Menu <MoreOutlined />
+              <MoreOutlined />
             </Button>
           </Dropdown>
-        );
-      },
+        </Row>
+      ),
     },
   ];
-
-  // Merge columns for editable
-  const mergedColumns: ColumnsType<IOrder> = columns.map((col) => {
-    if (!col.editable) {
-      return col as ColumnType<IOrder>;
-    }
-
-    return {
-      ...col,
-      onCell: (record: IOrder, index?: number) => {
-        let inputType: "text" | "number" | "select" | "date" | "places" =
-          "text";
-        // Decide the input type based on dataIndex
-        if (col.dataIndex === "status") {
-          inputType = "select";
-        } else if (
-          ["saldo", "extra", "radiolineConsegnate"].includes(
-            col.dataIndex as string
-          )
-        ) {
-          inputType = "number";
-        } else if (
-          col.dataIndex === "orarioConsegna" ||
-          col.dataIndex === "oraRitiro"
-        ) {
-          inputType = "date";
-        } else if (
-          col.dataIndex === "luogoConsegna" ||
-          col.dataIndex === "luogoRitiro"
-        ) {
-          inputType = "places";
-        }
-
-        return {
-          record,
-          col,
-          dataIndex: col.dataIndex!,
-          title: String(col.title),
-          editing: isEditing(index!),
-          inputType,
-          form,
-        };
-      },
-    } as ColumnType<IOrder>;
-  });
 
   return (
     <>
@@ -854,59 +697,14 @@ Grazie per la collaborazione! 💪`;
           Esporta in PDF
         </Button>
       </Space>
-      <Form form={form} component={false}>
-        <Table<IOrder>
-          components={{
-            body: {
-              cell: (props: JSX.IntrinsicAttributes & EditableCellProps) => (
-                <EditableCell {...props} />
-              ),
-            },
-          }}
-          // rowClassName={(record) => {
-          //   const selectedDateFormatted = selectedDate;
-
-          //   // Safely check if orarioConsegna and oraRitiro exist before conversion
-          //   const orarioConsegna = record.orarioConsegna
-          //     ? dayjs(record.orarioConsegna.toDate())
-          //     : null;
-          //   const oraRitiro = record.oraRitiro
-          //     ? dayjs(record.oraRitiro.toDate())
-          //     : null;
-
-          //   console.log("Selected Date:", selectedDateFormatted);
-          //   console.log("Orario Consegna:", orarioConsegna);
-          //   console.log("Ora Ritiro:", oraRitiro);
-
-          //   // If both consegna and ritiro match the selected date, do not highlight
-          //   if (
-          //     selectedDateFormatted === orarioConsegna &&
-          //     selectedDateFormatted === oraRitiro
-          //   ) {
-          //     console.log("No highlight - Both dates match selected date.");
-          //     return "";
-          //   }
-
-          //   // If the selected date differs from either consegna or ritiro, highlight
-          //   if (
-          //     selectedDateFormatted !== orarioConsegna ||
-          //     selectedDateFormatted == oraRitiro
-          //   ) {
-          //     console.log("Highlight row - Date mismatch found.");
-          //     return "highlight-row";
-          //   }
-
-          //   return "";
-          // }}
-          // virtual
-          bordered
-          dataSource={orders}
-          columns={mergedColumns}
-          rowKey={(record) => record.id as string}
-          loading={loading}
-          scroll={{ x: 3000, y: 4500 }} // Example large scroll area
-        />
-      </Form>
+      <Table<IOrder>
+        bordered
+        dataSource={orders}
+        columns={columns}
+        rowKey={(record) => record.id as string}
+        loading={loading}
+        scroll={{ x: 800 }}
+      />
     </>
   );
 };
