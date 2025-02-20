@@ -59,29 +59,35 @@ const UserForm: React.FC<UserFormProps> = ({
       return;
     }
 
-    const otp = generateOTP();
     setIsLoading(true);
 
     try {
-      // Save invitation in Firestore
-      await storeInvitation({ email, tenantId, otp });
+      if (role !== "guide") {
+        // Generate OTP and process invitation only if role is NOT guide
+        const otp = generateOTP();
 
-      // Send invitation email
-      await sendInvitationEmail(email, otp, tenantId);
+        // Save invitation in Firestore
+        await storeInvitation({ email, tenantId, otp });
 
+        // Send invitation email
+        await sendInvitationEmail(email, otp, tenantId);
+
+        openNotification(
+          "success",
+          "Invito Inviato",
+          `L'invito è stato inviato con successo a ${email}.`
+        );
+      }
+
+      // Add the user regardless of the role
       addUser({
         ...values,
         createdAt: new Date(),
         lastLoginAt: new Date(),
         emailVerified: false,
         disabled: false,
-        role: role || "rider",
+        role: role,
       });
-      openNotification(
-        "success",
-        "Invito Inviato",
-        `L'invito è stato inviato con successo a ${email}.`
-      );
 
       form.resetFields();
       setDrawerVisible(false);
@@ -151,30 +157,29 @@ const UserForm: React.FC<UserFormProps> = ({
     <>
       <FloatButton
         icon={<UserAddOutlined />}
-        type='primary'
+        type="primary"
         onClick={showDrawer}
         style={{ position: "fixed", bottom: 24, right: 24 }}
       />
       <Drawer
-        title={userToEdit ? "Modifica Utente" : "Invia Invito"}
+        title={userToEdit ? "Modifica Utente" : "Aggiungi Collaboratore"}
         width={360}
         onClose={closeDrawer}
         open={drawerVisible}
-        bodyStyle={{ paddingBottom: 80 }}
       >
-        <Form form={form} layout='vertical' onFinish={onFinish}>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
           <Form.Item
-            label='Nome'
-            name='displayName'
+            label="Nome"
+            name="displayName"
             rules={[
               { required: true, message: "Per favore inserisci il nome" },
             ]}
           >
-            <Input placeholder='Nome' />
+            <Input placeholder="Nome" />
           </Form.Item>
           <Form.Item
-            label='Email'
-            name='email'
+            label="Email"
+            name="email"
             rules={[
               { required: true, message: "Per favore inserisci l'email" },
               {
@@ -183,11 +188,11 @@ const UserForm: React.FC<UserFormProps> = ({
               },
             ]}
           >
-            <Input placeholder='Email' />
+            <Input placeholder="Email" />
           </Form.Item>
           <Form.Item
-            label='Numero di Telefono'
-            name='phoneNumber'
+            label="Numero di Telefono"
+            name="phoneNumber"
             rules={[
               {
                 required: true,
@@ -195,28 +200,26 @@ const UserForm: React.FC<UserFormProps> = ({
               },
             ]}
           >
-            <Input placeholder='Numero di Telefono' />
+            <Input placeholder="Numero di Telefono" />
           </Form.Item>
 
-          {userToEdit && (
-            <Form.Item
-              label='Ruolo'
-              name='role'
-              rules={[
-                { required: true, message: "Per favore seleziona il ruolo" },
-              ]}
-            >
-              <Select placeholder='Seleziona un ruolo'>
-                <Select.Option value='admin'>Admin</Select.Option>
-                <Select.Option value='rider'>Rider</Select.Option>
-                <Select.Option value='guide'>Guida</Select.Option>
-              </Select>
-            </Form.Item>
-          )}
+          <Form.Item
+            label="Ruolo"
+            name="role"
+            rules={[
+              { required: true, message: "Per favore seleziona il ruolo" },
+            ]}
+          >
+            <Select placeholder="Seleziona un ruolo">
+              <Select.Option value="admin">Admin</Select.Option>
+              <Select.Option value="rider">Rider</Select.Option>
+              <Select.Option value="guide">Guida</Select.Option>
+            </Select>
+          </Form.Item>
 
           <Form.Item>
-            <Button type='primary' htmlType='submit' loading={isLoading}>
-              {userToEdit ? "Modifica Utente" : "Invia Invito"}
+            <Button type="primary" htmlType="submit" loading={isLoading}>
+              {userToEdit ? "Modifica Utente" : "Invita"}
             </Button>
           </Form.Item>
         </Form>

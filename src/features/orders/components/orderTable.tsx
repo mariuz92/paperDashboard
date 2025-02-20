@@ -141,15 +141,15 @@ const EditableCell: React.FC<EditableCellProps> = ({
       case "select":
         return (
           <Select>
-            <Select.Option value='Presa in Carico'>
+            <Select.Option value="Presa in Carico">
               Presa in Carico
             </Select.Option>
-            <Select.Option value='In Consegna'>In Consegna</Select.Option>
-            <Select.Option value='Consegnato'>Consegnato</Select.Option>
-            <Select.Option value='Attesa ritiro'>Attesa ritiro</Select.Option>
-            <Select.Option value='In Ritiro'>In Ritiro</Select.Option>
-            <Select.Option value='Ritirato'>Ritirato</Select.Option>
-            <Select.Option value='Annullato'>Annullato</Select.Option>
+            <Select.Option value="In Consegna">In Consegna</Select.Option>
+            <Select.Option value="Consegnato">Consegnato</Select.Option>
+            <Select.Option value="Attesa ritiro">Attesa ritiro</Select.Option>
+            <Select.Option value="In Ritiro">In Ritiro</Select.Option>
+            <Select.Option value="Ritirato">Ritirato</Select.Option>
+            <Select.Option value="Annullato">Annullato</Select.Option>
           </Select>
         );
       case "number":
@@ -159,7 +159,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
           <DatePicker
             showTime
             style={{ width: "100%" }}
-            format='YYYY-MM-DD hh-mm'
+            format="YYYY-MM-DD hh-mm"
           />
         );
       case "places":
@@ -209,7 +209,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
   // 1) If no canaleRadio => New Order
   if (!order.canaleRadio) {
     return (
-      <span title='Nuovo Ordine'>
+      <span title="Nuovo Ordine">
         <Typography.Text>Nuovo</Typography.Text>
       </span>
     );
@@ -225,7 +225,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     consegnaDay.isSame(ritiroDay, "day")
   ) {
     return (
-      <span title='Consegna e Ritiro lo Stesso Giorno'>
+      <span title="Consegna e Ritiro lo Stesso Giorno">
         <Typography.Text>Consegna & Ritiro</Typography.Text>
       </span>
     );
@@ -238,7 +238,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title='Consegna in Questa Data'>
+      <span title="Consegna in Questa Data">
         <Typography.Text>Consegna</Typography.Text>
       </span>
     );
@@ -251,7 +251,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title='Ritiro in Questa Data'>
+      <span title="Ritiro in Questa Data">
         {/* If you prefer to have an icon, uncomment the next line and ensure the icon is imported */}
         {/* <SwapLeftOutlined style={{ color: "red", marginRight: 4 }} /> */}
         <Typography.Text>Ritiro</Typography.Text>
@@ -308,16 +308,64 @@ const OrderTable: React.FC<OrderTableProps> = ({
     }
   };
 
-  const handleShare = (rider: IUser, index: number) => {
+  const handleShare = async (rider: IUser, index: number) => {
     const order = orders[index];
+    const now = dayjs();
+    const toleranceMinutes = 30;
+
+    // Initialize new status and an object to hold updates
+    let newStatus: IOrderStatus = order.status;
+    let orderUpdates: Partial<IOrder> = {};
+
+    // Check if delivery time exists and is already passed
+    if (order.orarioConsegna) {
+      const deliveryTime = dayjs(
+        order.orarioConsegna.toDate
+          ? order.orarioConsegna.toDate()
+          : order.orarioConsegna
+      );
+      if (now.isAfter(deliveryTime)) {
+        newStatus = "In Consegna";
+        orderUpdates.consegnatoDa = rider.displayName;
+      }
+    }
+
+    // Otherwise, check the pickup time condition
+    if (order.oraRitiro && newStatus !== "In Consegna") {
+      const pickupTime = dayjs(
+        order.oraRitiro.toDate ? order.oraRitiro.toDate() : order.oraRitiro
+      );
+      // If the current time is within ±toleranceMinutes of the pickup time...
+      if (Math.abs(pickupTime.diff(now, "minute")) <= toleranceMinutes) {
+        newStatus = "In Ritiro";
+        orderUpdates.ritiratoDa = rider.displayName;
+      }
+    }
+
+    // Build the updated order object
+    const updatedOrder: IOrder = {
+      ...order,
+      ...orderUpdates,
+      status: newStatus,
+    };
+
+    // Update the order (assuming updateOrder is an async function)
+    try {
+      await updateOrder(order.id as string, updatedOrder);
+      message.success("Ordine aggiornato con successo");
+    } catch (error) {
+      message.error("Failed to update order");
+    }
+
+    // Now build the share URL and message as before
     const encodedRider = encodeURIComponent(rider.id || "");
     const url = `${window.location.origin}/rider/${order.id}?riderId=${encodedRider}`;
 
-    // Extract short address (optional: modify if you have a structured address)
+    // Helper: Extract a short address from a full address string
     const shortAddress = (address: string | undefined) =>
-      address ? address.split(",")[0] : "N/A"; // Takes only the first part of the address
+      address ? address.split(",")[0] : "N/A";
 
-    // Generate Google Maps directions link for a smooth navigation experience
+    // Generate Google Maps directions links for delivery and pickup
     const googleMapsConsegna = order.luogoConsegna
       ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
           order.luogoConsegna
@@ -330,7 +378,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
         )}`
       : "N/A";
 
-    // Construct the improved WhatsApp message
+    // Construct the WhatsApp message with order details and updated status
     const shareMessage = `🚀 *Ciao ${rider.displayName}!* 
 
 📦 *Nuovo ordine assegnato a te!*
@@ -349,7 +397,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
 🎧 *Radioguide Consegnate:* ${order.radioguideConsegnate ?? 0}
 ➕ *Extra:* ${order.extra ?? 0}
 💰 *Saldo:* €${(order.saldo ?? 0).toFixed(2)}
-📄 *Stato:* ${order.status || "N/A"}
+📄 *Stato:* ${newStatus || "N/A"}
 📝 *Note:* ${order.note || "Nessuna nota"}
 -----------------------------------
 
@@ -357,7 +405,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
 Grazie per la collaborazione! 💪`;
 
-    // Encode message and generate WhatsApp link
+    // Encode the message and generate the WhatsApp link
     const encodedMessage = encodeURIComponent(shareMessage);
     const phoneNumber = rider.phoneNumber?.replace(/\D/g, "");
     const whatsappLink = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
@@ -408,10 +456,10 @@ Grazie per la collaborazione! 💪`;
     {
       label: (
         <Popconfirm
-          title='Sei sicuro di voler eliminare questo ordine?'
+          title="Sei sicuro di voler eliminare questo ordine?"
           onConfirm={() => order.id && handleDelete(order.id)}
-          okText='Sì'
-          cancelText='No'
+          okText="Sì"
+          cancelText="No"
         >
           <span>
             <DeleteOutlined /> Elimina
@@ -446,7 +494,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder='Cerca Nome Guida'
+            placeholder="Cerca Nome Guida"
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -457,9 +505,9 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type='primary'
+              type="primary"
               onClick={() => confirm()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Cerca
@@ -470,7 +518,7 @@ Grazie per la collaborazione! 💪`;
                 setSelectedKeys([]);
                 confirm();
               }}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Reset
@@ -537,7 +585,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder='Cerca Luogo Consegna'
+            placeholder="Cerca Luogo Consegna"
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -548,16 +596,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type='primary'
+              type="primary"
               onClick={() => confirm()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Reset
@@ -596,7 +644,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder='Cerca Luogo Ritiro'
+            placeholder="Cerca Luogo Ritiro"
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -607,16 +655,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type='primary'
+              type="primary"
               onClick={() => confirm()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size='small'
+              size="small"
               style={{ width: 90 }}
             >
               Reset
@@ -637,10 +685,10 @@ Grazie per la collaborazione! 💪`;
       fixed: "right",
       width: 120,
       render: (_, record) => (
-        <Row justify='center'>
+        <Row justify="center">
           <Button
-            type='text'
-            shape='circle'
+            type="text"
+            shape="circle"
             onClick={() => onRowClick && onRowClick(record, "view")}
           >
             <EyeOutlined style={{ marginRight: 4 }} />
@@ -650,8 +698,8 @@ Grazie per la collaborazione! 💪`;
             trigger={["click"]}
           >
             <Button
-              shape='circle'
-              type='text'
+              shape="circle"
+              type="text"
               style={{ display: "flex", alignItems: "center" }}
             >
               <MoreOutlined />
@@ -670,7 +718,7 @@ Grazie per la collaborazione! 💪`;
         <Button
           icon={<FilePdfOutlined />}
           onClick={() => exportToPDF(orders)}
-          type='primary'
+          type="primary"
         >
           Esporta PDF
         </Button>
@@ -682,7 +730,7 @@ Grazie per la collaborazione! 💪`;
         columns={columns}
         rowKey={(record) => record.id as string}
         loading={loading}
-        tableLayout='fixed'
+        tableLayout="fixed"
         scroll={{ x: 1200, y: 2000 }}
       />
     </>

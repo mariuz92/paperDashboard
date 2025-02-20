@@ -75,24 +75,70 @@ const RiderUpdatePage: React.FC = () => {
   const onFinish = async (values: Record<string, any>) => {
     if (!order) return;
 
-    // Append the rider's name to the note
-    const newNote = `Ordine per ${values.nomeGuida}: ${values.note}`;
-    const updatedNote = order.note ? `${order.note}\n${newNote}` : newNote;
+    const now = dayjs();
+    const toleranceMinutes = 30; // tolerance for delivery status
 
-    // Convert Day.js objects to Firestore Timestamps (if provided)
+    // Parse delivery time if available (from new values or existing order)
+    const deliveryTime = values.orarioConsegna
+      ? dayjs(values.orarioConsegna.toDate())
+      : order.orarioConsegna
+      ? dayjs(
+          order.orarioConsegna.toDate
+            ? order.orarioConsegna.toDate()
+            : order.orarioConsegna
+        )
+      : null;
+
+    // Parse pickup time (oraRitiro) if available (from new values or existing order)
+    const updatedPickupTime = values.oraRitiro
+      ? dayjs(values.oraRitiro.toDate())
+      : order.oraRitiro
+      ? dayjs(
+          order.oraRitiro.toDate ? order.oraRitiro.toDate() : order.oraRitiro
+        )
+      : null;
+    // Pickup location from new values or existing order
+    const updatedPickupLocation = values.luogoRitiro || order.luogoRitiro;
+
+    let newStatus: IOrderStatus = order.status;
+
+    // If pickup information is provided or already exists
+    if (updatedPickupTime && updatedPickupLocation) {
+      // If the current time is after the scheduled pickup time,
+      // mark the order as "Ritirato" regardless of the difference.
+      if (now.isAfter(updatedPickupTime)) {
+        newStatus = "Ritirato";
+      } else {
+        newStatus = "Attesa ritiro";
+      }
+    }
+    // If no pickup info is available, use the delivery time (with tolerance) for "Consegnato"
+    else if (deliveryTime) {
+      if (
+        now.isAfter(deliveryTime.subtract(toleranceMinutes, "minute")) &&
+        now.isBefore(deliveryTime.add(toleranceMinutes, "minute"))
+      ) {
+        newStatus = "Consegnato";
+      }
+    }
+
+    // Build the Firestore Timestamps for any updated fields
     const orarioConsegnaTimestamp = values.orarioConsegna
       ? Timestamp.fromDate(values.orarioConsegna.toDate())
-      : null;
+      : order.orarioConsegna;
     const oraRitiroTimestamp = values.oraRitiro
       ? Timestamp.fromDate(values.oraRitiro.toDate())
-      : null;
+      : order.oraRitiro;
 
-    // Build updated order
+    // Preserve or update the note as needed
+    const updatedNote = order.note ?? "";
+
+    // Build the updated order object
     const updatedOrder: IOrder = {
       ...order,
       ...values,
       note: updatedNote,
-      status: "Ritirato" as IOrderStatus,
+      status: newStatus,
       orarioConsegna: orarioConsegnaTimestamp,
       oraRitiro: oraRitiroTimestamp,
     };
@@ -106,54 +152,53 @@ const RiderUpdatePage: React.FC = () => {
   };
 
   return (
-    <Form form={form} layout='vertical' onFinish={onFinish}>
+    <Form form={form} layout="vertical" onFinish={onFinish}>
       <Title level={4}>Informazioni Guida</Title>
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Form.Item
-            label='Nome Guida / Gruppo'
-            name='nomeGuida'
+            label="Nome Guida / Gruppo"
+            name="nomeGuida"
             rules={[{ required: true, message: "Inserisci Nome Guida" }]}
           >
-            <Input disabled placeholder='Nome Guida' />
+            <Input disabled placeholder="Nome Guida" />
           </Form.Item>
         </Col>
         <Col xs={24} md={4}>
           <Form.Item
-            label='Canale Radio'
-            name='canaleRadio'
+            label="Canale Radio"
+            name="canaleRadio"
             rules={[{ required: false }]}
           >
-            <Input placeholder='Canale Radio' />
+            <Input disabled placeholder="Canale Radio" />
           </Form.Item>
         </Col>
         <Col xs={24} md={4}>
           <Form.Item
-            label='Radioline'
-            name='radiolineConsegnate'
+            label="Radioguide"
+            name="radioguideConsegnate"
             rules={[
-              { required: true, message: "Inserisci Numero di Radioline" },
+              { required: true, message: "Inserisci Numero di Radioguide" },
             ]}
           >
             <InputNumber
-              disabled
-              placeholder='Radioline Consegnate'
+              placeholder="Radioguide Consegnate"
               style={{ width: "100%" }}
             />
           </Form.Item>
         </Col>
         <Col xs={24} md={4}>
-          <Form.Item label='Extra' name='extra' rules={[{ required: false }]}>
-            <InputNumber placeholder='Radio Extra' style={{ width: "100%" }} />
+          <Form.Item label="Extra" name="extra" rules={[{ required: false }]}>
+            <InputNumber placeholder="Radio Extra" style={{ width: "100%" }} />
           </Form.Item>
         </Col>
         <Col xs={24} md={4}>
           <Form.Item
-            label='Saldo (€)'
-            name='saldo'
+            label="Saldo (€)"
+            name="saldo"
             rules={[{ required: false }]}
           >
-            <InputNumber placeholder='Saldo (€)' style={{ width: "100%" }} />
+            <InputNumber placeholder="Saldo (€)" style={{ width: "100%" }} />
           </Form.Item>
         </Col>
       </Row>
@@ -162,26 +207,26 @@ const RiderUpdatePage: React.FC = () => {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Form.Item
-            label='Orario Consegna'
-            name='orarioConsegna'
+            label="Orario Consegna"
+            name="orarioConsegna"
             rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
           >
             <TimePicker
-              placeholder='Seleziona Orario Consegna'
-              format='HH:mm'
+              placeholder="Seleziona Orario Consegna"
+              format="HH:mm"
               style={{ width: "100%" }}
             />
           </Form.Item>
         </Col>
         <Col xs={24} md={12}>
           <Form.Item
-            label='Luogo Consegna'
-            name='luogoConsegna'
+            label="Luogo Consegna"
+            name="luogoConsegna"
             rules={[{ required: false }]}
           >
             <GooglePlacesAutocomplete
               initialValue={form.getFieldValue("luogoConsegna") ?? ""}
-              placeholder='Inserisci Luogo Consegna'
+              placeholder="Inserisci Luogo Consegna"
               onPlaceSelect={(address) =>
                 form.setFieldsValue({ luogoConsegna: address })
               }
@@ -194,27 +239,29 @@ const RiderUpdatePage: React.FC = () => {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Form.Item
-            label='Ora e Data Ritiro'
-            name='oraRitiro'
-            rules={[{ required: true, message: "Inserisci Ora e Data Ritiro" }]}
+            label="Ora e Data Ritiro"
+            name="oraRitiro"
+            rules={[
+              { required: false, message: "Inserisci Ora e Data Ritiro" },
+            ]}
           >
             <DatePicker
               showTime
-              placeholder='Seleziona Ora e Data Ritiro'
-              format='YYYY-MM-DD HH:mm'
+              placeholder="Seleziona Ora e Data Ritiro"
+              format="YYYY-MM-DD HH:mm"
               style={{ width: "100%" }}
             />
           </Form.Item>
         </Col>
         <Col xs={24} md={12}>
           <Form.Item
-            label='Luogo Ritiro'
-            name='luogoRitiro'
-            rules={[{ required: true, message: "Inserisci Luogo Ritiro" }]}
+            label="Luogo Ritiro"
+            name="luogoRitiro"
+            rules={[{ required: false, message: "Inserisci Luogo Ritiro" }]}
           >
             <GooglePlacesAutocomplete
               initialValue={form.getFieldValue("luogoRitiro") ?? ""}
-              placeholder='Inserisci Luogo Ritiro'
+              placeholder="Inserisci Luogo Ritiro"
               onPlaceSelect={(address) =>
                 form.setFieldsValue({ luogoRitiro: address })
               }
@@ -225,15 +272,15 @@ const RiderUpdatePage: React.FC = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24}>
-          <Form.Item label='Note' name='note'>
-            <TextArea placeholder='Note' />
+          <Form.Item label="Note" name="note">
+            <TextArea placeholder="Note" />
           </Form.Item>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={6}>
-          <Form.Item label='Radio Smarrite ?'>
+          <Form.Item label="Radio Smarrite ?">
             <Switch
               checked={showRadioSmarrite}
               onChange={setShowRadioSmarrite}
@@ -243,8 +290,8 @@ const RiderUpdatePage: React.FC = () => {
         {showRadioSmarrite && (
           <Col xs={24} md={10}>
             <Form.Item
-              label='Numero di Radio Smarrite'
-              name='radioSmarrite'
+              label="Numero di Radio Smarrite"
+              name="radioSmarrite"
               rules={[
                 {
                   required: showRadioSmarrite,
@@ -253,7 +300,7 @@ const RiderUpdatePage: React.FC = () => {
               ]}
             >
               <InputNumber
-                placeholder='Numero di Radio Smarrite'
+                placeholder="Numero di Radio Smarrite"
                 style={{ width: "100%" }}
               />
             </Form.Item>
@@ -264,7 +311,7 @@ const RiderUpdatePage: React.FC = () => {
       <Row>
         <Col xs={24} style={{ textAlign: "right" }}>
           <Form.Item>
-            <Button type='primary' htmlType='submit' loading={loading}>
+            <Button type="primary" htmlType="submit" loading={loading}>
               Aggiorna Ordine
             </Button>
           </Form.Item>

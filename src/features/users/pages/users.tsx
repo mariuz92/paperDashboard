@@ -33,12 +33,24 @@ const UsersPage: React.FC = () => {
   };
 
   const addUserHandler = async (user: Omit<IUser, "id">) => {
+    // Verifica se esiste già un utente con la stessa email o numero di telefono
+    const exists = users.some(
+      (u) => u.email === user.email || u.phoneNumber === user.phoneNumber
+    );
+
+    if (exists) {
+      message.error(
+        "Esiste già un utente con questa email o numero di telefono."
+      );
+      return;
+    }
+
     try {
       const newUserId = await createUser(user);
       setUsers([...users, { ...user, id: newUserId }]);
-      message.success("User added successfully.");
+      message.success("Utente aggiunto con successo.");
     } catch (error) {
-      message.error("Failed to add user.");
+      message.error("Aggiunta utente fallita.");
       console.error("Error adding user:", error);
     }
   };
@@ -57,7 +69,7 @@ const UsersPage: React.FC = () => {
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
-        <Row justify='space-between' align='middle'>
+        <Row justify="space-between" align="middle">
           <Title level={2} style={{ margin: 0 }}>
             Gestione Collaboratori
           </Title>

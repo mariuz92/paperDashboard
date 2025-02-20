@@ -100,7 +100,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
           <CanAccess
             key={item.key}
             resource={name}
-            action='list'
+            action="list"
             params={{
               resource: item,
             }}
@@ -128,7 +128,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
         <CanAccess
           key={item.key}
           resource={name}
-          action='list'
+          action="list"
           params={{
             resource: item,
           }}
@@ -142,7 +142,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
               {label}
             </Link>
             {!siderCollapsed && isSelected && (
-              <div className='ant-menu-tree-arrow' />
+              <div className="ant-menu-tree-arrow" />
             )}
           </Menu.Item>
         </CanAccess>
@@ -170,7 +170,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
 
   const logout = isExistAuthentication && (
     <Menu.Item
-      key='logout'
+      key="logout"
       onClick={() => handleLogout()}
       icon={<LogoutOutlined />}
     >
@@ -179,10 +179,10 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
   );
 
   const dashboard = hasDashboard ? (
-    <Menu.Item key='dashboard' icon={<DashboardOutlined />}>
-      <Link to='/'>{translate("dashboard.title", "Dashboard")}</Link>
+    <Menu.Item key="dashboard" icon={<DashboardOutlined />}>
+      <Link to="/">{translate("dashboard.title", "Dashboard")}</Link>
       {!siderCollapsed && selectedKey === "/" && (
-        <div className='ant-menu-tree-arrow' />
+        <div className="ant-menu-tree-arrow" />
       )}
     </Menu.Item>
   ) : null;
@@ -212,7 +212,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
       <Menu
         selectedKeys={selectedKey ? [selectedKey] : []}
         defaultOpenKeys={defaultOpenKeys}
-        mode='inline'
+        mode="vertical"
         style={{
           paddingTop: "8px",
           border: "none",
@@ -237,9 +237,6 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
           placement={direction === "rtl" ? "right" : "left"}
           closable={false}
           width={200}
-          bodyStyle={{
-            padding: 0,
-          }}
           maskClosable={true}
         >
           <Layout>
@@ -269,7 +266,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
         </Drawer>
         <Button
           style={drawerButtonStyles}
-          size='large'
+          size="large"
           onClick={() => setMobileSiderOpen(true)}
           icon={<BarsOutlined />}
         />
@@ -321,11 +318,11 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
           }
         }}
         collapsedWidth={80}
-        breakpoint='lg'
+        breakpoint="lg"
         trigger={
           <Button
-            type='primary'
-            shape='round'
+            type="primary"
+            shape="round"
             style={{
               borderRadius: 0,
               height: "100%",

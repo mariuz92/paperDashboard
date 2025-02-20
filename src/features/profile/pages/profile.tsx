@@ -133,7 +133,7 @@ export const ProfilePage: React.FC = () => {
   );
 
   return (
-    <Row justify='center' style={{ marginTop: 50 }}>
+    <Row justify="center" style={{ marginTop: 50 }}>
       <Col span={12}>
         <Card>
           <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -144,35 +144,35 @@ export const ProfilePage: React.FC = () => {
             <h2>{firebaseUser?.displayName || userProfile?.displayName}</h2>
             <p>{firebaseUser?.email || userProfile?.email}</p>
           </div>
-          <Form form={form} layout='vertical' onFinish={handleUpdateProfile}>
-            <Form.Item name='displayName' label='Nome'>
-              <Input placeholder='Inserisci il tuo nome' />
+          <Form form={form} layout="vertical" onFinish={handleUpdateProfile}>
+            <Form.Item name="displayName" label="Nome">
+              <Input placeholder="Inserisci il tuo nome" />
             </Form.Item>
-            <Form.Item name='email' label='Email'>
+            <Form.Item name="email" label="Email">
               <Input disabled />
             </Form.Item>
-            <Form.Item name='photoURL' label='Immagine profilo'>
+            <Form.Item name="photoURL" label="Immagine profilo">
               <Upload
-                name='file'
-                action='/upload.do'
-                listType='picture'
+                name="file"
+                action="/upload.do"
+                listType="picture"
                 fileList={fileList}
                 onChange={handleUpload}
               >
                 <Button icon={<UploadOutlined />}>Clicca per caricare</Button>
               </Upload>
             </Form.Item>
-            <Form.Item name='phoneNumber' label='Telefono'>
+            <Form.Item name="phoneNumber" label="Telefono">
               <Input
-                type='number'
-                placeholder='Inserisci il tuo numero di telefono'
+                type="number"
+                placeholder="Inserisci il tuo numero di telefono"
               />
             </Form.Item>
-            <Form.Item name='password' label='Nuova password'>
-              <Input.Password placeholder='Inserisci nuova password' disabled />
+            <Form.Item name="password" label="Nuova password">
+              <Input.Password placeholder="Inserisci nuova password" />
             </Form.Item>
             <Form.Item>
-              <Button type='primary' htmlType='submit' loading={loading} block>
+              <Button type="primary" htmlType="submit" loading={loading} block>
                 Aggiorna profilo
               </Button>
             </Form.Item>

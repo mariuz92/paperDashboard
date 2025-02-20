@@ -37,6 +37,10 @@ export interface IOrder {
   note?: string;
 
   lost?: number;
+
+  consegnatoDa?: string 
+  
+  ritiratoDa? : string 
 }
 
 const colors: Record<IOrderStatus, string> = {

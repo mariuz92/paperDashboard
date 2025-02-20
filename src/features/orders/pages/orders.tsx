@@ -129,6 +129,8 @@ export const OrdersPage: React.FC = () => {
   // Callback for when an order is submitted from the drawer (create or edit)
   const handleSubmit = async (orderData: Partial<IOrder>, mode: Mode) => {
     if (mode === "create") {
+      // Set default status for new orders
+      orderData.status = "Presa in Carico";
       // Create new order
       const docId = await saveOrder(orderData as Omit<IOrder, "id">);
       setOrders((prev) => [...prev, { ...orderData, id: docId } as IOrder]);
@@ -160,12 +162,12 @@ export const OrdersPage: React.FC = () => {
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
-        <Row justify='space-between' align='middle'>
+        <Row justify="space-between" align="middle">
           <Title level={2} style={{ margin: 0 }}>
             Gestione Ordini
           </Title>
           <DatePicker
-            format='DD/MM/YYYY'
+            format="DD/MM/YYYY"
             style={{ width: 200 }}
             value={selectedDate}
             onChange={onDateChange}
@@ -176,8 +178,8 @@ export const OrdersPage: React.FC = () => {
       <Content>
         {/* Button to open the create order drawer */}
         <FloatButton
-          type='primary'
-          tooltip='Aggiungi Ordine'
+          type="primary"
+          tooltip="Aggiungi Ordine"
           icon={<PlusOutlined />}
           onClick={openCreateDrawer}
         ></FloatButton>

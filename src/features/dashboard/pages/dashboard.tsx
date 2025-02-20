@@ -90,7 +90,7 @@ export const DashboardPage: React.FC = () => {
     setVariationPercent(diff);
 
     const totalRadios = thisMonthOrders.reduce(
-      (sum, order) => sum + (order.radiolineConsegnate || 0),
+      (sum, order) => sum + (order.radioguideConsegnate || 0),
       0
     );
     setTotalRadiosDelivered(totalRadios);
@@ -191,7 +191,7 @@ export const DashboardPage: React.FC = () => {
   }
 
   return (
-    <Layout style={{ padding: "20px", background: "#fff" }}>
+    <Layout style={{ padding: "20px" }}>
       <Content>
         <Title level={2} style={{ marginBottom: "20px" }}>
           Dashboard
@@ -214,16 +214,16 @@ export const DashboardPage: React.FC = () => {
               title={`Entrate (${selectedMonth.format("MMMM YYYY")})`}
               value={totalMoneyReceived}
               loading={loading}
-              prefix='€'
+              prefix="€"
               valueStyle={{ fontSize: "1.5rem" }}
             />
           </Col>
           <Col xs={24} sm={12} md={8}>
             <StatisticCard
-              title='Differenza Mese Precedente'
+              title="Differenza Mese Precedente"
               value={revenueDifference}
               loading={loading}
-              suffix='%'
+              suffix="%"
               precision={2}
               valueStyle={{
                 color: revenueDifference >= 0 ? "#3f8600" : "#cf1322",
@@ -236,7 +236,7 @@ export const DashboardPage: React.FC = () => {
         {/* Saldo Radioline Chart */}
         <Row style={{ marginTop: 32 }}>
           <Col span={24}>
-            <ChartCard title='Andamento Entrate' loading={loading} height={300}>
+            <ChartCard title="Andamento Entrate" loading={loading} height={300}>
               <SaldoLineChart data={saldoChartData} />
             </ChartCard>
           </Col>
@@ -268,10 +268,10 @@ export const DashboardPage: React.FC = () => {
           </Col>
           <Col xs={24} sm={12} md={8}>
             <StatisticCard
-              title='Variazione M/M'
+              title="Variazione M/M"
               value={variationPercent}
               loading={loading}
-              suffix='%'
+              suffix="%"
               precision={2}
               valueStyle={{
                 color: variationPercent >= 0 ? "#3f8600" : "#cf1322",
@@ -303,7 +303,7 @@ export const DashboardPage: React.FC = () => {
         <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
           <Col xs={24} sm={12} md={8}>
             <StatisticCard
-              title='Radioline Consegnate'
+              title="Radioline Consegnate"
               value={totalRadiosDelivered}
               loading={loading}
               valueStyle={{ fontSize: "1.5rem" }}
@@ -315,7 +315,7 @@ export const DashboardPage: React.FC = () => {
         <Row style={{ marginTop: 32 }}>
           <Col span={24}>
             <ChartCard
-              title='Frequenza Ordini per Ora'
+              title="Frequenza Ordini per Ora"
               loading={loading}
               height={400}
             >

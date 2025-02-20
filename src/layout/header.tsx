@@ -48,7 +48,7 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
   ];
 
   const headerStyles: React.CSSProperties = {
-    backgroundColor: token.colorBgElevated,
+    backgroundColor: token.colorBgContainer,
     display: "flex",
     justifyContent: "flex-end",
     alignItems: "center",
@@ -75,15 +75,19 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
             <Button
               type="text"
               style={{ display: "flex", alignItems: "center" }}
+              size="large"
             >
               <Avatar
                 size={"default"}
                 src={
                   user?.photoURL && user.photoURL.length > 0
                     ? user.photoURL
-                    : "src/images/youngtour_logo.png"
+                    : "/images/youngtour_logo.png"
                 }
-                style={{ marginRight: 8 }}
+                style={{
+                  marginRight: 8,
+                  border: `1px ${token.colorBorder} solid`,
+                }}
               />
               {user?.displayName || user?.email}
             </Button>

@@ -2,7 +2,7 @@
 
 export const CONFIG = {
   appName: "YoungTour",
-  logo: "src/images/youngtour_logo.png",
+  logo: "/images/youngtour_logo.png",
   favicon: "/assets/favicon.ico",
   apiBaseUrl: "https://api.paperantalex.com",
   supportEmail: "support@paperantalex.com",
