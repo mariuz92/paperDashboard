@@ -11,7 +11,8 @@ export interface IUser {
   phoneNumber?: string;
   createdAt: Date;
   lastLoginAt: Date;
-  role: Role;
+  role: Role[]; // Changed from Role to Role[] to allow multiple roles
+  isAdmin: boolean;
   disabled: boolean;
   tenantId: string;
 }

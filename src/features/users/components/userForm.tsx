@@ -62,7 +62,7 @@ const UserForm: React.FC<UserFormProps> = ({
     setIsLoading(true);
 
     try {
-      if (role !== "guide") {
+      if (role.includes("guide")) {
         // Generate OTP and process invitation only if role is NOT guide
         const otp = generateOTP();
 
@@ -210,7 +210,11 @@ const UserForm: React.FC<UserFormProps> = ({
               { required: true, message: "Per favore seleziona il ruolo" },
             ]}
           >
-            <Select placeholder="Seleziona un ruolo">
+            <Select
+              mode="multiple"
+              placeholder="Seleziona uno o più ruoli"
+              allowClear
+            >
               <Select.Option value="admin">Admin</Select.Option>
               <Select.Option value="rider">Rider</Select.Option>
               <Select.Option value="guide">Guida</Select.Option>

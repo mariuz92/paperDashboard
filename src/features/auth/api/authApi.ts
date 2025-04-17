@@ -13,7 +13,7 @@ import {
   getUserById,
   getTenantByName,
 } from "../../users/api/userApi";
-import { IUser } from "../../../types/interfaces/IUser";
+import { IUser, Role } from "../../../types/interfaces/IUser";
 import { ITenant } from "../../../types/interfaces/ITenant";
 import {
   addDoc,
@@ -27,10 +27,16 @@ import {
   where,
 } from "firebase/firestore";
 
+// User role constants
+const ROLES: Record<string, Role> = {
+  ADMIN: "admin",
+  GUIDE: "guide",
+  RIDER: "rider",
+};
+
 // Helper to store user info in localStorage
 const storeUserInLocalStorage = (user: IUser) => {
   localStorage.setItem("email", user.email);
-  // const newUser: Omit<IUser, "id"> = (({ id, ...rest }) => rest)(user);
 
   const userInfo = {
     role: user.role,
@@ -40,10 +46,12 @@ const storeUserInLocalStorage = (user: IUser) => {
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
     disabled: user.disabled,
+    isAdmin: user.isAdmin,
   };
   localStorage.setItem("userInfo", JSON.stringify(userInfo));
   localStorage.setItem("tenantId", user.tenantId);
 };
+
 const storeChannelsUsage = (channels: number, iddleChannels: number[]) => {
   localStorage.setItem("channels", JSON.stringify(channels));
   localStorage.setItem("Iddlechannels", JSON.stringify(iddleChannels));
@@ -54,6 +62,38 @@ const clearUserFromLocalStorage = () => {
   localStorage.removeItem("email");
   localStorage.removeItem("tenantId");
   localStorage.removeItem("userInfo");
+  localStorage.removeItem("channels");
+  localStorage.removeItem("Iddlechannels");
+};
+
+// Function to normalize tenant name (prevent case-sensitivity issues)
+const normalizeTenantName = (name: string): string => {
+  return name.trim().toUpperCase();
+};
+
+// Function to check if user can access the platform
+export const canAccessPlatform = (user: IUser): boolean => {
+  if (!user || user.disabled) {
+    return false;
+  }
+  
+  // Guides can sign up but cannot access the platform
+  if (user.role.includes(ROLES.GUIDE) && !user.role.includes(ROLES.ADMIN)) {
+    return false;
+  }
+  
+  // Admins always have access
+  if (user.isAdmin || user.role.includes(ROLES.ADMIN)) {
+    return true;
+  }
+  
+  // Riders have access
+  if (user.role.includes(ROLES.RIDER)) {
+    return true;
+  }
+  
+  // Default: no access for undefined roles
+  return false;
 };
 
 // Sign up with email and password
@@ -65,24 +105,26 @@ export const signUpWithEmail = async (
   phoneNumber: number
 ): Promise<{ firebaseUser: any; tenantId: string }> => {
   try {
-    // 1. Convert tenant name to a consistent format (e.g., uppercase)
-    const upperTenantName = tenantName.toUpperCase();
+    // 1. Normalize tenant name to prevent typos and case-sensitivity issues
+    const normalizedTenantName = normalizeTenantName(tenantName);
 
-    // 2. Query Firestore for an existing tenant whose 'name' field matches
+    // 2. Query Firestore for an existing tenant
     const tenantsRef = collection(db, "tenants");
-    const tenantQuery = query(tenantsRef, where("name", "==", upperTenantName));
+    const tenantQuery = query(tenantsRef, where("name", "==", normalizedTenantName));
     const tenantSnapshot = await getDocs(tenantQuery);
 
     let tenantId: string;
-    if (!tenantSnapshot.empty) {
+    const isNewTenant = tenantSnapshot.empty;
+    
+    if (!isNewTenant) {
       // Tenant exists; grab the first matched doc
       const existingTenantDoc = tenantSnapshot.docs[0];
       tenantId = existingTenantDoc.id;
     } else {
       // Tenant does not exist; create a new tenant doc with auto-generated ID
       const newTenantData: ITenant = {
-        id: "", // This will be assigned after adding the document
-        name: upperTenantName,
+        id: "", // Will be assigned after adding the document
+        name: normalizedTenantName,
         createdAt: new Date(),
         isActive: true,
         description: `Tenant for ${tenantName}`,
@@ -107,7 +149,9 @@ export const signUpWithEmail = async (
     );
     const firebaseUser = userCredential.user;
 
-    // 4. Build the user object
+    // 4. Build the user object with proper role assignment
+    // If tenant is new -> user becomes admin
+    // If tenant exists -> user becomes guide
     const newUser: IUser = {
       id: firebaseUser.uid,
       email: firebaseUser.email ?? "",
@@ -117,9 +161,10 @@ export const signUpWithEmail = async (
       phoneNumber: firebaseUser.phoneNumber || phoneNumber.toString(),
       createdAt: new Date(),
       lastLoginAt: new Date(),
-      role: !tenantSnapshot.empty ? "guide" : "admin",
+      role: isNewTenant ? [ROLES.ADMIN] : [ROLES.GUIDE],
+      isAdmin: isNewTenant, // true if creating a new tenant
       disabled: false,
-      tenantId, // Use the tenant ID we found or just created
+      tenantId,
     };
 
     // 5. Save the user in Firestore
@@ -127,6 +172,21 @@ export const signUpWithEmail = async (
 
     // 6. Store user info in localStorage
     storeUserInLocalStorage(newUser);
+    
+    // 7. If this is a tenant, store channel information
+    if (isNewTenant) {
+      storeChannelsUsage(35, []);
+    } else {
+      // Get tenant data to store channels information
+      const tenantDoc = await getDoc(doc(db, "tenants", tenantId));
+      if (tenantDoc.exists()) {
+        const tenantData = tenantDoc.data() as ITenant;
+        storeChannelsUsage(
+          tenantData.channelsNum ?? 0, 
+          tenantData.iddleChannels ?? []
+        );
+      }
+    }
 
     return { firebaseUser, tenantId };
   } catch (error) {
@@ -150,13 +210,19 @@ export const signInWithEmail = async (
   password: string
 ) => {
   try {
-    // Recupera i dettagli dell'azienda
-    const company: ITenant | null = await getTenantByName(companyName);
+    // Normalize company name to prevent case-sensitivity issues
+    const normalizedCompanyName = normalizeTenantName(companyName);
+    
+    // Get company details
+    const company: ITenant | null = await getTenantByName(normalizedCompanyName);
     if (!company) {
       throw new Error("L'azienda specificata non esiste.");
     }
+    
+    // Store channel information
     storeChannelsUsage(company.channelsNum ?? 0, company.iddleChannels ?? []);
-    // Effettua il login con Firebase Authentication
+    
+    // Perform login with Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email,
@@ -164,23 +230,36 @@ export const signInWithEmail = async (
     );
     const firebaseUser = userCredential.user;
 
-    // Recupera le informazioni dell'utente dal database
+    // Get user information from database
     const existingUser = await getUserById(firebaseUser.uid);
     if (!existingUser) {
       throw new Error("L'utente non esiste. Registrati per continuare.");
     }
 
-    // Controlla se l'utente appartiene all'azienda specificata
+    // Check if user belongs to the specified company
     if (existingUser.tenantId !== company.id) {
       throw new Error("L'utente non appartiene all'azienda specificata.");
     }
+    
+    // Check if user can access the platform based on role
+    if (!canAccessPlatform(existingUser)) {
+      throw new Error("Non hai i permessi per accedere alla piattaforma.");
+    }
 
-    // Memorizza le informazioni dell'utente in localStorage
+    // Update last login time
+    await updateDoc(doc(db, "users", firebaseUser.uid), {
+      lastLoginAt: new Date()
+    });
+    
+    // Update user in memory with new login time
+    existingUser.lastLoginAt = new Date();
+
+    // Store user information in localStorage
     storeUserInLocalStorage(existingUser);
 
     return firebaseUser;
   } catch (error: any) {
-    // Mappa gli errori Firebase in messaggi più comprensibili
+    // Map Firebase errors to more user-friendly messages
     let errorMessage =
       "Si è verificato un errore durante l'accesso. Riprova più tardi.";
 
@@ -205,11 +284,15 @@ export const signInWithEmail = async (
             "Impossibile effettuare l'accesso. Controlla le credenziali e riprova.";
           break;
       }
+    } else if (error.message) {
+      // Use the custom error message if available
+      errorMessage = error.message;
     }
 
     throw new Error(errorMessage);
   }
 };
+
 // Sign out
 export const signOutUser = async () => {
   try {
@@ -246,7 +329,8 @@ export const registerWithInvitation = async (
       phoneNumber: firebaseUser.phoneNumber || "",
       createdAt: new Date(),
       lastLoginAt: new Date(),
-      role: "rider",
+      role: [ROLES.RIDER],
+      isAdmin: false,
       disabled: false,
       tenantId,
     };
@@ -268,8 +352,11 @@ export const onAuthStateChangedListener = (callback: (user: any) => void) => {
 
 export const signInWithGoogle = async (companyName: string) => {
   try {
-    // Recupera i dettagli dell'azienda per nome
-    const company: ITenant | null = await getTenantByName(companyName);
+    // Normalize company name
+    const normalizedCompanyName = normalizeTenantName(companyName);
+    
+    // Get company details by name
+    const company: ITenant | null = await getTenantByName(normalizedCompanyName);
     if (!company) {
       throw new Error("L'azienda non esiste.");
     }
@@ -278,9 +365,11 @@ export const signInWithGoogle = async (companyName: string) => {
     const result = await signInWithPopup(auth, provider);
     const firebaseUser = result.user;
 
-    // Controlla se l'utente esiste nel database
+    // Check if user exists in database
     const existingUser = await getUserById(firebaseUser.uid);
     if (!existingUser) {
+      // If user doesn't exist, create a new one with guide role 
+      // (assuming they're joining an existing company)
       const newUser: IUser = {
         id: firebaseUser.uid,
         email: firebaseUser.email ?? "",
@@ -290,36 +379,54 @@ export const signInWithGoogle = async (companyName: string) => {
         phoneNumber: firebaseUser.phoneNumber || "",
         createdAt: new Date(),
         lastLoginAt: new Date(),
-        role: "", // Ruolo predefinito, può essere modificato
+        role: [ROLES.GUIDE], // Default role for new users with Google sign-in
+        isAdmin: false,
         disabled: false,
-        tenantId: company.id, // Utilizza l'ID dell'azienda
+        tenantId: company.id,
       };
 
-      // Crea un nuovo utente nel database
+      // Create new user in database
       await createUser(newUser);
 
-      // Memorizza le informazioni dell'utente in localStorage
+      // Store user information in localStorage
       storeUserInLocalStorage(newUser);
+      
+      // Inform the user they won't have platform access
+      throw new Error("Registrazione completata. Il tuo account è stato creato con il ruolo di guida. Un amministratore deve approvare il tuo accesso alla piattaforma.");
     } else {
+      // User already exists
       if (existingUser.tenantId !== company.id) {
         throw new Error("L'utente non appartiene all'azienda specificata.");
       }
 
-      // Opzionalmente aggiorna `lastLoginAt` e memorizza le informazioni
+      // Check if user can access platform
+      if (!canAccessPlatform(existingUser)) {
+        throw new Error("Non hai i permessi per accedere alla piattaforma.");
+      }
+      
+      // Update last login time
+      await updateDoc(doc(db, "users", firebaseUser.uid), {
+        lastLoginAt: new Date()
+      });
+      
+      // Update user in memory with new login time
+      existingUser.lastLoginAt = new Date();
+      
+      // Store user information in localStorage
       storeUserInLocalStorage(existingUser);
     }
 
     return firebaseUser;
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Accesso con Google fallito:", error);
-    throw new Error("Errore durante l'accesso con Google. Riprova più tardi.");
+    throw new Error(error.message || "Errore durante l'accesso con Google. Riprova più tardi.");
   }
 };
 
 /**
- * Invia un'email di reimpostazione della password all'utente.
- * @param email - L'email dell'utente che richiede la reimpostazione della password.
- * @returns Un oggetto con lo stato dell'operazione.
+ * Sends a password reset email to the user.
+ * @param email - The email of the user requesting password reset.
+ * @returns An object with the operation status.
  */
 export const forgotPassword = async (
   email?: string

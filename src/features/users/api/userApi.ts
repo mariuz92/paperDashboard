@@ -118,7 +118,7 @@ export const getUsers = async (role?: string): Promise<IUser[]> => {
     const usersRef = collection(db, "users");
     let q;
     if (role) {
-      q = query(usersRef, where("role", "==", role));
+      q = query(usersRef, where("role", "array-contains", role));
     } else {
       q = query(usersRef);
     }
