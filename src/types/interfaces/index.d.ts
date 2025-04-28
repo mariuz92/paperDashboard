@@ -18,7 +18,7 @@ export interface IOrder {
 
   canaleRadio?: string;
 
-  orarioConsegna?: Timestamp | Dayjs;
+  oraConsegna?: Timestamp | Dayjs;
 
   luogoConsegna?: string;
 

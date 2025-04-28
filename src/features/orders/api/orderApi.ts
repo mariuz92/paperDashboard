@@ -67,23 +67,23 @@ export const saveOrder = async (order: Omit<IOrder, "id">): Promise<string> => {
  *
  * @param {Timestamp | undefined} startDate
  * @param {Timestamp | undefined} endDate
- * @param {keyof IOrder | string} orderByField - e.g. "orarioConsegna"
+ * @param {keyof IOrder | string} orderByField - e.g. "oraConsegna"
  * @param {"asc" | "desc"} orderDirection
  */
 const buildBaseQuery = (
   startDate?: Timestamp,
   endDate?: Timestamp,
-  orderByField: keyof IOrder | string = "orarioConsegna",
+  orderByField: keyof IOrder | string = "oraConsegna",
   orderDirection: "asc" | "desc" = "asc"
 ) => {
   const baseRef = collection(db, "orders");
   let q = query(baseRef);
 
   if (startDate) {
-    q = query(q, where("orarioConsegna", ">=", startDate));
+    q = query(q, where("oraConsegna", ">=", startDate));
   }
   if (endDate) {
-    q = query(q, where("orarioConsegna", "<=", endDate));
+    q = query(q, where("oraConsegna", "<=", endDate));
   }
 
   // `orderBy` expects a string. Cast if orderByField is keyof IOrder.
@@ -95,7 +95,7 @@ const buildBaseQuery = (
 /**
  * Fetch orders from Firestore with pagination, date filters, and sorting.
  * If a date range is provided (startDate and endDate), orders will be fetched
- * if either their delivery date (**orarioConsegna**) OR their retrieval date (**oraRitiro**)
+ * if either their delivery date (**oraConsegna**) OR their retrieval date (**oraRitiro**)
  * fall within the range. Additionally, orders with status "Attesa ritiro" that are missing
  * the retrieval time are always included.
  *
@@ -113,7 +113,7 @@ export const getOrders = async (
     pageSize = 10,
     startDate,
     endDate,
-    orderByField = "orarioConsegna",
+    orderByField = "oraConsegna",
     orderDirection = "asc",
   } = params;
 
@@ -124,13 +124,13 @@ export const getOrders = async (
     if (startDate && endDate) {
       // -----------------------------------------------------------
       // 1. Run two queries:
-      //    a. Orders where the delivery date (orarioConsegna) is in range.
+      //    a. Orders where the delivery date (oraConsegna) is in range.
       //    b. Orders where the retrieval date (oraRitiro) is in range.
       // -----------------------------------------------------------
       const consegnaQuery = query(
         collection(db, "orders"),
-        where("orarioConsegna", ">=", startDate),
-        where("orarioConsegna", "<=", endDate),
+        where("oraConsegna", ">=", startDate),
+        where("oraConsegna", "<=", endDate),
         orderBy(orderByField, orderDirection)
       );
 
@@ -273,7 +273,7 @@ export const getOrders = async (
 // ) {
 //   let q = collection(db, "orders");
 //   // Set up your date-range, orderBy, etc.
-//   // e.g. q = query(q, where("orarioConsegna", ">=", startDate), ... );
+//   // e.g. q = query(q, where("oraConsegna", ">=", startDate), ... );
 //   // e.g. q = query(q, orderBy(orderByField, orderDirection));
 //   return q;
 // }
@@ -369,7 +369,7 @@ export const deleteOrder = async (id: string): Promise<void> => {
 /**
  * Fetch orders grouped by day and month for both deliveries (consegne)
  * and pickups (ritiri). If `oraRitiro` is on a different date than
- * `orarioConsegna`, that order appears on two distinct days.
+ * `oraConsegna`, that order appears on two distinct days.
  *
  * Also calculates monthly totals (sum of deliveries+pickups in that month).
  *
@@ -395,9 +395,9 @@ export const fetchOrderCounts = async (): Promise<{
     snapshot.forEach((docSnap) => {
       const data = docSnap.data() as IOrder;
 
-      // 1) If we have orarioConsegna, increment that day's "consegne".
-      if (data.orarioConsegna) {
-        const dateObj = (data.orarioConsegna as Timestamp).toDate();
+      // 1) If we have oraConsegna, increment that day's "consegne".
+      if (data.oraConsegna) {
+        const dateObj = (data.oraConsegna as Timestamp).toDate();
         const day = dayjs(dateObj).format("YYYY-MM-DD");
         const month = dayjs(dateObj).format("YYYY-MM");
 

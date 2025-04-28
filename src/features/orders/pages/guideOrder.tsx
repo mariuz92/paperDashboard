@@ -57,8 +57,8 @@ const GuideOrderPage: React.FC = () => {
     setLoading(true);
     try {
       // Convert Day.js objects to Firestore Timestamps (if provided)
-      const orarioConsegnaTimestamp = values.orarioConsegna
-        ? Timestamp.fromDate(values.orarioConsegna.toDate())
+      const oraConsegnaTimestamp = values.oraConsegna
+        ? Timestamp.fromDate(values.oraConsegna.toDate())
         : null;
       const oraRitiroTimestamp = values.oraRitiro
         ? Timestamp.fromDate(values.oraRitiro.toDate())
@@ -73,9 +73,10 @@ const GuideOrderPage: React.FC = () => {
         photoURL: "",
         createdAt: new Date(),
         lastLoginAt: new Date(),
-        role: "guide",
+        role: ["guide"],
         disabled: false,
         tenantId: "",
+        isAdmin: false,
       };
 
       // Ensure the user exists before saving the order
@@ -87,7 +88,7 @@ const GuideOrderPage: React.FC = () => {
       const newOrder: IOrder = {
         ...omitKeys(values, ["email"]),
         telefonoGuida: values["phone"],
-        orarioConsegna: orarioConsegnaTimestamp,
+        oraConsegna: oraConsegnaTimestamp,
         oraRitiro: oraRitiroTimestamp,
         note: values["note"] ?? "",
         status: "Presa in Carico",
@@ -118,15 +119,15 @@ const GuideOrderPage: React.FC = () => {
   if (orderSubmitted) {
     return (
       <Result
-        status='success'
-        title='Ordine inserito con successo!'
+        status="success"
+        title="Ordine inserito con successo!"
         subTitle="Grazie per aver inserito l'ordine. Il sistema lo elaborerà a breve."
         extra={[
-          <Button type='primary' key='new' onClick={handleNewOrder}>
+          <Button type="primary" key="new" onClick={handleNewOrder}>
             Inserisci un nuovo ordine
           </Button>,
           <Button
-            key='external'
+            key="external"
             onClick={() => (window.location.href = "https://www.youngtour.it")}
           >
             Vai su YoungTour
@@ -140,31 +141,31 @@ const GuideOrderPage: React.FC = () => {
     <>
       {/* CTA: Shown only if registration data is not present */}
       <RegistrationCTA registrationData={registrationData} />
-      <Form form={form} layout='vertical' onFinish={onFinish}>
+      <Form form={form} layout="vertical" onFinish={onFinish}>
         {/* --- SECTION: Informazioni generali --- */}
         <Title level={4}>Informazioni generali</Title>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
             <Form.Item
-              label='Email'
-              name='email'
+              label="Email"
+              name="email"
               rules={[
                 { required: false, message: "Inserisci l'email" },
                 { type: "email", message: "Inserisci un'email valida" },
               ]}
             >
-              <Input placeholder='Email' />
+              <Input placeholder="Email" />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
             <Form.Item
-              label='Telefono'
-              name='phone'
+              label="Telefono"
+              name="phone"
               rules={[
                 { required: true, message: "Inserisci il numero di telefono" },
               ]}
             >
-              <Input placeholder='Numero di telefono' />
+              <Input placeholder="Numero di telefono" />
             </Form.Item>
           </Col>
         </Row>
@@ -172,23 +173,23 @@ const GuideOrderPage: React.FC = () => {
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
             <Form.Item
-              label='Nome Guida / Gruppo'
-              name='nomeGuida'
+              label="Nome Guida / Gruppo"
+              name="nomeGuida"
               rules={[{ required: true, message: "Inserisci Nome Guida" }]}
             >
-              <Input placeholder='Nome Guida' />
+              <Input placeholder="Nome Guida" />
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
             <Form.Item
-              label='Radioguide'
-              name='radioguideConsegnate'
+              label="Radioguide"
+              name="radioguideConsegnate"
               rules={[
                 { required: true, message: "Inserisci Numero di Radioguide" },
               ]}
             >
               <InputNumber
-                placeholder='Radioguide da Consegnare'
+                placeholder="Radioguide da Consegnare"
                 style={{ width: "100%" }}
               />
             </Form.Item>
@@ -200,26 +201,26 @@ const GuideOrderPage: React.FC = () => {
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
             <Form.Item
-              label='Orario Consegna'
-              name='orarioConsegna'
+              label="Orario Consegna"
+              name="oraConsegna"
               rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
             >
               <TimePicker
-                placeholder='Seleziona Orario Consegna'
-                format='HH:mm'
+                placeholder="Seleziona Orario Consegna"
+                format="HH:mm"
                 style={{ width: "100%" }}
               />
             </Form.Item>
           </Col>
           <Col xs={24} md={16}>
             <Form.Item
-              label='Luogo Consegna'
-              name='luogoConsegna'
+              label="Luogo Consegna"
+              name="luogoConsegna"
               rules={[{ required: true, message: "Inserisci Luogo Consegna" }]}
             >
               <GooglePlacesAutocomplete
-                initialValue=''
-                placeholder='Inserisci Luogo Consegna'
+                initialValue=""
+                placeholder="Inserisci Luogo Consegna"
                 onPlaceSelect={(address) =>
                   form.setFieldsValue({ luogoConsegna: address })
                 }
@@ -230,20 +231,20 @@ const GuideOrderPage: React.FC = () => {
 
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
-            <Form.Item label='Ora e Data Ritiro' name='oraRitiro'>
+            <Form.Item label="Ora e Data Ritiro" name="oraRitiro">
               <DatePicker
                 showTime
-                placeholder='Seleziona Ora e Data Ritiro'
-                format='YYYY-MM-DD HH:mm'
+                placeholder="Seleziona Ora e Data Ritiro"
+                format="YYYY-MM-DD HH:mm"
                 style={{ width: "100%" }}
               />
             </Form.Item>
           </Col>
           <Col xs={24} md={16}>
-            <Form.Item label='Luogo Ritiro' name='luogoRitiro'>
+            <Form.Item label="Luogo Ritiro" name="luogoRitiro">
               <GooglePlacesAutocomplete
-                initialValue=''
-                placeholder='Inserisci Luogo Ritiro'
+                initialValue=""
+                placeholder="Inserisci Luogo Ritiro"
                 onPlaceSelect={(address) =>
                   form.setFieldsValue({ luogoRitiro: address })
                 }
@@ -256,8 +257,8 @@ const GuideOrderPage: React.FC = () => {
         <Title level={4}>Note</Title>
         <Row gutter={[16, 16]}>
           <Col xs={24}>
-            <Form.Item label='Note' name='note'>
-              <TextArea placeholder='Note' />
+            <Form.Item label="Note" name="note">
+              <TextArea placeholder="Note" />
             </Form.Item>
           </Col>
         </Row>
@@ -266,7 +267,7 @@ const GuideOrderPage: React.FC = () => {
         <Row>
           <Col xs={24} style={{ textAlign: "right" }}>
             <Form.Item>
-              <Button type='primary' htmlType='submit' loading={loading}>
+              <Button type="primary" htmlType="submit" loading={loading}>
                 Inserisci Ordine
               </Button>
             </Form.Item>

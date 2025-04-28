@@ -103,8 +103,8 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       form.setFieldsValue({
         ...order,
         // Convert Timestamps to dayjs objects for DatePicker/TimePicker
-        orarioConsegna: order.orarioConsegna
-          ? dayjs(order.orarioConsegna.toDate())
+        oraConsegna: order.oraConsegna
+          ? dayjs(order.oraConsegna.toDate())
           : undefined,
         oraRitiro: order.oraRitiro
           ? dayjs(order.oraRitiro.toDate())
@@ -163,15 +163,15 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
 
   // Process the form submission: convert date/time fields & call onSubmit.
   const handleFinish = async (values: any) => {
-    let orarioConsegna: Timestamp | null = null;
-    if (values.orarioConsegna) {
-      const time = values.orarioConsegna;
+    let oraConsegna: Timestamp | null = null;
+    if (values.oraConsegna) {
+      const time = values.oraConsegna;
       const mergedDateTime = dayjs()
         .hour(time.hour())
         .minute(time.minute())
         .second(0)
         .millisecond(0);
-      orarioConsegna = Timestamp.fromDate(mergedDateTime.toDate());
+      oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
     }
 
     let oraRitiro: Timestamp | null = null;
@@ -179,7 +179,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       oraRitiro = Timestamp.fromDate(values.oraRitiro.toDate());
     }
 
-    if (!orarioConsegna) {
+    if (!oraConsegna) {
       message.error("Orario Consegna (Time) is required!");
       return;
     }
@@ -188,7 +188,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       nomeGuida: values.nomeGuida || "",
       telefonoGuida: values.telefonoGuida || "",
       canaleRadio: values.canaleRadio || "",
-      orarioConsegna,
+      oraConsegna,
       luogoConsegna: values.luogoConsegna || "",
       oraRitiro: oraRitiro,
       luogoRitiro: values.luogoRitiro || "",
@@ -240,8 +240,8 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           {order?.saldo || 0}
         </Descriptions.Item>
         <Descriptions.Item label="Orario Consegna">
-          {order?.orarioConsegna
-            ? dayjs(order.orarioConsegna.toDate()).format("HH:mm")
+          {order?.oraConsegna
+            ? dayjs(order.oraConsegna.toDate()).format("HH:mm")
             : "-"}
         </Descriptions.Item>
         <Descriptions.Item label="Luogo Consegna">
@@ -429,7 +429,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         <Col span={8}>
           <Form.Item
             label="Orario Consegna (Oggi)"
-            name="orarioConsegna"
+            name="oraConsegna"
             rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
           >
             <TimePicker

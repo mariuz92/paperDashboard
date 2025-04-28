@@ -94,7 +94,7 @@ const exportToPDF = (orders: IOrder[]) => {
   const columns = [
     { header: "Nome Guida", dataKey: "nomeGuida" },
     // { header: "Canale Radio", dataKey: "canaleRadio" },
-    { header: "Orario Consegna", dataKey: "orarioConsegna" },
+    { header: "Orario Consegna", dataKey: "oraConsegna" },
     { header: "Luogo Consegna", dataKey: "luogoConsegna" },
     { header: "Ora Ritiro", dataKey: "oraRitiro" },
     { header: "Luogo Ritiro", dataKey: "luogoRitiro" },
@@ -107,7 +107,7 @@ const exportToPDF = (orders: IOrder[]) => {
   const rows = orders.map((order) => ({
     nomeGuida: order.nomeGuida || "",
     canaleRadio: order.canaleRadio || "",
-    orarioConsegna: formatDateCell(order.orarioConsegna),
+    oraConsegna: formatDateCell(order.oraConsegna),
     luogoConsegna: order.luogoConsegna || "",
     oraRitiro: formatDateCell(order.oraRitiro),
     luogoRitiro: order.luogoRitiro || "",
@@ -215,7 +215,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     );
   }
 
-  const consegnaDay = dayjsValue(order.orarioConsegna);
+  const consegnaDay = dayjsValue(order.oraConsegna);
   const ritiroDay = dayjsValue(order.oraRitiro);
 
   // 2) Both consegna and ritiro exist and are on the same day
@@ -231,7 +231,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     );
   }
 
-  // 3) Only orarioConsegna is on the selected day
+  // 3) Only oraConsegna is on the selected day
   if (
     consegnaDay.isValid() &&
     consegnaDay.isSame(selectedDate, "day") &&
@@ -318,11 +318,11 @@ const OrderTable: React.FC<OrderTableProps> = ({
     let orderUpdates: Partial<IOrder> = {};
 
     // Check if delivery time exists and is already passed
-    if (order.orarioConsegna) {
+    if (order.oraConsegna) {
       const deliveryTime = dayjs(
-        order.orarioConsegna.toDate
-          ? order.orarioConsegna.toDate()
-          : order.orarioConsegna
+        order.oraConsegna.toDate
+          ? order.oraConsegna.toDate()
+          : order.oraConsegna
       );
       if (now.isAfter(deliveryTime)) {
         newStatus = "In Consegna";
@@ -388,7 +388,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
 👤 *Nome Guida:* ${order.nomeGuida || "N/A"}
 ☎️ *Telefono Guida:* ${order.telefonoGuida || "N/A"}
 📡 *Canale Radio:* ${order.canaleRadio || "N/A"}
-📅 *Orario Consegna:* ${formatDateCell(order.orarioConsegna) || "N/A"}
+📅 *Orario Consegna:* ${formatDateCell(order.oraConsegna) || "N/A"}
 
 📍 *Consegna:* [${shortAddress(order.luogoConsegna)}](${googleMapsConsegna})
 ⏰ *Ora Ritiro:* ${formatDateCell(order.oraRitiro) || "N/A"}
@@ -562,12 +562,12 @@ Grazie per la collaborazione! 💪`;
 
     {
       title: "Orario Consegna",
-      dataIndex: "orarioConsegna",
-      key: "orarioConsegna",
+      dataIndex: "oraConsegna",
+      key: "oraConsegna",
       width: 150,
       sorter: (a, b) =>
-        dayjsValue(a.orarioConsegna).valueOf() -
-        dayjsValue(b.orarioConsegna).valueOf(),
+        dayjsValue(a.oraConsegna).valueOf() -
+        dayjsValue(b.oraConsegna).valueOf(),
       render: (val) => formatDateCell(val),
     },
     {

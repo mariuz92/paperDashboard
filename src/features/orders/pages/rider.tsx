@@ -49,8 +49,8 @@ const RiderUpdatePage: React.FC = () => {
         setOrder(fetchedOrder);
 
         // Convert Firestore Timestamps into Day.js objects
-        const orarioConsegnaDayjs = fetchedOrder.orarioConsegna
-          ? dayjs(fetchedOrder.orarioConsegna.seconds * 1000)
+        const oraConsegnaDayjs = fetchedOrder.oraConsegna
+          ? dayjs(fetchedOrder.oraConsegna.seconds * 1000)
           : null;
         const oraRitiroDayjs = fetchedOrder.oraRitiro
           ? dayjs(fetchedOrder.oraRitiro.seconds * 1000)
@@ -59,7 +59,7 @@ const RiderUpdatePage: React.FC = () => {
         // Populate the form fields
         form.setFieldsValue({
           ...fetchedOrder,
-          orarioConsegna: orarioConsegnaDayjs,
+          oraConsegna: oraConsegnaDayjs,
           oraRitiro: oraRitiroDayjs,
           luogoConsegna: fetchedOrder.luogoConsegna || "",
           luogoRitiro: fetchedOrder.luogoRitiro || "",
@@ -79,13 +79,13 @@ const RiderUpdatePage: React.FC = () => {
     const toleranceMinutes = 30; // tolerance for delivery status
 
     // Parse delivery time if available (from new values or existing order)
-    const deliveryTime = values.orarioConsegna
-      ? dayjs(values.orarioConsegna.toDate())
-      : order.orarioConsegna
+    const deliveryTime = values.oraConsegna
+      ? dayjs(values.oraConsegna.toDate())
+      : order.oraConsegna
       ? dayjs(
-          order.orarioConsegna.toDate
-            ? order.orarioConsegna.toDate()
-            : order.orarioConsegna
+          order.oraConsegna.toDate
+            ? order.oraConsegna.toDate()
+            : order.oraConsegna
         )
       : null;
 
@@ -123,9 +123,9 @@ const RiderUpdatePage: React.FC = () => {
     }
 
     // Build the Firestore Timestamps for any updated fields
-    const orarioConsegnaTimestamp = values.orarioConsegna
-      ? Timestamp.fromDate(values.orarioConsegna.toDate())
-      : order.orarioConsegna;
+    const oraConsegnaTimestamp = values.oraConsegna
+      ? Timestamp.fromDate(values.oraConsegna.toDate())
+      : order.oraConsegna;
     const oraRitiroTimestamp = values.oraRitiro
       ? Timestamp.fromDate(values.oraRitiro.toDate())
       : order.oraRitiro;
@@ -139,7 +139,7 @@ const RiderUpdatePage: React.FC = () => {
       ...values,
       note: updatedNote,
       status: newStatus,
-      orarioConsegna: orarioConsegnaTimestamp,
+      oraConsegna: oraConsegnaTimestamp,
       oraRitiro: oraRitiroTimestamp,
     };
 
@@ -208,7 +208,7 @@ const RiderUpdatePage: React.FC = () => {
         <Col xs={24} md={8}>
           <Form.Item
             label="Orario Consegna"
-            name="orarioConsegna"
+            name="oraConsegna"
             rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
           >
             <TimePicker
