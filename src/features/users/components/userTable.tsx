@@ -3,7 +3,7 @@ import { Table, Button, Dropdown, message, Popconfirm } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { MenuProps } from "antd";
 import { EditOutlined, DeleteOutlined, MoreOutlined } from "@ant-design/icons";
-import { IUser } from "../../../types/interfaces/IUser";
+import { IUser, Role } from "../../../types/interfaces/IUser";
 import { deleteUser } from "../api/userApi";
 
 interface UserTableProps {
@@ -69,7 +69,13 @@ const UserTable: React.FC<UserTableProps> = ({
         { text: "Rider", value: "rider" },
         { text: "Guida", value: "guide" },
       ],
-      onFilter: (value, record) => record.role.includes(value as string),
+      onFilter: (value, record) => {
+        // narrow value to string
+        if (typeof value !== "string") return false;
+
+        // now TS knows value is a Roles
+        return record.role.includes(value as Role);
+      },
     },
     {
       title: "Azione",
@@ -95,10 +101,10 @@ const UserTable: React.FC<UserTableProps> = ({
             key: "delete",
             label: (
               <Popconfirm
-                title='Sei sicuro di voler eliminare questo utente?'
+                title="Sei sicuro di voler eliminare questo utente?"
                 onConfirm={() => handleDelete(record.id)}
-                okText='Sì'
-                cancelText='No'
+                okText="Sì"
+                cancelText="No"
               >
                 <span>
                   <DeleteOutlined /> Elimina
@@ -111,7 +117,7 @@ const UserTable: React.FC<UserTableProps> = ({
         return (
           <div style={{ display: "flex", justifyContent: "center" }}>
             <Dropdown menu={{ items }} trigger={["click"]}>
-              <Button type='text'>
+              <Button type="text">
                 Menu <MoreOutlined />
               </Button>
             </Dropdown>
@@ -127,7 +133,7 @@ const UserTable: React.FC<UserTableProps> = ({
       dataSource={users}
       columns={columns}
       loading={loading}
-      rowKey='id'
+      rowKey="id"
     />
   );
 };

@@ -21,8 +21,8 @@ export function buildHeatmapData(orders: IOrder[]): OrdersHeatmapData[] {
 
   orders.forEach((order) => {
     // Process delivery time (orarioConsegna)
-    if (order.orarioConsegna) {
-      const deliveryDate = getDate(order.orarioConsegna);
+    if (order.oraConsegna) {
+      const deliveryDate = getDate(order.oraConsegna);
       const day = deliveryDate.format("dddd"); // e.g., "Monday"
       const hour = deliveryDate.hour(); // returns an integer (0-23)
       const key = `${day}-${hour}`;
