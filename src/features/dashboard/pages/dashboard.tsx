@@ -114,7 +114,7 @@ export const DashboardPage: React.FC = () => {
     setRevenueDifference(moneyDiff);
 
     const saldoData = thisMonthOrders.map((order) => ({
-      date: dayjs(order.orarioConsegna.toDate()).format("YYYY-MM-DD"),
+      date: dayjs(order.oraConsegna.toDate()).format("YYYY-MM-DD"),
       saldo: order.saldo || 0,
     }));
     setSaldoChartData(saldoData);
@@ -127,10 +127,10 @@ export const DashboardPage: React.FC = () => {
   };
 
   function inRange(o: IOrder, start: dayjs.Dayjs, end: dayjs.Dayjs) {
-    if (!o.orarioConsegna) return false;
-    const orderDate = o.orarioConsegna.toDate
-      ? dayjs(o.orarioConsegna.toDate())
-      : dayjs(o.orarioConsegna);
+    if (!o.oraConsegna) return false;
+    const orderDate = o.oraConsegna.toDate
+      ? dayjs(o.oraConsegna.toDate())
+      : dayjs(o.oraConsegna);
     return orderDate.isSameOrAfter(start) && orderDate.isSameOrBefore(end);
   }
 
@@ -143,9 +143,9 @@ export const DashboardPage: React.FC = () => {
     const filtered = ordersList.filter((o) => inRange(o, start, end));
     const weekCounts: Record<string, number> = {};
     filtered.forEach((o) => {
-      const d = o.orarioConsegna.toDate
-        ? dayjs(o.orarioConsegna.toDate())
-        : dayjs(o.orarioConsegna);
+      const d = o.oraConsegna.toDate
+        ? dayjs(o.oraConsegna.toDate())
+        : dayjs(o.oraConsegna);
       const dayOfMonth = d.date();
       const weekIndex = Math.ceil(
         (dayOfMonth / selectedMonth.daysInMonth()) * 4
@@ -171,7 +171,7 @@ export const DashboardPage: React.FC = () => {
       { consegne: number; ritiri: number }
     > = {};
     ordersList.forEach((o) => {
-      const date = dayjs(o.orarioConsegna.toDate()).format("YYYY-MM-DD");
+      const date = dayjs(o.oraConsegna.toDate()).format("YYYY-MM-DD");
       if (!frequencyCounts[date]) {
         frequencyCounts[date] = { consegne: 0, ritiri: 0 };
       }
