@@ -66,10 +66,9 @@ export const CalendarPage: React.FC = () => {
    */
   const dateCellRender = (value: Dayjs) => {
     const dailyData = getDailyData(value);
-    if (!dailyData) return null; // No data for this day => nothing to show
+    if (!dailyData) return null;
 
     const { consegne, ritiri } = dailyData;
-    const navigate = useNavigate();
 
     return (
       <div
@@ -124,9 +123,7 @@ export const CalendarPage: React.FC = () => {
       </div>
     );
   };
-  /**
-   * cellRender: unify date vs. month rendering for the AntD Calendar
-   */
+
   const cellRender: CalendarProps<Dayjs>["cellRender"] = (current, info) => {
     if (info.type === "date") return dateCellRender(current);
     if (info.type === "month") return monthCellRender(current);
