@@ -14,8 +14,6 @@ import ChartCard from "../components/ChartCard";
 import SaldoLineChart from "../components/SaldoLineChart";
 import WeeklyOrdersAreaChart from "../components/WeeklyOrdersAreaChart";
 import HourlyFrequencyBarChart from "../components/HourlyFrequencyBarChart";
-import OrdersHeatmap from "../components/OrdersHeatmap";
-import { buildHeatmapData } from "../../../shared/utils/buildHeatmapData";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);

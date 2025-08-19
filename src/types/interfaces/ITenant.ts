@@ -8,4 +8,5 @@ export interface ITenant {
   description?: string; // Optional description about the tenant
   channelsNum?: number;
   iddleChannels: number[];
+  disabledChannels: number[]; // Array of channel IDs that are disabled for the tenant
 }

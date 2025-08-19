@@ -18,7 +18,7 @@ import {
 import { db } from "../../../config/firebaseConfig";
 import { IOrder, IGetOrdersParams } from "../../../types/interfaces";
 import dayjs from "dayjs";
-
+ import { updateTenantById } from "../../users/api/userApi";
 /* ------------------------------------------------------------------
    1) INTERFACES FOR COUNTING DAILY & MONTHLY ORDERS (DELIVERIES + PICKUPS)
    ------------------------------------------------------------------ */
@@ -54,7 +54,7 @@ export const saveOrder = async (order: Omit<IOrder, "id">): Promise<string> => {
   try {
     const ordersCollection = collection(db, "orders");
     const docRef = await addDoc(ordersCollection, order);
-    console.log("Order saved with ID:", docRef.id);
+    // updateTenantById(123123, updates: ); // Update tenant with the user who delivered or picked up the order
     return docRef.id;
   } catch (error) {
     console.error("Error saving order:", error);

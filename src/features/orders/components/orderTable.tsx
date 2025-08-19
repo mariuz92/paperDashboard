@@ -472,13 +472,13 @@ Grazie per la collaborazione! 💪`;
 
   // Build columns
   const columns: ColumnType<IOrder>[] = [
-    {
-      title: "Ordine",
-      key: "tipoOrdine",
-      render: (_, record) => renderOrderTypeIcon(record, selectedDate),
-      width: 120,
-      fixed: "left",
-    },
+    // {
+    //   title: "Ordine",
+    //   key: "tipoOrdine",
+    //   render: (_, record) => renderOrderTypeIcon(record, selectedDate),
+    //   width: 120,
+    //   fixed: "left",
+    // },
     {
       title: "Nome Guida",
       dataIndex: "nomeGuida",

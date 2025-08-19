@@ -12,27 +12,21 @@ import { IOrder } from "../../../types/interfaces";
 export const updateFreeChannels = (
   totalChannels: number,
   iddleChannels: number[],
+  disabledChannels: number[],
   orders: IOrder[]
 ): number[] => {
+  totalChannels = Number(localStorage.getItem("channels"));
+  iddleChannels = JSON.parse(localStorage.getItem("Iddlechannels") || "[]");
+  disabledChannels = JSON.parse(
+    localStorage.getItem("disabledChannels") || "[]"
+  );
   // Generate an array for all channels: [1, 2, ..., totalChannels]
-  const allChannels = Array.from({ length: totalChannels }, (_, i) => i + 1);
-
-  // Extract channels currently used in orders.
-  // We assume 'canaleRadio' is a string that can be parsed into a number.
-  const usedChannels = orders.reduce<number[]>((acc, order) => {
-    if (order.canaleRadio) {
-      const channelNum = Number(order.canaleRadio);
-      if (!isNaN(channelNum) && !acc.includes(channelNum)) {
-        acc.push(channelNum);
-      }
-    }
-    return acc;
-  }, []);
+  const allChannels = Array.from({ length: totalChannels + 1 }, (_, i) => i);
 
   // Filter out channels that are either iddle (cannot be used) or are currently in use.
   const freeChannels = allChannels.filter(
     (channel) =>
-      !iddleChannels.includes(channel) && !usedChannels.includes(channel)
+      !iddleChannels.includes(channel) && !disabledChannels.includes(channel)
   );
 
   // Store/update the free channels in localStorage.

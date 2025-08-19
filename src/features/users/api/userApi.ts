@@ -56,6 +56,21 @@ export const getTenantByName = async (
   }
 };
 
+
+export const updateTenantById = async (
+  id: string,
+  updates: Partial<ITenant>
+): Promise<void> => {
+  try {
+    if (!id) throw new Error("Tenant ID is required");
+    const tenantRef = doc(db, "tenants", id);
+    await setDoc(tenantRef, updates, { merge: true });
+  } catch (error) {
+    console.error("[updateTenantById] Error updating tenant:", error);
+    throw new Error("Failed to update tenant");
+  }
+};
+
 // Create user
 export const createUser = async (user: Omit<IUser, "id">): Promise<string> => {
   try {
@@ -131,6 +146,32 @@ export const getUsers = async (role?: string): Promise<IUser[]> => {
   } catch (error) {
     console.error("Error getting users:", error);
     throw new Error("Failed to get users");
+  }
+};
+
+export const getUsersByRoles = async (roles?: string[]): Promise<IUser[]> => {
+  try {
+    const usersRef = collection(db, "users");
+    let q;
+
+    if (!roles || roles.length === 0) {
+      q = query(usersRef);
+    } else if (roles.length === 1) {
+      q = query(usersRef, where("role", "array-contains", roles[0]));
+    } else {
+      // Firestore supports array-contains-any on a field that is itself an array of strings
+      q = query(usersRef, where("role", "array-contains-any", roles));
+    }
+
+    const snapshot = await getDocs(q);
+    const users: IUser[] = [];
+    snapshot.forEach((doc) => {
+      users.push({ id: doc.id, ...doc.data() } as IUser);
+    });
+    return users;
+  } catch (error) {
+    console.error("[getUsersByRoles] Error fetching users:", error);
+    throw new Error("Failed to get users by roles");
   }
 };
 

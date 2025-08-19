@@ -52,9 +52,10 @@ const storeUserInLocalStorage = (user: IUser) => {
   localStorage.setItem("tenantId", user.tenantId);
 };
 
-const storeChannelsUsage = (channels: number, iddleChannels: number[]) => {
+const storeChannelsUsage = (channels: number, iddleChannels: number[], disabledChannels:number[]) => {
   localStorage.setItem("channels", JSON.stringify(channels));
   localStorage.setItem("Iddlechannels", JSON.stringify(iddleChannels));
+  localStorage.setItem("disabledChannels", JSON.stringify(disabledChannels));
 };
 
 // Helper to clear user info from localStorage
@@ -130,6 +131,7 @@ export const signUpWithEmail = async (
         description: `Tenant for ${tenantName}`,
         channelsNum: 35,
         iddleChannels: [],
+        disabledChannels: [], 
       };
       const newTenantRef = await addDoc(
         collection(db, "tenants"),
@@ -175,7 +177,7 @@ export const signUpWithEmail = async (
     
     // 7. If this is a tenant, store channel information
     if (isNewTenant) {
-      storeChannelsUsage(35, []);
+      storeChannelsUsage(35, [],[]);
     } else {
       // Get tenant data to store channels information
       const tenantDoc = await getDoc(doc(db, "tenants", tenantId));
@@ -183,7 +185,8 @@ export const signUpWithEmail = async (
         const tenantData = tenantDoc.data() as ITenant;
         storeChannelsUsage(
           tenantData.channelsNum ?? 0, 
-          tenantData.iddleChannels ?? []
+          tenantData.iddleChannels ?? [],
+          tenantData.disabledChannels ?? []
         );
       }
     }
@@ -220,7 +223,7 @@ export const signInWithEmail = async (
     }
     
     // Store channel information
-    storeChannelsUsage(company.channelsNum ?? 0, company.iddleChannels ?? []);
+    storeChannelsUsage(company.channelsNum ?? 0, company.iddleChannels ?? [], company.disabledChannels ?? []);
     
     // Perform login with Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(
