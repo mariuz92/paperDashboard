@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Layout, Button, Avatar, Dropdown, Menu, Space, theme } from "antd";
-import type { RefineThemedLayoutV2HeaderProps } from "@refinedev/antd";
+import type { RefineThemedLayoutHeaderProps as RefineThemedLayoutV2HeaderProps } from "@refinedev/antd";
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { signOutUser } from "../features/auth/api/authApi";

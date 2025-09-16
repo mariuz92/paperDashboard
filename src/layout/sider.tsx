@@ -4,7 +4,7 @@ import {
   useLogout,
   useTitle,
   CanAccess,
-  type ITreeMenu,
+  type TreeMenuItem as ITreeMenu,
   useIsExistAuthentication,
   useRouterContext,
   useMenu,
@@ -15,7 +15,7 @@ import {
   pickNotDeprecated,
   useWarnAboutChange,
 } from "@refinedev/core";
-import { ThemedTitleV2, useThemedLayoutContext } from "@refinedev/antd";
+import { ThemedTitle as ThemedTitleV2, useThemedLayoutContext } from "@refinedev/antd";
 import {
   DashboardOutlined,
   LogoutOutlined,
@@ -33,7 +33,7 @@ import {
   theme,
   ConfigProvider,
 } from "antd";
-import type { RefineThemedLayoutV2SiderProps } from "@refinedev/antd";
+import type { RefineThemedLayoutSiderProps as RefineThemedLayoutV2SiderProps } from "@refinedev/antd";
 import type { CSSProperties } from "react";
 
 const drawerButtonStyles: CSSProperties = {
@@ -72,9 +72,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
   const breakpoint = Grid.useBreakpoint();
   const { hasDashboard } = useRefineContext();
   const authProvider = useActiveAuthProvider();
-  const { mutate: mutateLogout } = useLogout({
-    v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
-  });
+  const { mutate: mutateLogout } = useLogout();
 
   const isMobile =
     typeof breakpoint.lg === "undefined" ? false : !breakpoint.lg;

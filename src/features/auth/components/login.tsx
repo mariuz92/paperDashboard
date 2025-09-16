@@ -66,9 +66,7 @@ export const LoginPage: React.FC<LoginProps> = ({
   const ActiveLink = routerType === "legacy" ? LegacyLink : Link;
 
   const authProvider = useActiveAuthProvider();
-  const { mutate: login, isLoading } = useLogin<ExpendadedLoginFormTypes>({
-    v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
-  });
+  const { mutate: login, isLoading } = useLogin<ExpendadedLoginFormTypes>();
 
   useDocumentTitle(`Login | ${CONFIG.appName}`);
 

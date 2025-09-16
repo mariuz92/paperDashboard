@@ -8,7 +8,7 @@ import {
   useRouterContext,
   useForgotPassword,
 } from "@refinedev/core";
-import { ThemedTitleV2 } from "@refinedev/antd";
+import { ThemedTitle as ThemedTitleV2 } from "@refinedev/antd";
 import {
   layoutStyles,
   containerStyles,
