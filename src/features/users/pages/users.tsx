@@ -48,6 +48,7 @@ const UsersPage: React.FC = () => {
     try {
       const newUserId = await createUser(user);
       setUsers([...users, { ...user, id: newUserId }]);
+
       message.success("Utente aggiunto con successo.");
     } catch (error) {
       message.error("Aggiunta utente fallita.");
@@ -69,7 +70,7 @@ const UsersPage: React.FC = () => {
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
-        <Row justify="space-between" align="middle">
+        <Row justify='space-between' align='middle'>
           <Title level={2} style={{ margin: 0 }}>
             Gestione Collaboratori
           </Title>
