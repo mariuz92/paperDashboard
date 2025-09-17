@@ -6,7 +6,7 @@ import {
   useTranslate,
   useUpdatePassword,
 } from "@refinedev/core";
-import { ThemedTitleV2 } from "@refinedev/antd";
+import { ThemedTitle as ThemedTitleV2 } from "@refinedev/antd";
 import {
   layoutStyles,
   containerStyles,
@@ -55,9 +55,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
   const translate = useTranslate();
   const authProvider = useActiveAuthProvider();
   const { mutate: updatePassword, isLoading } =
-    useUpdatePassword<UpdatePasswordFormTypes>({
-      v3LegacyAuthProviderCompatible: Boolean(authProvider?.isLegacy),
-    });
+    useUpdatePassword<UpdatePasswordFormTypes>();
   useDocumentTitle(`Richiedi password | ${CONFIG.appName}`);
   const PageTitle =
     title === false ? null : (
