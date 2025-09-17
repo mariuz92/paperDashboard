@@ -47,6 +47,7 @@ export const OrdersPage: React.FC = () => {
   const getChannelDataFromStorage = (): {
     totalChannels: number;
     iddleChannels: number[];
+    disabledChannels: number[];
   } => {
     // Retrieve total channels from localStorage, parse it and convert to a number.
     const storedChannels = localStorage.getItem("channels");
@@ -59,12 +60,17 @@ export const OrdersPage: React.FC = () => {
     const iddleChannels: number[] = storedIddleChannels
       ? JSON.parse(storedIddleChannels)
       : [];
+    const storedDisabledChannels = localStorage.getItem("disabledChannels");
+    const disabledChannels: number[] = storedDisabledChannels
+      ? JSON.parse(storedDisabledChannels)
+      : [];
 
-    return { totalChannels, iddleChannels };
+    return { totalChannels, iddleChannels, disabledChannels };
   };
 
   // Usage example: retrieving channel data then updating free channels list
-  const { totalChannels, iddleChannels } = getChannelDataFromStorage();
+  const { totalChannels, iddleChannels, disabledChannels } =
+    getChannelDataFromStorage();
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -85,7 +91,7 @@ export const OrdersPage: React.FC = () => {
       setOrders(data);
 
       // Update free channels list using the available orders
-      updateFreeChannels(totalChannels, iddleChannels, data);
+      updateFreeChannels(totalChannels, iddleChannels, disabledChannels, data);
     } catch (error) {
       message.error("Failed to fetch orders.");
       console.error("Error fetching orders:", error);
@@ -162,12 +168,12 @@ export const OrdersPage: React.FC = () => {
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
-        <Row justify="space-between" align="middle">
+        <Row justify='space-between' align='middle'>
           <Title level={2} style={{ margin: 0 }}>
             Gestione Ordini
           </Title>
           <DatePicker
-            format="DD/MM/YYYY"
+            format='DD/MM/YYYY'
             style={{ width: 200 }}
             value={selectedDate}
             onChange={onDateChange}
@@ -178,8 +184,8 @@ export const OrdersPage: React.FC = () => {
       <Content>
         {/* Button to open the create order drawer */}
         <FloatButton
-          type="primary"
-          tooltip="Aggiungi Ordine"
+          type='primary'
+          tooltip='Aggiungi Ordine'
           icon={<PlusOutlined />}
           onClick={openCreateDrawer}
         ></FloatButton>

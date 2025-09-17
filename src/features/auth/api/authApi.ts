@@ -26,6 +26,11 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import {
+  consumeInvitation,
+  getInvitationByToken,
+} from "../../users/api/invitationApi";
+import { IInvitation } from "../../../types/interfaces/IInvitations";
 
 // User role constants
 const ROLES: Record<string, Role> = {
@@ -52,7 +57,11 @@ const storeUserInLocalStorage = (user: IUser) => {
   localStorage.setItem("tenantId", user.tenantId);
 };
 
-const storeChannelsUsage = (channels: number, iddleChannels: number[], disabledChannels:number[]) => {
+const storeChannelsUsage = (
+  channels: number,
+  iddleChannels: number[],
+  disabledChannels: number[]
+) => {
   localStorage.setItem("channels", JSON.stringify(channels));
   localStorage.setItem("Iddlechannels", JSON.stringify(iddleChannels));
   localStorage.setItem("disabledChannels", JSON.stringify(disabledChannels));
@@ -77,22 +86,22 @@ export const canAccessPlatform = (user: IUser): boolean => {
   if (!user || user.disabled) {
     return false;
   }
-  
+
   // Guides can sign up but cannot access the platform
   if (user.role.includes(ROLES.GUIDE) && !user.role.includes(ROLES.ADMIN)) {
     return false;
   }
-  
+
   // Admins always have access
   if (user.isAdmin || user.role.includes(ROLES.ADMIN)) {
     return true;
   }
-  
+
   // Riders have access
   if (user.role.includes(ROLES.RIDER)) {
     return true;
   }
-  
+
   // Default: no access for undefined roles
   return false;
 };
@@ -111,12 +120,15 @@ export const signUpWithEmail = async (
 
     // 2. Query Firestore for an existing tenant
     const tenantsRef = collection(db, "tenants");
-    const tenantQuery = query(tenantsRef, where("name", "==", normalizedTenantName));
+    const tenantQuery = query(
+      tenantsRef,
+      where("name", "==", normalizedTenantName)
+    );
     const tenantSnapshot = await getDocs(tenantQuery);
 
     let tenantId: string;
     const isNewTenant = tenantSnapshot.empty;
-    
+
     if (!isNewTenant) {
       // Tenant exists; grab the first matched doc
       const existingTenantDoc = tenantSnapshot.docs[0];
@@ -131,7 +143,7 @@ export const signUpWithEmail = async (
         description: `Tenant for ${tenantName}`,
         channelsNum: 35,
         iddleChannels: [],
-        disabledChannels: [], 
+        disabledChannels: [],
       };
       const newTenantRef = await addDoc(
         collection(db, "tenants"),
@@ -174,17 +186,17 @@ export const signUpWithEmail = async (
 
     // 6. Store user info in localStorage
     storeUserInLocalStorage(newUser);
-    
+
     // 7. If this is a tenant, store channel information
     if (isNewTenant) {
-      storeChannelsUsage(35, [],[]);
+      storeChannelsUsage(35, [], []);
     } else {
       // Get tenant data to store channels information
       const tenantDoc = await getDoc(doc(db, "tenants", tenantId));
       if (tenantDoc.exists()) {
         const tenantData = tenantDoc.data() as ITenant;
         storeChannelsUsage(
-          tenantData.channelsNum ?? 0, 
+          tenantData.channelsNum ?? 0,
           tenantData.iddleChannels ?? [],
           tenantData.disabledChannels ?? []
         );
@@ -215,16 +227,22 @@ export const signInWithEmail = async (
   try {
     // Normalize company name to prevent case-sensitivity issues
     const normalizedCompanyName = normalizeTenantName(companyName);
-    
+
     // Get company details
-    const company: ITenant | null = await getTenantByName(normalizedCompanyName);
+    const company: ITenant | null = await getTenantByName(
+      normalizedCompanyName
+    );
     if (!company) {
       throw new Error("L'azienda specificata non esiste.");
     }
-    
+
     // Store channel information
-    storeChannelsUsage(company.channelsNum ?? 0, company.iddleChannels ?? [], company.disabledChannels ?? []);
-    
+    storeChannelsUsage(
+      company.channelsNum ?? 0,
+      company.iddleChannels ?? [],
+      company.disabledChannels ?? []
+    );
+
     // Perform login with Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -243,7 +261,7 @@ export const signInWithEmail = async (
     if (existingUser.tenantId !== company.id) {
       throw new Error("L'utente non appartiene all'azienda specificata.");
     }
-    
+
     // Check if user can access the platform based on role
     if (!canAccessPlatform(existingUser)) {
       throw new Error("Non hai i permessi per accedere alla piattaforma.");
@@ -251,9 +269,9 @@ export const signInWithEmail = async (
 
     // Update last login time
     await updateDoc(doc(db, "users", firebaseUser.uid), {
-      lastLoginAt: new Date()
+      lastLoginAt: new Date(),
     });
-    
+
     // Update user in memory with new login time
     existingUser.lastLoginAt = new Date();
 
@@ -307,38 +325,71 @@ export const signOutUser = async () => {
   }
 };
 
-/**
- * Registers a user via the invitation link with tenant and OTP validation.
- */
+/// ⬇️ REPLACE your current registerWithInvitation with this version
 export const registerWithInvitation = async (
-  email: string,
-  password: string,
-  tenantId: string
+  token: string,
+  password: string
 ): Promise<IUser> => {
   try {
-    const userCredential = await createUserWithEmailAndPassword(
+    // 1) Fetch invite (email, tenantId, role[], optional displayName)
+    const invite = (await getInvitationByToken(token)) as Pick<
+      IInvitation,
+      "email" | "tenantId"
+    > & { role?: Role[]; displayName?: string };
+
+    const { email, tenantId } = invite;
+    const invitedRoles = Array.isArray(invite.role) ? invite.role : [];
+
+    // Ensure only known roles are used (defensive)
+    const allowed = new Set<Role>(Object.values(ROLES) as Role[]);
+    const finalRoles: Role[] =
+      invitedRoles.filter((r): r is Role => allowed.has(r)) || [];
+
+    // Fallback if invite didn't specify any role
+    const rolesToAssign: Role[] = finalRoles.length
+      ? finalRoles
+      : [ROLES.RIDER];
+
+    // 2) Create Auth user with invited email
+    const { user: fbUser } = await createUserWithEmailAndPassword(
       auth,
       email,
       password
     );
-    const firebaseUser = userCredential.user;
 
+    // 3) Create Firestore user profile bound to the invited tenant
     const newUser: IUser = {
-      id: firebaseUser.uid,
-      email: firebaseUser.email ?? "",
-      displayName: firebaseUser.displayName ?? "",
-      photoURL: firebaseUser.photoURL || "",
-      emailVerified: firebaseUser.emailVerified,
-      phoneNumber: firebaseUser.phoneNumber || "",
+      id: fbUser.uid,
+      email: fbUser.email ?? email,
+      displayName: invite.displayName ?? fbUser.displayName ?? "",
+      photoURL: fbUser.photoURL || "",
+      emailVerified: fbUser.emailVerified,
+      phoneNumber: fbUser.phoneNumber || "",
       createdAt: new Date(),
       lastLoginAt: new Date(),
-      role: [ROLES.RIDER],
-      isAdmin: false,
+      role: rolesToAssign,
+      isAdmin: rolesToAssign.includes(ROLES.ADMIN),
       disabled: false,
-      tenantId,
+      tenantId, // ✅ multi-tenant: comes from invite
     };
 
-    await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+    await setDoc(doc(db, "users", fbUser.uid), newUser);
+
+    // 4) Mark invite as consumed
+    await consumeInvitation(token);
+
+    // 5) (Optional) preload tenant channel info like in signInWithEmail
+    const tenantDoc = await getDoc(doc(db, "tenants", tenantId));
+    if (tenantDoc.exists()) {
+      const t = tenantDoc.data() as ITenant;
+      storeChannelsUsage(
+        t.channelsNum ?? 0,
+        t.iddleChannels ?? [],
+        t.disabledChannels ?? []
+      );
+    }
+
+    // 6) Persist session info
     storeUserInLocalStorage(newUser);
 
     return newUser;
@@ -357,9 +408,11 @@ export const signInWithGoogle = async (companyName: string) => {
   try {
     // Normalize company name
     const normalizedCompanyName = normalizeTenantName(companyName);
-    
+
     // Get company details by name
-    const company: ITenant | null = await getTenantByName(normalizedCompanyName);
+    const company: ITenant | null = await getTenantByName(
+      normalizedCompanyName
+    );
     if (!company) {
       throw new Error("L'azienda non esiste.");
     }
@@ -371,7 +424,7 @@ export const signInWithGoogle = async (companyName: string) => {
     // Check if user exists in database
     const existingUser = await getUserById(firebaseUser.uid);
     if (!existingUser) {
-      // If user doesn't exist, create a new one with guide role 
+      // If user doesn't exist, create a new one with guide role
       // (assuming they're joining an existing company)
       const newUser: IUser = {
         id: firebaseUser.uid,
@@ -393,9 +446,11 @@ export const signInWithGoogle = async (companyName: string) => {
 
       // Store user information in localStorage
       storeUserInLocalStorage(newUser);
-      
+
       // Inform the user they won't have platform access
-      throw new Error("Registrazione completata. Il tuo account è stato creato con il ruolo di guida. Un amministratore deve approvare il tuo accesso alla piattaforma.");
+      throw new Error(
+        "Registrazione completata. Il tuo account è stato creato con il ruolo di guida. Un amministratore deve approvare il tuo accesso alla piattaforma."
+      );
     } else {
       // User already exists
       if (existingUser.tenantId !== company.id) {
@@ -406,15 +461,15 @@ export const signInWithGoogle = async (companyName: string) => {
       if (!canAccessPlatform(existingUser)) {
         throw new Error("Non hai i permessi per accedere alla piattaforma.");
       }
-      
+
       // Update last login time
       await updateDoc(doc(db, "users", firebaseUser.uid), {
-        lastLoginAt: new Date()
+        lastLoginAt: new Date(),
       });
-      
+
       // Update user in memory with new login time
       existingUser.lastLoginAt = new Date();
-      
+
       // Store user information in localStorage
       storeUserInLocalStorage(existingUser);
     }
@@ -422,7 +477,9 @@ export const signInWithGoogle = async (companyName: string) => {
     return firebaseUser;
   } catch (error: any) {
     console.error("❌ Accesso con Google fallito:", error);
-    throw new Error(error.message || "Errore durante l'accesso con Google. Riprova più tardi.");
+    throw new Error(
+      error.message || "Errore durante l'accesso con Google. Riprova più tardi."
+    );
   }
 };
 

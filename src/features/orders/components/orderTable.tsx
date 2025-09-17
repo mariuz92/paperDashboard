@@ -39,7 +39,7 @@ import { getUsers } from "../../users/api/userApi";
 import "../../../shared/style.css";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { useNavigate } from "react-router";
-
+import ManageChannels from "./manageChannels";
 /** Helper: Safely convert a `Timestamp|string|undefined` to a Dayjs object. */
 function dayjsValue(value?: Timestamp | string) {
   if (!value) {
@@ -141,15 +141,15 @@ const EditableCell: React.FC<EditableCellProps> = ({
       case "select":
         return (
           <Select>
-            <Select.Option value="Presa in Carico">
+            <Select.Option value='Presa in Carico'>
               Presa in Carico
             </Select.Option>
-            <Select.Option value="In Consegna">In Consegna</Select.Option>
-            <Select.Option value="Consegnato">Consegnato</Select.Option>
-            <Select.Option value="Attesa ritiro">Attesa ritiro</Select.Option>
-            <Select.Option value="In Ritiro">In Ritiro</Select.Option>
-            <Select.Option value="Ritirato">Ritirato</Select.Option>
-            <Select.Option value="Annullato">Annullato</Select.Option>
+            <Select.Option value='In Consegna'>In Consegna</Select.Option>
+            <Select.Option value='Consegnato'>Consegnato</Select.Option>
+            <Select.Option value='Attesa ritiro'>Attesa ritiro</Select.Option>
+            <Select.Option value='In Ritiro'>In Ritiro</Select.Option>
+            <Select.Option value='Ritirato'>Ritirato</Select.Option>
+            <Select.Option value='Annullato'>Annullato</Select.Option>
           </Select>
         );
       case "number":
@@ -159,7 +159,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
           <DatePicker
             showTime
             style={{ width: "100%" }}
-            format="YYYY-MM-DD hh-mm"
+            format='YYYY-MM-DD hh-mm'
           />
         );
       case "places":
@@ -209,7 +209,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
   // 1) If no canaleRadio => New Order
   if (!order.canaleRadio) {
     return (
-      <span title="Nuovo Ordine">
+      <span title='Nuovo Ordine'>
         <Typography.Text>Nuovo</Typography.Text>
       </span>
     );
@@ -225,7 +225,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     consegnaDay.isSame(ritiroDay, "day")
   ) {
     return (
-      <span title="Consegna e Ritiro lo Stesso Giorno">
+      <span title='Consegna e Ritiro lo Stesso Giorno'>
         <Typography.Text>Consegna & Ritiro</Typography.Text>
       </span>
     );
@@ -238,7 +238,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title="Consegna in Questa Data">
+      <span title='Consegna in Questa Data'>
         <Typography.Text>Consegna</Typography.Text>
       </span>
     );
@@ -251,7 +251,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title="Ritiro in Questa Data">
+      <span title='Ritiro in Questa Data'>
         {/* If you prefer to have an icon, uncomment the next line and ensure the icon is imported */}
         {/* <SwapLeftOutlined style={{ color: "red", marginRight: 4 }} /> */}
         <Typography.Text>Ritiro</Typography.Text>
@@ -262,6 +262,23 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
   // Default fallback: No special icon or label
   return <span>-</span>;
 }
+
+// put this near the top of the file (above OrderTable)
+const getTenantIdFromStorage = (): string => {
+  const raw = localStorage.getItem("tenantId");
+  if (!raw) return "";
+  // supports raw string or JSON string
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "string") return parsed;
+    if (parsed && typeof parsed === "object" && "id" in parsed) {
+      return String((parsed as any).id);
+    }
+    return String(parsed);
+  } catch {
+    return raw; // not JSON, plain string
+  }
+};
 
 /** Main OrderTable component */
 const OrderTable: React.FC<OrderTableProps> = ({
@@ -286,9 +303,23 @@ const OrderTable: React.FC<OrderTableProps> = ({
     fetchRiders();
   }, []);
 
+  const [tenantId, setTenantId] = useState<string>("");
+  const [open, setOpen] = useState(false);
+
   const handleNavigateToUsersPage = () => {
-    navigate("/Collaboratori"); // Adjust the path as per your routing setup
+    navigate("/Collaboratori");
   };
+
+  useEffect(() => {
+    setTenantId(getTenantIdFromStorage());
+
+    // optional: keep in sync if another tab changes it
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "tenantId") setTenantId(getTenantIdFromStorage());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   /** Helper: Format a `Timestamp|string` nicely for display in European format. */
   function formatDateCell(value?: Timestamp | string) {
@@ -456,10 +487,10 @@ Grazie per la collaborazione! 💪`;
     {
       label: (
         <Popconfirm
-          title="Sei sicuro di voler eliminare questo ordine?"
+          title='Sei sicuro di voler eliminare questo ordine?'
           onConfirm={() => order.id && handleDelete(order.id)}
-          okText="Sì"
-          cancelText="No"
+          okText='Sì'
+          cancelText='No'
         >
           <span>
             <DeleteOutlined /> Elimina
@@ -494,7 +525,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Nome Guida"
+            placeholder='Cerca Nome Guida'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -505,9 +536,9 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
@@ -518,7 +549,7 @@ Grazie per la collaborazione! 💪`;
                 setSelectedKeys([]);
                 confirm();
               }}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -585,7 +616,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Luogo Consegna"
+            placeholder='Cerca Luogo Consegna'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -596,16 +627,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -644,7 +675,7 @@ Grazie per la collaborazione! 💪`;
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Luogo Ritiro"
+            placeholder='Cerca Luogo Ritiro'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -655,16 +686,16 @@ Grazie per la collaborazione! 💪`;
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -685,10 +716,10 @@ Grazie per la collaborazione! 💪`;
       fixed: "right",
       width: 120,
       render: (_, record) => (
-        <Row justify="center">
+        <Row justify='center'>
           <Button
-            type="text"
-            shape="circle"
+            type='text'
+            shape='circle'
             onClick={() => onRowClick && onRowClick(record, "view")}
           >
             <EyeOutlined style={{ marginRight: 4 }} />
@@ -698,8 +729,8 @@ Grazie per la collaborazione! 💪`;
             trigger={["click"]}
           >
             <Button
-              shape="circle"
-              type="text"
+              shape='circle'
+              type='text'
               style={{ display: "flex", alignItems: "center" }}
             >
               <MoreOutlined />
@@ -718,10 +749,23 @@ Grazie per la collaborazione! 💪`;
         <Button
           icon={<FilePdfOutlined />}
           onClick={() => exportToPDF(orders)}
-          type="primary"
+          type='primary'
         >
           Esporta PDF
         </Button>
+        <Button type='default' onClick={() => setOpen(true)}>
+          Gestisci canali
+        </Button>
+
+        <ManageChannels
+          tenantId={tenantId}
+          visible={open} // antd v2
+          onClose={() => setOpen(false)}
+          onSaved={() => {
+            // optional: refresh page data
+          }}
+          // startFromZero={false}       // uncomment to switch to 1..N
+        />
       </Space>
       <Table<IOrder>
         virtual
@@ -730,7 +774,7 @@ Grazie per la collaborazione! 💪`;
         columns={columns}
         rowKey={(record) => record.id as string}
         loading={loading}
-        tableLayout="fixed"
+        tableLayout='fixed'
         scroll={{ x: 1200, y: 2000 }}
       />
     </>

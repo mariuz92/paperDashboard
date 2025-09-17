@@ -5,6 +5,7 @@ import type { MenuProps } from "antd";
 import { EditOutlined, DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { IUser, Role } from "../../../types/interfaces/IUser";
 import { deleteUser } from "../api/userApi";
+import { Tag } from "antd/lib";
 
 interface UserTableProps {
   users: IUser[];
@@ -26,6 +27,24 @@ const UserTable: React.FC<UserTableProps> = ({
     if (key === "edit") {
       setUserToEdit(record);
     }
+  };
+
+  const normalizeRoles = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.map(String);
+    if (typeof value === "string") {
+      // prova JSON -> array
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch {}
+      // fallback: split su separatori comuni
+      return value
+        .split(/[,\|; ]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    if (value == null) return [];
+    return [String(value)];
   };
 
   const handleDelete = async (id: string) => {
@@ -69,13 +88,16 @@ const UserTable: React.FC<UserTableProps> = ({
         { text: "Rider", value: "rider" },
         { text: "Guida", value: "guide" },
       ],
+      filterMultiple: true,
       onFilter: (value, record) => {
-        // narrow value to string
-        if (typeof value !== "string") return false;
-
-        // now TS knows value is a Roles
-        return record.role.includes(value as Role);
+        const roles = normalizeRoles(record.role);
+        return roles.some(
+          (r) => r.toLowerCase() === String(value).toLowerCase()
+        );
       },
+
+      render: (value) =>
+        normalizeRoles(value).map((r) => <Tag key={r}>{r}</Tag>),
     },
     {
       title: "Azione",
@@ -101,10 +123,10 @@ const UserTable: React.FC<UserTableProps> = ({
             key: "delete",
             label: (
               <Popconfirm
-                title="Sei sicuro di voler eliminare questo utente?"
+                title='Sei sicuro di voler eliminare questo utente?'
                 onConfirm={() => handleDelete(record.id)}
-                okText="Sì"
-                cancelText="No"
+                okText='Sì'
+                cancelText='No'
               >
                 <span>
                   <DeleteOutlined /> Elimina
@@ -117,7 +139,7 @@ const UserTable: React.FC<UserTableProps> = ({
         return (
           <div style={{ display: "flex", justifyContent: "center" }}>
             <Dropdown menu={{ items }} trigger={["click"]}>
-              <Button type="text">
+              <Button type='text'>
                 Menu <MoreOutlined />
               </Button>
             </Dropdown>
@@ -133,7 +155,7 @@ const UserTable: React.FC<UserTableProps> = ({
       dataSource={users}
       columns={columns}
       loading={loading}
-      rowKey="id"
+      rowKey='id'
     />
   );
 };
