@@ -2,11 +2,9 @@ import React from "react";
 import {
   type RegisterPageProps,
   type RegisterFormTypes,
-  useRouterType,
   useLink,
   useActiveAuthProvider,
   useTranslate,
-  useRouterContext,
   useRegister,
 } from "@refinedev/core";
 import { ThemedTitle as ThemedTitleV2 } from "@refinedev/antd";
@@ -56,14 +54,11 @@ export const RegisterPage: React.FC<RegisterProps> = ({
   const { token } = theme.useToken();
   const [form] = Form.useForm<RegisterFormTypes>();
   const translate = useTranslate();
-  const routerType = useRouterType();
-  const Link = useLink();
-  const { Link: LegacyLink } = useRouterContext();
 
-  const ActiveLink = routerType === "legacy" ? LegacyLink : Link;
+  const Link = useLink();
 
   const authProvider = useActiveAuthProvider();
-  const { mutate: register, isLoading } =
+  const { mutate: register, isPending } =
     useRegister<ExtendedRegisterFormTypes>();
   useDocumentTitle(`Register | ${CONFIG.appName}`);
 
@@ -145,8 +140,10 @@ export const RegisterPage: React.FC<RegisterProps> = ({
   const CardContent = (
     <Card
       title={CardTitle}
-      headStyle={headStyles}
-      bodyStyle={bodyStyles}
+      styles={{
+        header: headStyles,
+        body: bodyStyles,
+      }}
       style={{
         ...containerStyles,
         backgroundColor: token.colorBgElevated,
@@ -318,7 +315,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
                     "Have an account?"
                   )
                 )}{" "}
-                <ActiveLink
+                <Link
                   style={{
                     fontWeight: "bold",
                     color: token.colorPrimaryTextHover,
@@ -329,7 +326,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
                     "pages.register.signin",
                     translate("pages.login.signin", "Sign in")
                   )}
-                </ActiveLink>
+                </Link>
               </Typography.Text>
             )}
           </div>
@@ -339,7 +336,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
               type="primary"
               size="large"
               htmlType="submit"
-              loading={isLoading}
+              loading={isPending}
               block
             >
               {translate("pages.register.buttons.submit", "Sign up")}
@@ -362,7 +359,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
               "pages.register.buttons.haveAccount",
               translate("pages.login.buttons.haveAccount", "Have an account?")
             )}{" "}
-            <ActiveLink
+            <Link
               style={{
                 fontWeight: "bold",
                 color: token.colorPrimaryTextHover,
@@ -373,7 +370,7 @@ export const RegisterPage: React.FC<RegisterProps> = ({
                 "pages.register.signin",
                 translate("pages.login.signin", "Sign in")
               )}
-            </ActiveLink>
+            </Link>
           </Typography.Text>
         </div>
       )}
