@@ -82,10 +82,30 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
     JSON.parse(localStorage.getItem("freeChannels") || "[]")
   );
   const navigate = useNavigate(); // Initialize useNavigate
+
+  const getTenantIdFromStorage = (): string => {
+    const raw = localStorage.getItem("tenantId");
+    if (!raw) return "";
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === "string") return parsed;
+      if (parsed && typeof parsed === "object" && "id" in parsed) {
+        return String((parsed as any).id);
+      }
+      return String(parsed);
+    } catch {
+      return raw;
+    }
+  };
+
   // Load free channels from localStorage whenever the drawer is opened
   useEffect(() => {
     if (!visible) return;
-    syncChannelsAfterOrderChange({ setFreeChannels }); // no ops → just recompute
+    const tid = getTenantIdFromStorage();
+    syncChannelsAfterOrderChange({
+      tenantId: tid || undefined,
+      setFreeChannels,
+    }); // no ops → just recompute
   }, [visible]);
 
   // When the drawer opens or the mode/order changes, pre-populate or reset the form.
@@ -197,28 +217,19 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
 
     try {
       await onSubmit(orderData, mode === "create" ? "create" : "edit");
-      syncChannelsAfterOrderChange({
-        free:
-          typeof order?.canaleRadio === "number"
-            ? order.canaleRadio
-            : order?.canaleRadio
-            ? Number(order.canaleRadio)
-            : null,
-        reserve: Number(orderData.canaleRadio),
-        setFreeChannels,
-      });
       message.success(
         mode === "create"
           ? "Ordine creato con successo!"
           : "Ordine aggiornato con successo!"
       );
       if (mode === "create") {
-        syncChannelsAfterOrderChange({
-          reserve: Number(orderData.canaleRadio),
-          setFreeChannels,
-        });
         form.resetFields();
       }
+      syncChannelsAfterOrderChange({
+        tenantId: getTenantIdFromStorage() || undefined,
+        reserve: Number(orderData.canaleRadio),
+        setFreeChannels,
+      });
       onClose(); // Parent should reset the mode on close.
     } catch (error) {
       console.error("Errore durante l'invio dell'ordine:", error);

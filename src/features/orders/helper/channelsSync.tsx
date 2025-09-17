@@ -1,71 +1,106 @@
 import { IOrder } from "../../../types/interfaces";
+import { updateTenantById } from "../../users/api/userApi";
 
 /**
- * Derives the free channels list based on the total number of channels,
- * channels that cannot be used (iddleChannels), and the orders that have used channels.
- *
- * @param totalChannels - Total number of available channels.
- * @param iddleChannels - Array of channels that cannot be used.
- * @param orders - Array of orders (using the IOrder interface) that have a `canaleRadio` property.
- * @returns The updated array of free (unused) channels.
+ * Recomputes free channels from localStorage and saves them back to localStorage.
+ * It intentionally RE-READS the canonical keys ("channels", "Iddlechannels", "disabledChannels")
+ * so it doesn't rely on the function arguments.
  */
 export const updateFreeChannels = (
   totalChannels: number,
   iddleChannels: number[],
   disabledChannels: number[],
-  orders: IOrder[]
+  orders: IOrder[] // kept for signature compatibility (not used)
 ): number[] => {
-  totalChannels = Number(localStorage.getItem("channels"));
+  // Canonical reads from LS
+  totalChannels = Number(localStorage.getItem("channels") || "0");
   iddleChannels = JSON.parse(localStorage.getItem("Iddlechannels") || "[]");
   disabledChannels = JSON.parse(
     localStorage.getItem("disabledChannels") || "[]"
   );
-  // Generate an array for all channels: [1, 2, ..., totalChannels]
+
+  // Build channel range [0..totalChannels] (inclusive)
   const allChannels = Array.from({ length: totalChannels + 1 }, (_, i) => i);
 
-  // Filter out channels that are either iddle (cannot be used) or are currently in use.
+  // Free = not iddle and not disabled
   const freeChannels = allChannels.filter(
     (channel) =>
       !iddleChannels.includes(channel) && !disabledChannels.includes(channel)
   );
 
-  // Store/update the free channels in localStorage.
+  // Persist result
   localStorage.setItem("freeChannels", JSON.stringify(freeChannels));
-
   return freeChannels;
 };
 
-type Opts = {
-  /** channel to reserve (add to Iddlechannels) */
+export type SyncOpts = {
+  /** Tenant to persist to (optional). If omitted, only localStorage is updated. */
+  tenantId?: string;
+  /** Channel to reserve (add to Iddlechannels). */
   reserve?: number | null;
-  /** channel to free (remove from Iddlechannels) */
+  /** Channel to free (remove from Iddlechannels). */
   free?: number | null;
-  /** setState from OrderDrawer: setFreeChannels */
-  setFreeChannels: (chs: number[]) => void;
+  /** setState from OrderDrawer (optional) to reflect the new free list immediately. */
+  setFreeChannels?: (chs: number[]) => void;
+  /** Override total channels if you want to force a value instead of LS "channels". */
+  totalChannelsOverride?: number;
 };
 
-export function syncChannelsAfterOrderChange({
+/**
+ * One-shot sync for channel changes:
+ * - Updates localStorage (Iddlechannels / disabledChannels / freeChannels)
+ * - Optionally updates tenant document (if tenantId is provided)
+ * - Optionally updates React state (setFreeChannels)
+ *
+ * Returns the latest freeChannels array.
+ */
+export async function syncChannelsAfterOrderChange({
+  tenantId,
   reserve,
   free,
   setFreeChannels,
-}: Opts) {
-  const total = Number(localStorage.getItem("channels") || "0");
-  const iddle = new Set<number>(
+  totalChannelsOverride,
+}: SyncOpts): Promise<number[]> {
+  // Read canonical state from LS
+  let total = Number(localStorage.getItem("channels") || "0");
+  if (typeof totalChannelsOverride === "number") total = totalChannelsOverride;
+
+  const iddleSet = new Set<number>(
     JSON.parse(localStorage.getItem("Iddlechannels") || "[]")
   );
   const disabled = JSON.parse(
     localStorage.getItem("disabledChannels") || "[]"
   ) as number[];
 
-  // mutate iddle set based on requested ops
-  if (typeof free === "number" && !Number.isNaN(free)) iddle.delete(free);
-  if (typeof reserve === "number" && !Number.isNaN(reserve)) iddle.add(reserve);
+  // Apply requested ops
+  if (typeof free === "number" && !Number.isNaN(free)) iddleSet.delete(free);
+  if (typeof reserve === "number" && !Number.isNaN(reserve))
+    iddleSet.add(reserve);
 
-  // persist canonical keys
-  const iddleArr = Array.from(iddle).sort((a, b) => a - b);
-  localStorage.setItem("Iddlechannels", JSON.stringify(iddleArr));
+  // Persist canonical keys back to LS
+  const iddleChannels = Array.from(iddleSet).sort((a, b) => a - b);
+  localStorage.setItem("Iddlechannels", JSON.stringify(iddleChannels));
+  // (we don't touch "disabledChannels" here; ManageChannels controls it)
 
-  // let your helper recompute + store freeChannels
-  const freeChannels = updateFreeChannels(total, iddleArr, disabled, []);
-  setFreeChannels(freeChannels);
+  // Recompute + persist freeChannels using your existing helper
+  const freeChannels = updateFreeChannels(total, iddleChannels, disabled, []);
+
+  // Mirror to tenant (best effort)
+  if (tenantId) {
+    try {
+      await updateTenantById(tenantId, {
+        channelsNum: total,
+        iddleChannels,
+        disabledChannels: disabled,
+      } as any);
+    } catch (err) {
+      // Keep UI responsive even if server write fails
+      console.error("updateTenantById failed:", err);
+    }
+  }
+
+  // Update component state if provided
+  setFreeChannels?.(freeChannels);
+
+  return freeChannels;
 }

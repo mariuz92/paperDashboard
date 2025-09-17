@@ -216,7 +216,7 @@ const ManageChannels: React.FC<ManageChannelsProps> = ({
       onCancel={onClose}
       footer={null}
       width={900}
-      destroyOnClose
+      destroyOnHidden
       maskClosable={!saving}
       confirmLoading={saving}
     >
