@@ -34,3 +34,38 @@ export const updateFreeChannels = (
 
   return freeChannels;
 };
+
+type Opts = {
+  /** channel to reserve (add to Iddlechannels) */
+  reserve?: number | null;
+  /** channel to free (remove from Iddlechannels) */
+  free?: number | null;
+  /** setState from OrderDrawer: setFreeChannels */
+  setFreeChannels: (chs: number[]) => void;
+};
+
+export function syncChannelsAfterOrderChange({
+  reserve,
+  free,
+  setFreeChannels,
+}: Opts) {
+  const total = Number(localStorage.getItem("channels") || "0");
+  const iddle = new Set<number>(
+    JSON.parse(localStorage.getItem("Iddlechannels") || "[]")
+  );
+  const disabled = JSON.parse(
+    localStorage.getItem("disabledChannels") || "[]"
+  ) as number[];
+
+  // mutate iddle set based on requested ops
+  if (typeof free === "number" && !Number.isNaN(free)) iddle.delete(free);
+  if (typeof reserve === "number" && !Number.isNaN(reserve)) iddle.add(reserve);
+
+  // persist canonical keys
+  const iddleArr = Array.from(iddle).sort((a, b) => a - b);
+  localStorage.setItem("Iddlechannels", JSON.stringify(iddleArr));
+
+  // let your helper recompute + store freeChannels
+  const freeChannels = updateFreeChannels(total, iddleArr, disabled, []);
+  setFreeChannels(freeChannels);
+}

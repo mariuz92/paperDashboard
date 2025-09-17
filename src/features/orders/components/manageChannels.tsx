@@ -15,7 +15,7 @@ import {
 } from "antd";
 import { SaveOutlined, ReloadOutlined } from "@ant-design/icons";
 // ⬇️ adjust these paths
-import { updateFreeChannels } from "../helper/updateFreeChannels";
+import { updateFreeChannels } from "../helper/channelsSync";
 import { updateTenantById } from "../../users/api/userApi";
 
 // ---- helpers from your code (kept identical to your storage keys) ----
@@ -202,7 +202,7 @@ const ManageChannels: React.FC<ManageChannelsProps> = ({
   };
 
   const counters = (
-    <Space size='large' wrap>
+    <Space size="large" wrap>
       {stateTag("free", freeChannels.length)}
       {stateTag("iddle", iddleSet.size)}
       {stateTag("disabled", disabledSet.size)}
@@ -211,7 +211,7 @@ const ManageChannels: React.FC<ManageChannelsProps> = ({
 
   return (
     <Modal
-      title='Gestione Canali'
+      title="Gestione Canali"
       open={visible}
       onCancel={onClose}
       footer={null}
@@ -222,7 +222,7 @@ const ManageChannels: React.FC<ManageChannelsProps> = ({
     >
       <Row gutter={16}>
         <Col xs={24} md={8}>
-          <Card title='Impostazioni canali'>
+          <Card title="Impostazioni canali">
             <div style={{ marginBottom: 12 }}>
               <div style={{ marginBottom: 6 }}>Numero totale di canali</div>
               <InputNumber
@@ -242,7 +242,7 @@ const ManageChannels: React.FC<ManageChannelsProps> = ({
                 Ripristina
               </Button>
               <Button
-                type='primary'
+                type="primary"
                 icon={<SaveOutlined />}
                 loading={saving}
                 onClick={saveToTenant}
@@ -255,7 +255,7 @@ const ManageChannels: React.FC<ManageChannelsProps> = ({
 
         <Col xs={24} md={16}>
           <Card
-            title='Canali'
+            title="Canali"
             extra={
               <span>
                 Clicca un canale per cambiare stato (Libero → Utilizzato →
