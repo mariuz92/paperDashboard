@@ -30,6 +30,7 @@ import {
 } from "@ant-design/icons";
 import { IOrderStatus } from "../../../types/interfaces/index";
 import { useNavigate } from "react-router";
+import { syncChannelsAfterOrderChange } from "../helper/channelsSync";
 
 const { Title } = Typography;
 
@@ -77,24 +78,34 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
   const [form] = Form.useForm();
   const [guides, setGuides] = useState<IUser[]>([]);
   const [isManualGuide, setIsManualGuide] = useState(false);
-  const [freeChannels, setFreeChannels] = useState<number[]>([]);
+  const [freeChannels, setFreeChannels] = useState<number[]>(
+    JSON.parse(localStorage.getItem("freeChannels") || "[]")
+  );
   const navigate = useNavigate(); // Initialize useNavigate
+
+  const getTenantIdFromStorage = (): string => {
+    const raw = localStorage.getItem("tenantId");
+    if (!raw) return "";
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === "string") return parsed;
+      if (parsed && typeof parsed === "object" && "id" in parsed) {
+        return String((parsed as any).id);
+      }
+      return String(parsed);
+    } catch {
+      return raw;
+    }
+  };
+
   // Load free channels from localStorage whenever the drawer is opened
   useEffect(() => {
-    if (visible) {
-      const storedFreeChannels = localStorage.getItem("freeChannels");
-      if (storedFreeChannels) {
-        try {
-          const parsedChannels = JSON.parse(storedFreeChannels);
-          setFreeChannels(parsedChannels);
-        } catch (error) {
-          console.error("Error parsing freeChannels from localStorage", error);
-          setFreeChannels([]);
-        }
-      } else {
-        setFreeChannels([]);
-      }
-    }
+    if (!visible) return;
+    const tid = getTenantIdFromStorage();
+    syncChannelsAfterOrderChange({
+      tenantId: tid || undefined,
+      setFreeChannels,
+    }); // no ops → just recompute
   }, [visible]);
 
   // When the drawer opens or the mode/order changes, pre-populate or reset the form.
@@ -184,6 +195,11 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       return;
     }
 
+    const selectedChannel =
+      typeof values.canaleRadio === "number"
+        ? values.canaleRadio
+        : Number(values.canaleRadio ?? NaN);
+
     const orderData: Partial<IOrder> = {
       nomeGuida: values.nomeGuida || "",
       telefonoGuida: values.telefonoGuida || "",
@@ -209,6 +225,11 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       if (mode === "create") {
         form.resetFields();
       }
+      syncChannelsAfterOrderChange({
+        tenantId: getTenantIdFromStorage() || undefined,
+        reserve: Number(orderData.canaleRadio),
+        setFreeChannels,
+      });
       onClose(); // Parent should reset the mode on close.
     } catch (error) {
       console.error("Errore durante l'invio dell'ordine:", error);
@@ -348,14 +369,14 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       <Row gutter={16} style={{ paddingBottom: 24 }}>
         <Col span={6}>
           <Form.Item label="Canale" name="canaleRadio">
+            {/* Map the free channels from localStorage */}
             <Select
               placeholder="Seleziona Canale Radio"
               disabled={mode === "view"}
             >
-              {/* Map the free channels from localStorage */}
-              {freeChannels.map((channel) => (
-                <Select.Option key={channel} value={channel.toString()}>
-                  {channel}
+              {freeChannels.map((ch) => (
+                <Select.Option key={ch} value={ch}>
+                  {ch}
                 </Select.Option>
               ))}
             </Select>

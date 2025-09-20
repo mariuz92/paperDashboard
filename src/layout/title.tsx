@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  useRouterContext,
-  useRouterType,
-  useLink,
-  useRefineOptions,
-} from "@refinedev/core";
+import { useLink, useRefineOptions } from "@refinedev/core";
 import { Typography, theme, Space } from "antd";
 import type { RefineLayoutThemedTitleProps } from "@refinedev/antd";
 
@@ -14,54 +9,42 @@ interface ExtendedThemedTitleProps extends RefineLayoutThemedTitleProps {
    * If provided, it overrides the icon and displays an image at 24×24.
    */
   image?: string;
+
+  /**
+   * Hide icon/image completely
+   */
+  hideIcon?: boolean;
 }
 
-export const ThemedTitleV2: React.FC<ExtendedThemedTitleProps> = ({
+export const ThemedTitle: React.FC<ExtendedThemedTitleProps> = ({
   collapsed,
   icon: iconFromProps,
   text: textFromProps,
   wrapperStyles,
   image,
+  hideIcon = false,
 }) => {
-  // Extract default icon/text from refine options (if any)
   const { title: { icon: defaultIcon, text: defaultText } = {} } =
     useRefineOptions();
 
-  /**
-   * Decide which icon to display:
-   * 1. If `image` is provided, use <img>.
-   * 2. Else if `iconFromProps` is provided, use it.
-   * 3. Else fallback to `defaultIcon`.
-   */
-  const iconNode = image ? (
-    <img
-      src={image}
-      alt='title icon'
-      style={{ width: "24px", height: "24px" }}
-    />
-  ) : (
-    iconFromProps ?? defaultIcon
-  );
+  const { token } = theme.useToken();
+  const Link = useLink();
 
-  // Decide which text to display
   const textToDisplay =
     typeof textFromProps === "undefined" ? defaultText : textFromProps;
 
-  const { token } = theme.useToken();
-  const routerType = useRouterType();
-  const Link = useLink();
-  const { Link: LegacyLink } = useRouterContext();
-
-  const ActiveLink = routerType === "legacy" ? LegacyLink : Link;
+  // Build the icon node only if not hidden
+  let iconNode: React.ReactNode = null;
+  if (!hideIcon) {
+    iconNode = image ? (
+      <img src={image} alt="title icon" style={{ width: 24, height: 24 }} />
+    ) : (
+      iconFromProps ?? defaultIcon
+    );
+  }
 
   return (
-    <ActiveLink
-      to='/'
-      style={{
-        display: "inline-block",
-        textDecoration: "none",
-      }}
-    >
+    <Link to="/" style={{ display: "inline-block", textDecoration: "none" }}>
       <Space
         style={{
           display: "flex",
@@ -70,15 +53,18 @@ export const ThemedTitleV2: React.FC<ExtendedThemedTitleProps> = ({
           ...wrapperStyles,
         }}
       >
-        <div
-          style={{
-            height: "24px",
-            width: "24px",
-            color: token.colorPrimary,
-          }}
-        >
-          {iconNode}
-        </div>
+        {/* Show icon/image only if provided and not hidden */}
+        {!hideIcon && iconNode && (
+          <div
+            style={{
+              height: 24,
+              width: 24,
+              color: token.colorPrimary,
+            }}
+          >
+            {iconNode}
+          </div>
+        )}
 
         {/* Show text only if not collapsed */}
         {!collapsed && (
@@ -93,6 +79,6 @@ export const ThemedTitleV2: React.FC<ExtendedThemedTitleProps> = ({
           </Typography.Title>
         )}
       </Space>
-    </ActiveLink>
+    </Link>
   );
 };

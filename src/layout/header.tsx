@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Layout, Button, Avatar, Dropdown, Menu, Space, theme } from "antd";
+<<<<<<< HEAD
 import type { RefineThemedLayoutHeaderProps as RefineThemedLayoutV2HeaderProps } from "@refinedev/antd";
+=======
+import type { RefineThemedLayoutHeaderProps } from "@refinedev/antd";
+>>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { signOutUser } from "../features/auth/api/authApi";
@@ -8,7 +12,7 @@ import { IUser } from "../types/interfaces/IUser";
 
 const { Header } = Layout;
 
-export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
+export const ThemedHeader: React.FC<RefineThemedLayoutHeaderProps> = ({
   sticky,
 }) => {
   const { token } = theme.useToken();
@@ -79,11 +83,8 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
             >
               <Avatar
                 size={"default"}
-                src={
-                  user?.photoURL && user.photoURL.length > 0
-                    ? user.photoURL
-                    : "/images/youngtour_logo.png"
-                }
+                src={user?.photoURL}
+                icon={<UserOutlined />}
                 style={{
                   marginRight: 8,
                   border: `1px ${token.colorBorder} solid`,
@@ -98,4 +99,4 @@ export const ThemedHeaderV2: React.FC<RefineThemedLayoutV2HeaderProps> = ({
   );
 };
 
-export default ThemedHeaderV2;
+export default ThemedHeader;

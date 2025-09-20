@@ -54,7 +54,11 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
   const [form] = Form.useForm<UpdatePasswordFormTypes>();
   const translate = useTranslate();
   const authProvider = useActiveAuthProvider();
+<<<<<<< HEAD
   const { mutate: updatePassword, isLoading } =
+=======
+  const { mutate: updatePassword, isPending } =
+>>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
     useUpdatePassword<UpdatePasswordFormTypes>();
   useDocumentTitle(`Richiedi password | ${CONFIG.appName}`);
   const PageTitle =
@@ -86,8 +90,10 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
   const CardContent = (
     <Card
       title={CardTitle}
-      headStyle={headStyles}
-      bodyStyle={bodyStyles}
+      styles={{
+        header: headStyles,
+        body: bodyStyles,
+      }}
       style={{
         ...containerStyles,
         backgroundColor: token.colorBgElevated,
@@ -95,7 +101,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
       {...(contentProps ?? {})}
     >
       <Form<UpdatePasswordFormTypes>
-        layout='vertical'
+        layout="vertical"
         form={form}
         onFinish={(values) =>
           updatePassword({ ...values, ...mutationVariables })
@@ -104,7 +110,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
         {...formProps}
       >
         <Form.Item
-          name='password'
+          name="password"
           label={translate(
             "pages.updatePassword.fields.password",
             "New Password"
@@ -120,10 +126,10 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
           ]}
           style={{ marginBottom: "12px" }}
         >
-          <Input type='password' placeholder='●●●●●●●●' size='large' />
+          <Input type="password" placeholder="●●●●●●●●" size="large" />
         </Form.Item>
         <Form.Item
-          name='confirmPassword'
+          name="confirmPassword"
           label={translate(
             "pages.updatePassword.fields.confirmPassword",
             "Confirm New Password"
@@ -155,7 +161,7 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
             }),
           ]}
         >
-          <Input type='password' placeholder='●●●●●●●●' size='large' />
+          <Input type="password" placeholder="●●●●●●●●" size="large" />
         </Form.Item>
         <Form.Item
           style={{
@@ -163,10 +169,10 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
           }}
         >
           <Button
-            type='primary'
-            size='large'
-            htmlType='submit'
-            loading={isLoading}
+            type="primary"
+            size="large"
+            htmlType="submit"
+            loading={isPending}
             block
           >
             {translate("pages.updatePassword.buttons.submit", "Update")}
@@ -179,8 +185,8 @@ export const UpdatePasswordPage: React.FC<UpdatePasswordProps> = ({
   return (
     <Layout style={layoutStyles} {...(wrapperProps ?? {})}>
       <Row
-        justify='center'
-        align='middle'
+        justify="center"
+        align="middle"
         style={{
           padding: "16px 0",
           minHeight: "100dvh",

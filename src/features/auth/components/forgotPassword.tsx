@@ -2,10 +2,8 @@ import React from "react";
 import {
   type ForgotPasswordPageProps,
   type ForgotPasswordFormTypes,
-  useRouterType,
   useLink,
   useTranslate,
-  useRouterContext,
   useForgotPassword,
 } from "@refinedev/core";
 import { ThemedTitle as ThemedTitleV2 } from "@refinedev/antd";
@@ -56,13 +54,10 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
   const { token } = theme.useToken();
   const [form] = Form.useForm<ForgotPasswordFormTypes>();
   const translate = useTranslate();
-  const routerType = useRouterType();
+
   const Link = useLink();
-  const { Link: LegacyLink } = useRouterContext();
 
-  const ActiveLink = routerType === "legacy" ? LegacyLink : Link;
-
-  const { mutate: forgotPassword, isLoading } =
+  const { mutate: forgotPassword, isPending } =
     useForgotPassword<ForgotPasswordFormTypes>();
   useDocumentTitle(`Password dimenticata | ${CONFIG.appName}`);
   const PageTitle =
@@ -93,8 +88,10 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
   const CardContent = (
     <Card
       title={CardTitle}
-      headStyle={headStyles}
-      bodyStyle={bodyStyles}
+      styles={{
+        header: headStyles,
+        body: bodyStyles,
+      }}
       style={{
         ...containerStyles,
         backgroundColor: token.colorBgElevated,
@@ -102,7 +99,7 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
       {...(contentProps ?? {})}
     >
       <Form<ForgotPasswordFormTypes>
-        layout='vertical'
+        layout="vertical"
         form={form}
         onFinish={(values) =>
           forgotPassword({ ...values, ...mutationVariables })
@@ -111,7 +108,7 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
         {...formProps}
       >
         <Form.Item
-          name='email'
+          name="email"
           label={translate("pages.forgotPassword.fields.email", "Email")}
           rules={[
             {
@@ -131,8 +128,8 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
           ]}
         >
           <Input
-            type='email'
-            size='large'
+            type="email"
+            size="large"
             placeholder={translate(
               "pages.forgotPassword.fields.email",
               "Email"
@@ -159,18 +156,18 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
                   "Have an account? "
                 )
               )}{" "}
-              <ActiveLink
+              <Link
                 style={{
                   fontWeight: "bold",
                   color: token.colorPrimaryTextHover,
                 }}
-                to='/login'
+                to="/login"
               >
                 {translate(
                   "pages.forgotPassword.signin",
                   translate("pages.login.signin", "Sign in")
                 )}
-              </ActiveLink>
+              </Link>
             </Typography.Text>
           )}
         </div>
@@ -181,10 +178,10 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
           }}
         >
           <Button
-            type='primary'
-            size='large'
-            htmlType='submit'
-            loading={isLoading}
+            type="primary"
+            size="large"
+            htmlType="submit"
+            loading={isPending}
             block
           >
             {translate(
@@ -200,8 +197,8 @@ export const ForgotPasswordPage: React.FC<ResetPassworProps> = ({
   return (
     <Layout style={layoutStyles} {...(wrapperProps ?? {})}>
       <Row
-        justify='center'
-        align='middle'
+        justify="center"
+        align="middle"
         style={{
           padding: "16px 0",
           minHeight: "100dvh",

@@ -1,21 +1,24 @@
 import React, { useContext } from "react";
 import {
+  type TreeMenuItem,
   useTranslate,
   useLogout,
-  useTitle,
   CanAccess,
+<<<<<<< HEAD
   type TreeMenuItem as ITreeMenu,
+=======
+>>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
   useIsExistAuthentication,
-  useRouterContext,
   useMenu,
-  useRefineContext,
   useLink,
-  useRouterType,
-  useActiveAuthProvider,
-  pickNotDeprecated,
   useWarnAboutChange,
 } from "@refinedev/core";
+<<<<<<< HEAD
 import { ThemedTitle as ThemedTitleV2, useThemedLayoutContext } from "@refinedev/antd";
+=======
+
+import { useThemedLayoutContext } from "@refinedev/antd";
+>>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
 import {
   DashboardOutlined,
   LogoutOutlined,
@@ -35,7 +38,7 @@ import {
 } from "antd";
 import type { RefineThemedLayoutSiderProps as RefineThemedLayoutV2SiderProps } from "@refinedev/antd";
 import type { CSSProperties } from "react";
-
+import { ThemedTitle } from "./title";
 const drawerButtonStyles: CSSProperties = {
   borderStartStartRadius: 0,
   borderEndStartRadius: 0,
@@ -44,12 +47,13 @@ const drawerButtonStyles: CSSProperties = {
   zIndex: 999,
 };
 
-export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
+export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
   Title: TitleFromProps,
   render,
   meta,
   fixed,
   activeItemDisabled = false,
+  siderItemsAreCollapsed = true,
 }) => {
   const { token } = theme.useToken();
   const {
@@ -61,37 +65,30 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
 
   const isExistAuthentication = useIsExistAuthentication();
   const direction = useContext(ConfigProvider.ConfigContext)?.direction;
-  const routerType = useRouterType();
-  const NewLink = useLink();
+  const Link = useLink();
   const { warnWhen, setWarnWhen } = useWarnAboutChange();
-  const { Link: LegacyLink } = useRouterContext();
-  const Link = routerType === "legacy" ? LegacyLink : NewLink;
-  const TitleFromContext = useTitle();
   const translate = useTranslate();
   const { menuItems, selectedKey, defaultOpenKeys } = useMenu({ meta });
   const breakpoint = Grid.useBreakpoint();
+<<<<<<< HEAD
   const { hasDashboard } = useRefineContext();
   const authProvider = useActiveAuthProvider();
+=======
+>>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
   const { mutate: mutateLogout } = useLogout();
 
   const isMobile =
     typeof breakpoint.lg === "undefined" ? false : !breakpoint.lg;
 
-  const RenderToTitle = TitleFromProps ?? TitleFromContext ?? ThemedTitleV2;
+  const RenderToTitle = TitleFromProps ?? ThemedTitle;
 
-  const renderTreeView = (tree: ITreeMenu[], selectedKey?: string) => {
-    return tree.map((item: ITreeMenu) => {
-      const {
-        icon,
-        label,
-        route,
-        key,
-        name,
-        children,
-        parentName,
-        meta,
-        options,
-      } = item;
+  const renderTreeView = (tree: TreeMenuItem[], selectedKey?: string) => {
+    return tree.map((item: TreeMenuItem) => {
+      const { key, name, children, meta, list } = item;
+      const parentName = meta?.parent;
+      const label = item?.label ?? meta?.label ?? name;
+      const icon = meta?.icon;
+      const route = list;
 
       if (children.length > 0) {
         return (
@@ -114,10 +111,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
         );
       }
       const isSelected = key === selectedKey;
-      const isRoute = !(
-        pickNotDeprecated(meta?.parent, options?.parent, parentName) !==
-          undefined && children.length === 0
-      );
+      const isRoute = !(parentName !== undefined && children.length === 0);
 
       const linkStyle: React.CSSProperties =
         activeItemDisabled && isSelected ? { pointerEvents: "none" } : {};
@@ -176,40 +170,38 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
     </Menu.Item>
   );
 
-  const dashboard = hasDashboard ? (
-    <Menu.Item key="dashboard" icon={<DashboardOutlined />}>
-      <Link to="/">{translate("dashboard.title", "Dashboard")}</Link>
-      {!siderCollapsed && selectedKey === "/" && (
-        <div className="ant-menu-tree-arrow" />
-      )}
-    </Menu.Item>
-  ) : null;
+  // const dashboard = dashboard ? (
+  //   <Menu.Item key="dashboard" icon={<DashboardOutlined />}>
+  //     <Link to="/">{translate("dashboard.title", "Dashboard")}</Link>
+  //     {!siderCollapsed && selectedKey === "/" && (
+  //       <div className="ant-menu-tree-arrow" />
+  //     )}
+  //   </Menu.Item>
+  // ) : null;
+
+  const defaultExpandMenuItems = (() => {
+    if (siderItemsAreCollapsed) return [];
+    return menuItems.map(({ key }) => key);
+  })();
 
   const items = renderTreeView(menuItems, selectedKey);
 
   const renderSider = () => {
     if (render) {
       return render({
-        dashboard,
         items,
         logout,
         collapsed: siderCollapsed,
       });
     }
-    return (
-      <>
-        {dashboard}
-        {items}
-        {/* {logout} */}
-      </>
-    );
+    return [...items, logout].filter(Boolean);
   };
 
   const renderMenu = () => {
     return (
       <Menu
         selectedKeys={selectedKey ? [selectedKey] : []}
-        defaultOpenKeys={defaultOpenKeys}
+        defaultOpenKeys={[...defaultOpenKeys, ...defaultExpandMenuItems]}
         mode="vertical"
         style={{
           paddingTop: "8px",
@@ -256,7 +248,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
                   backgroundColor: token.colorBgElevated,
                 }}
               >
-                <RenderToTitle collapsed={false} />
+                <RenderToTitle hideIcon collapsed={false} />
               </div>
               {renderMenu()}
             </Layout.Sider>
@@ -344,7 +336,7 @@ export const ThemedSiderV2: React.FC<RefineThemedLayoutV2SiderProps> = ({
             fontSize: "14px",
           }}
         >
-          <RenderToTitle collapsed={siderCollapsed} />
+          <RenderToTitle hideIcon collapsed={siderCollapsed} />
         </div>
         {renderMenu()}
       </Layout.Sider>

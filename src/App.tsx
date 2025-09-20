@@ -29,9 +29,9 @@ import "@refinedev/antd/dist/reset.css";
 import { App as AntdApp, ConfigProvider } from "antd";
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
 import { AuthPage } from "./features/auth";
-import { ThemedLayoutV2 } from "./layout";
-import { ThemedHeaderV2 } from "./layout/header";
-import { ThemedTitleV2 } from "./layout/title";
+import { ThemedLayout } from "./layout";
+import { ThemedHeader } from "./layout/header";
+import { ThemedTitle } from "./layout/title";
 
 import JoinPage from "./features/auth/components/join";
 import { CalendarPage } from "./features/calendar/pages/calendar";
@@ -295,7 +295,7 @@ const App: React.FC = () => {
                 element={
                   <AuthPage
                     title={
-                      <ThemedTitleV2
+                      <ThemedTitle
                         image={CONFIG.logo}
                         icon={<AndroidOutlined />}
                         text={CONFIG.appName}
@@ -319,7 +319,7 @@ const App: React.FC = () => {
                 element={
                   <AuthPage
                     title={
-                      <ThemedTitleV2
+                      <ThemedTitle
                         icon={<AndroidOutlined />}
                         image={CONFIG.logo}
                         text={CONFIG.appName}
@@ -342,7 +342,7 @@ const App: React.FC = () => {
                 element={
                   <AuthPage
                     title={
-                      <ThemedTitleV2
+                      <ThemedTitle
                         icon={<AndroidOutlined />}
                         image={CONFIG.logo}
                         text={CONFIG.appName}
@@ -358,7 +358,7 @@ const App: React.FC = () => {
                 element={
                   <AuthPage
                     title={
-                      <ThemedTitleV2
+                      <ThemedTitle
                         icon={<AndroidOutlined />}
                         image={CONFIG.logo}
                         text={CONFIG.appName}
@@ -377,10 +377,10 @@ const App: React.FC = () => {
                     fallback={<Navigate to="/login" />}
                     key="authenticated"
                   >
-                    <ThemedLayoutV2
-                      Header={ThemedHeaderV2}
+                    <ThemedLayout
+                      Header={ThemedHeader}
                       Title={({ collapsed }) => (
-                        <ThemedTitleV2
+                        <ThemedTitle
                           collapsed={collapsed}
                           image={CONFIG.logo}
                           icon={<AndroidOutlined />}
@@ -389,7 +389,7 @@ const App: React.FC = () => {
                       )}
                     >
                       <Outlet />
-                    </ThemedLayoutV2>
+                    </ThemedLayout>
                   </Authenticated>
                 }
               >
