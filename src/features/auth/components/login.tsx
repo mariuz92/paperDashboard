@@ -60,11 +60,7 @@ export const LoginPage: React.FC<LoginProps> = ({
   const Link = useLink();
 
   const authProvider = useActiveAuthProvider();
-<<<<<<< HEAD
-  const { mutate: login, isLoading } = useLogin<ExpendadedLoginFormTypes>();
-=======
   const { mutate: login, isPending } = useLogin<ExpendadedLoginFormTypes>();
->>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
 
   useDocumentTitle(`Login | ${CONFIG.appName}`);
 
@@ -78,7 +74,7 @@ export const LoginPage: React.FC<LoginProps> = ({
           fontSize: "20px",
         }}
       >
-        {title ?? <ThemedTitle icon="" collapsed={true} />}
+        {title ?? <ThemedTitle icon='' collapsed={true} />}
       </div>
     );
 
@@ -102,7 +98,7 @@ export const LoginPage: React.FC<LoginProps> = ({
             return (
               <Button
                 key={provider.name}
-                type="default"
+                type='default'
                 block
                 icon={provider.icon}
                 style={{
@@ -156,7 +152,7 @@ export const LoginPage: React.FC<LoginProps> = ({
       {/* {renderProviders()} */}
       {!hideForm && (
         <Form<ExpendadedLoginFormTypes>
-          layout="vertical"
+          layout='vertical'
           form={form}
           onFinish={(values) => login({ ...values, ...mutationVariables })}
           requiredMark={false}
@@ -166,7 +162,7 @@ export const LoginPage: React.FC<LoginProps> = ({
           {...formProps}
         >
           <Form.Item
-            name="companyName"
+            name='companyName'
             label={translate("pages.login.fields.company", "Company")}
             rules={[
               {
@@ -179,12 +175,12 @@ export const LoginPage: React.FC<LoginProps> = ({
             ]}
           >
             <Input
-              size="large"
+              size='large'
               placeholder={translate("pages.login.fields.company", "Company")}
             />
           </Form.Item>
           <Form.Item
-            name="email"
+            name='email'
             label={translate("pages.login.fields.email", "Email")}
             rules={[
               {
@@ -204,12 +200,12 @@ export const LoginPage: React.FC<LoginProps> = ({
             ]}
           >
             <Input
-              size="large"
+              size='large'
               placeholder={translate("pages.login.fields.email", "Email")}
             />
           </Form.Item>
           <Form.Item
-            name="password"
+            name='password'
             label={translate("pages.login.fields.password", "Password")}
             rules={[
               {
@@ -222,10 +218,10 @@ export const LoginPage: React.FC<LoginProps> = ({
             ]}
           >
             <Input.Password
-              type="password"
-              autoComplete="current-password"
-              placeholder="●●●●●●●●"
-              size="large"
+              type='password'
+              autoComplete='current-password'
+              placeholder='●●●●●●●●'
+              size='large'
             />
           </Form.Item>
           <div
@@ -236,7 +232,7 @@ export const LoginPage: React.FC<LoginProps> = ({
             }}
           >
             {rememberMe ?? (
-              <Form.Item name="remember" valuePropName="checked" noStyle>
+              <Form.Item name='remember' valuePropName='checked' noStyle>
                 <Checkbox
                   style={{
                     fontSize: "12px",
@@ -253,7 +249,7 @@ export const LoginPage: React.FC<LoginProps> = ({
                   fontSize: "12px",
                   marginLeft: "auto",
                 }}
-                to="/forgot-password"
+                to='/forgot-password'
               >
                 {translate(
                   "pages.login.buttons.forgotPassword",
@@ -265,9 +261,9 @@ export const LoginPage: React.FC<LoginProps> = ({
           {!hideForm && (
             <Form.Item>
               <Button
-                type="primary"
-                size="large"
-                htmlType="submit"
+                type='primary'
+                size='large'
+                htmlType='submit'
                 loading={isPending}
                 block
               >
@@ -290,7 +286,7 @@ export const LoginPage: React.FC<LoginProps> = ({
               "Don’t have an account?"
             )}{" "}
             <Link
-              to="/register"
+              to='/register'
               style={{
                 fontWeight: "bold",
                 color: token.colorPrimaryTextHover,
@@ -307,7 +303,7 @@ export const LoginPage: React.FC<LoginProps> = ({
   return (
     <Layout style={layoutStyles} {...(wrapperProps ?? {})}>
       <Row
-        justify="center"
+        justify='center'
         align={hideForm ? "top" : "middle"}
         style={{
           padding: "16px 0",

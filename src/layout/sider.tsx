@@ -4,21 +4,13 @@ import {
   useTranslate,
   useLogout,
   CanAccess,
-<<<<<<< HEAD
-  type TreeMenuItem as ITreeMenu,
-=======
->>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
   useIsExistAuthentication,
   useMenu,
   useLink,
   useWarnAboutChange,
 } from "@refinedev/core";
-<<<<<<< HEAD
-import { ThemedTitle as ThemedTitleV2, useThemedLayoutContext } from "@refinedev/antd";
-=======
 
 import { useThemedLayoutContext } from "@refinedev/antd";
->>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
 import {
   DashboardOutlined,
   LogoutOutlined,
@@ -70,11 +62,6 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
   const translate = useTranslate();
   const { menuItems, selectedKey, defaultOpenKeys } = useMenu({ meta });
   const breakpoint = Grid.useBreakpoint();
-<<<<<<< HEAD
-  const { hasDashboard } = useRefineContext();
-  const authProvider = useActiveAuthProvider();
-=======
->>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
   const { mutate: mutateLogout } = useLogout();
 
   const isMobile =
@@ -95,7 +82,7 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
           <CanAccess
             key={item.key}
             resource={name}
-            action="list"
+            action='list'
             params={{
               resource: item,
             }}
@@ -120,7 +107,7 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
         <CanAccess
           key={item.key}
           resource={name}
-          action="list"
+          action='list'
           params={{
             resource: item,
           }}
@@ -134,7 +121,7 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
               {label}
             </Link>
             {!siderCollapsed && isSelected && (
-              <div className="ant-menu-tree-arrow" />
+              <div className='ant-menu-tree-arrow' />
             )}
           </Menu.Item>
         </CanAccess>
@@ -162,7 +149,7 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
 
   const logout = isExistAuthentication && (
     <Menu.Item
-      key="logout"
+      key='logout'
       onClick={() => handleLogout()}
       icon={<LogoutOutlined />}
     >
@@ -202,7 +189,7 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
       <Menu
         selectedKeys={selectedKey ? [selectedKey] : []}
         defaultOpenKeys={[...defaultOpenKeys, ...defaultExpandMenuItems]}
-        mode="vertical"
+        mode='vertical'
         style={{
           paddingTop: "8px",
           border: "none",
@@ -256,7 +243,7 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
         </Drawer>
         <Button
           style={drawerButtonStyles}
-          size="large"
+          size='large'
           onClick={() => setMobileSiderOpen(true)}
           icon={<BarsOutlined />}
         />
@@ -308,11 +295,11 @@ export const ThemedSider: React.FC<RefineThemedLayoutV2SiderProps> = ({
           }
         }}
         collapsedWidth={80}
-        breakpoint="lg"
+        breakpoint='lg'
         trigger={
           <Button
-            type="primary"
-            shape="round"
+            type='primary'
+            shape='round'
             style={{
               borderRadius: 0,
               height: "100%",

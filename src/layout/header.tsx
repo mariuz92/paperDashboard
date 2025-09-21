@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Layout, Button, Avatar, Dropdown, Menu, Space, theme } from "antd";
-<<<<<<< HEAD
-import type { RefineThemedLayoutHeaderProps as RefineThemedLayoutV2HeaderProps } from "@refinedev/antd";
-=======
 import type { RefineThemedLayoutHeaderProps } from "@refinedev/antd";
->>>>>>> 9562050aeb8821f605fc251b64744377d8565c4d
 import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { signOutUser } from "../features/auth/api/authApi";
@@ -71,15 +67,15 @@ export const ThemedHeader: React.FC<RefineThemedLayoutHeaderProps> = ({
       {shouldRenderHeader && (
         <Space>
           <Dropdown
-            placement="bottomRight"
+            placement='bottomRight'
             arrow
             menu={{ items: menuItems, onClick: handleMenuClick }}
             trigger={["click"]}
           >
             <Button
-              type="text"
+              type='text'
               style={{ display: "flex", alignItems: "center" }}
-              size="large"
+              size='large'
             >
               <Avatar
                 size={"default"}
