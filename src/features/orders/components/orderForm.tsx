@@ -175,14 +175,32 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
   // Process the form submission: convert date/time fields & call onSubmit.
   const handleFinish = async (values: any) => {
     let oraConsegna: Timestamp | null = null;
+    // --- Stato/canale PRECEDENTI (utili in edit) ---
+    const prevStatus = order?.status ?? null;
+    const prevChannelStr = order?.canaleRadio ?? undefined;
+    const prevChannelNum = prevChannelStr ? Number(prevChannelStr) : undefined;
+
     if (values.oraConsegna) {
       const time = values.oraConsegna;
-      const mergedDateTime = dayjs()
-        .hour(time.hour())
-        .minute(time.minute())
-        .second(0)
-        .millisecond(0);
-      oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
+
+      if (mode === "edit" && order?.oraConsegna) {
+        // Mantieni la DATA originale e cambia solo l’orario
+        const originalDate = dayjs(order.oraConsegna.toDate());
+        const mergedDateTime = originalDate
+          .hour(time.hour())
+          .minute(time.minute())
+          .second(0)
+          .millisecond(0);
+        oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
+      } else {
+        // In create → usa la data di oggi
+        const mergedDateTime = dayjs()
+          .hour(time.hour())
+          .minute(time.minute())
+          .second(0)
+          .millisecond(0);
+        oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
+      }
     }
 
     let oraRitiro: Timestamp | null = null;
@@ -195,15 +213,15 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       return;
     }
 
-    const selectedChannel =
-      typeof values.canaleRadio === "number"
-        ? values.canaleRadio
-        : Number(values.canaleRadio ?? NaN);
+    const selectedChannelStr: string = values.canaleRadio ?? "";
+    const selectedChannelNum = selectedChannelStr
+      ? Number(selectedChannelStr)
+      : undefined;
 
     const orderData: Partial<IOrder> = {
       nomeGuida: values.nomeGuida || "",
       telefonoGuida: values.telefonoGuida || "",
-      canaleRadio: values.canaleRadio.toString() || "",
+      canaleRadio: selectedChannelStr,
       oraConsegna,
       luogoConsegna: values.luogoConsegna || "",
       oraRitiro: oraRitiro,
@@ -222,15 +240,89 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           ? "Ordine creato con successo!"
           : "Ordine aggiornato con successo!"
       );
-      if (mode === "create") {
-        form.resetFields();
+
+      const tid = getTenantIdFromStorage() || undefined;
+      const newStatus = orderData.status;
+
+      if (mode === "edit") {
+        const becameRitirato =
+          prevStatus !== "Ritirato" && newStatus === "Ritirato";
+        const channelChanged =
+          prevChannelStr !== undefined &&
+          selectedChannelStr !== undefined &&
+          prevChannelStr !== selectedChannelStr;
+
+        if (becameRitirato) {
+          // Stato -> "Ritirato": libera il canale associato all'ordine
+          await syncChannelsAfterOrderChange({
+            tenantId: tid,
+            free:
+              typeof prevChannelNum === "number" &&
+              !Number.isNaN(prevChannelNum)
+                ? prevChannelNum
+                : typeof selectedChannelNum === "number" &&
+                  !Number.isNaN(selectedChannelNum)
+                ? selectedChannelNum
+                : null,
+            setFreeChannels,
+          });
+        } else if (channelChanged) {
+          // Ha cambiato canale in edit: libera il vecchio e riserva il nuovo
+          await syncChannelsAfterOrderChange({
+            tenantId: tid,
+            free:
+              typeof prevChannelNum === "number" &&
+              !Number.isNaN(prevChannelNum)
+                ? prevChannelNum
+                : null,
+            reserve:
+              typeof selectedChannelNum === "number" &&
+              !Number.isNaN(selectedChannelNum)
+                ? selectedChannelNum
+                : null,
+            setFreeChannels,
+          });
+        } else {
+          // Nessun caso speciale: se c'è un canale valido, (ri)riserva per coerenza; altrimenti solo recompute
+          await syncChannelsAfterOrderChange({
+            tenantId: tid,
+            reserve:
+              typeof selectedChannelNum === "number" &&
+              !Number.isNaN(selectedChannelNum)
+                ? selectedChannelNum
+                : null,
+            setFreeChannels,
+          });
+        }
+      } else {
+        // CREATE
+        if (newStatus === "Ritirato") {
+          // Nasce già "Ritirato": libera (se presente) e ricalcola
+          await syncChannelsAfterOrderChange({
+            tenantId: tid,
+            free:
+              typeof selectedChannelNum === "number" &&
+              !Number.isNaN(selectedChannelNum)
+                ? selectedChannelNum
+                : null,
+            setFreeChannels,
+          });
+        } else {
+          // Prenota il canale selezionato (se presente)
+          await syncChannelsAfterOrderChange({
+            tenantId: tid,
+            reserve:
+              typeof selectedChannelNum === "number" &&
+              !Number.isNaN(selectedChannelNum)
+                ? selectedChannelNum
+                : null,
+            setFreeChannels,
+          });
+        }
       }
-      syncChannelsAfterOrderChange({
-        tenantId: getTenantIdFromStorage() || undefined,
-        reserve: Number(orderData.canaleRadio),
-        setFreeChannels,
-      });
-      onClose(); // Parent should reset the mode on close.
+
+      if (mode === "create") form.resetFields();
+      onClose();
     } catch (error) {
       console.error("Errore durante l'invio dell'ordine:", error);
       message.error("Errore, riprova.");
