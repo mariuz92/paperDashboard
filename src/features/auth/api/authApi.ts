@@ -23,6 +23,7 @@ import {
   getDocs,
   query,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -51,7 +52,6 @@ const storeUserInLocalStorage = (user: IUser) => {
     createdAt: user.createdAt,
     lastLoginAt: user.lastLoginAt,
     disabled: user.disabled,
-    isAdmin: user.isAdmin,
   };
   localStorage.setItem("userInfo", JSON.stringify(userInfo));
   localStorage.setItem("tenantId", user.tenantId);
@@ -93,7 +93,7 @@ export const canAccessPlatform = (user: IUser): boolean => {
   }
 
   // Admins always have access
-  if (user.isAdmin || user.role.includes(ROLES.ADMIN)) {
+  if (user.role.includes(ROLES.ADMIN)) {
     return true;
   }
 
@@ -173,10 +173,9 @@ export const signUpWithEmail = async (
       photoURL: firebaseUser.photoURL || "",
       emailVerified: firebaseUser.emailVerified,
       phoneNumber: firebaseUser.phoneNumber || phoneNumber.toString(),
-      createdAt: new Date(),
-      lastLoginAt: new Date(),
-      role: isNewTenant ? [ROLES.ADMIN] : [ROLES.GUIDE],
-      isAdmin: isNewTenant, // true if creating a new tenant
+      createdAt: Timestamp.now(),
+      lastLoginAt: Timestamp.now(),
+      role: [ROLES.ADMIN],
       disabled: false,
       tenantId,
     };
@@ -273,7 +272,7 @@ export const signInWithEmail = async (
     });
 
     // Update user in memory with new login time
-    existingUser.lastLoginAt = new Date();
+    existingUser.lastLoginAt = Timestamp.now();
 
     // Store user information in localStorage
     storeUserInLocalStorage(existingUser);
@@ -365,10 +364,9 @@ export const registerWithInvitation = async (
       photoURL: fbUser.photoURL || "",
       emailVerified: fbUser.emailVerified,
       phoneNumber: fbUser.phoneNumber || "",
-      createdAt: new Date(),
-      lastLoginAt: new Date(),
+      createdAt: Timestamp.now(),
+      lastLoginAt: Timestamp.now(),
       role: rolesToAssign,
-      isAdmin: rolesToAssign.includes(ROLES.ADMIN),
       disabled: false,
       tenantId, // ✅ multi-tenant: comes from invite
     };
@@ -433,10 +431,10 @@ export const signInWithGoogle = async (companyName: string) => {
         photoURL: firebaseUser.photoURL || "",
         emailVerified: firebaseUser.emailVerified,
         phoneNumber: firebaseUser.phoneNumber || "",
-        createdAt: new Date(),
-        lastLoginAt: new Date(),
+        createdAt: Timestamp.now(),
+        lastLoginAt: Timestamp.now(),
         role: [ROLES.GUIDE], // Default role for new users with Google sign-in
-        isAdmin: false,
+
         disabled: false,
         tenantId: company.id,
       };
@@ -468,7 +466,7 @@ export const signInWithGoogle = async (companyName: string) => {
       });
 
       // Update user in memory with new login time
-      existingUser.lastLoginAt = new Date();
+      existingUser.lastLoginAt = Timestamp.now();
 
       // Store user information in localStorage
       storeUserInLocalStorage(existingUser);
