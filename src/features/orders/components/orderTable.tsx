@@ -41,7 +41,8 @@ import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAut
 import { useNavigate } from "react-router";
 import ManageChannels from "./manageChannels";
 /** Helper: Safely convert a `Timestamp|string|undefined` to a Dayjs object. */
-function dayjsValue(value?: Timestamp | string) {
+/** Helper: Safely convert a `Timestamp|string|null|undefined` to a Dayjs object. */
+function dayjsValue(value?: Timestamp | string | null) {
   if (!value) {
     // Return an invalid Dayjs by passing an un-parseable string
     return dayjs("");
@@ -53,7 +54,7 @@ function dayjsValue(value?: Timestamp | string) {
 }
 
 /** Helper: Format a `Timestamp|string` nicely for display in the table. */
-function formatDateCell(value?: Timestamp | string) {
+function formatDateCell(value?: Timestamp | string | null) {
   const d = dayjsValue(value);
   return d.isValid() ? d.format("YYYY-MM-DD HH:mm") : "";
 }
@@ -141,15 +142,15 @@ const EditableCell: React.FC<EditableCellProps> = ({
       case "select":
         return (
           <Select>
-            <Select.Option value="Presa in Carico">
+            <Select.Option value='Presa in Carico'>
               Presa in Carico
             </Select.Option>
-            <Select.Option value="In Consegna">In Consegna</Select.Option>
-            <Select.Option value="Consegnato">Consegnato</Select.Option>
-            <Select.Option value="Attesa ritiro">Attesa ritiro</Select.Option>
-            <Select.Option value="In Ritiro">In Ritiro</Select.Option>
-            <Select.Option value="Ritirato">Ritirato</Select.Option>
-            <Select.Option value="Annullato">Annullato</Select.Option>
+            <Select.Option value='In Consegna'>In Consegna</Select.Option>
+            <Select.Option value='Consegnato'>Consegnato</Select.Option>
+            <Select.Option value='Attesa ritiro'>Attesa ritiro</Select.Option>
+            <Select.Option value='In Ritiro'>In Ritiro</Select.Option>
+            <Select.Option value='Ritirato'>Ritirato</Select.Option>
+            <Select.Option value='Annullato'>Annullato</Select.Option>
           </Select>
         );
       case "number":
@@ -159,7 +160,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
           <DatePicker
             showTime
             style={{ width: "100%" }}
-            format="YYYY-MM-DD hh-mm"
+            format='YYYY-MM-DD hh-mm'
           />
         );
       case "places":
@@ -209,7 +210,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
   // 1) If no canaleRadio => New Order
   if (!order.canaleRadio) {
     return (
-      <span title="Nuovo Ordine">
+      <span title='Nuovo Ordine'>
         <Typography.Text>Nuovo</Typography.Text>
       </span>
     );
@@ -225,7 +226,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     consegnaDay.isSame(ritiroDay, "day")
   ) {
     return (
-      <span title="Consegna e Ritiro lo Stesso Giorno">
+      <span title='Consegna e Ritiro lo Stesso Giorno'>
         <Typography.Text>Consegna & Ritiro</Typography.Text>
       </span>
     );
@@ -238,7 +239,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title="Consegna in Questa Data">
+      <span title='Consegna in Questa Data'>
         <Typography.Text>Consegna</Typography.Text>
       </span>
     );
@@ -251,7 +252,7 @@ function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
     (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
   ) {
     return (
-      <span title="Ritiro in Questa Data">
+      <span title='Ritiro in Questa Data'>
         {/* If you prefer to have an icon, uncomment the next line and ensure the icon is imported */}
         {/* <SwapLeftOutlined style={{ color: "red", marginRight: 4 }} /> */}
         <Typography.Text>Ritiro</Typography.Text>
@@ -350,26 +351,22 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
     // Check if delivery time exists and is already passed
     if (order.oraConsegna) {
-      const deliveryTime = dayjs(
-        order.oraConsegna.toDate
-          ? order.oraConsegna.toDate()
-          : order.oraConsegna
-      );
-      if (now.isAfter(deliveryTime)) {
+      const deliveryTime = dayjsValue(order.oraConsegna);
+      if (deliveryTime.isValid() && now.isAfter(deliveryTime)) {
         newStatus = "In Consegna";
-        orderUpdates.consegnatoDa = rider.displayName;
+        orderUpdates.consegnatoDa = rider.id; // ✅ Use rider.id instead of rider.displayName
       }
     }
 
     // Otherwise, check the pickup time condition
     if (order.oraRitiro && newStatus !== "In Consegna") {
-      const pickupTime = dayjs(
-        order.oraRitiro.toDate ? order.oraRitiro.toDate() : order.oraRitiro
-      );
-      // If the current time is within ±toleranceMinutes of the pickup time...
-      if (Math.abs(pickupTime.diff(now, "minute")) <= toleranceMinutes) {
+      const pickupTime = dayjsValue(order.oraRitiro);
+      if (
+        pickupTime.isValid() &&
+        Math.abs(pickupTime.diff(now, "minute")) <= toleranceMinutes
+      ) {
         newStatus = "In Ritiro";
-        orderUpdates.ritiratoDa = rider.displayName;
+        orderUpdates.ritiratoDa = rider.id; // ✅ Use rider.id instead of rider.displayName
       }
     }
 
@@ -380,70 +377,20 @@ const OrderTable: React.FC<OrderTableProps> = ({
       status: newStatus,
     };
 
-    // Update the order (assuming updateOrder is an async function)
+    // Update the order
     try {
       await updateOrder(order.id as string, updatedOrder);
-      message.success("Ordine aggiornato con successo");
+      message.success(`Ordine assegnato a ${rider.displayName} con successo`);
+
+      // ✅ Refresh the orders list to show the updated assignment
+      setOrders((prevOrders) =>
+        prevOrders.map((o) => (o.id === order.id ? updatedOrder : o))
+      );
     } catch (error) {
-      message.error("Failed to update order");
+      message.error("Errore nell'assegnazione dell'ordine");
+      console.error(error);
     }
-
-    //     // Now build the share URL and message as before
-    //     const encodedRider = encodeURIComponent(rider.id || "");
-    //     const url = `${window.location.origin}/rider/${order.id}?riderId=${encodedRider}`;
-
-    //     // Helper: Extract a short address from a full address string
-    //     const shortAddress = (address: string | undefined) =>
-    //       address ? address.split(",")[0] : "N/A";
-
-    //     // Generate Google Maps directions links for delivery and pickup
-    //     const googleMapsConsegna = order.luogoConsegna
-    //       ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    //           order.luogoConsegna
-    //         )}`
-    //       : "N/A";
-
-    //     const googleMapsRitiro = order.luogoRitiro
-    //       ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    //           order.luogoRitiro
-    //         )}`
-    //       : "N/A";
-
-    //     // Construct the WhatsApp message with order details and updated status
-    //     const shareMessage = `🚀 *Ciao ${rider.displayName}!*
-
-    // 📦 *Nuovo ordine assegnato a te!*
-
-    // 📋 *Dati Ordine*:
-    // -----------------------------------
-    // 👤 *Nome Guida:* ${order.nomeGuida || "N/A"}
-    // ☎️ *Telefono Guida:* ${order.telefonoGuida || "N/A"}
-    // 📡 *Canale Radio:* ${order.canaleRadio || "N/A"}
-    // 📅 *Orario Consegna:* ${formatDateCell(order.oraConsegna) || "N/A"}
-
-    // 📍 *Consegna:* [${shortAddress(order.luogoConsegna)}](${googleMapsConsegna})
-    // ⏰ *Ora Ritiro:* ${formatDateCell(order.oraRitiro) || "N/A"}
-    // 🏠 *Ritiro:* [${shortAddress(order.luogoRitiro)}](${googleMapsRitiro})
-
-    // 🎧 *Radioguide Consegnate:* ${order.radioguideConsegnate ?? 0}
-    // ➕ *Extra:* ${order.extra ?? 0}
-    // 💰 *Saldo:* €${(order.saldo ?? 0).toFixed(2)}
-    // 📄 *Stato:* ${newStatus || "N/A"}
-    // 📝 *Note:* ${order.note || "Nessuna nota"}
-    // -----------------------------------
-
-    // 🔗 *Aggiorna lo stato dell'ordine qui:* [🔄 Clicca qui](${url})
-
-    // Grazie per la collaborazione! 💪`;
-
-    //     // Encode the message and generate the WhatsApp link
-    //     const encodedMessage = encodeURIComponent(shareMessage);
-    //     const phoneNumber = rider.phoneNumber?.replace(/\D/g, "");
-    //     const whatsappLink = `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${encodedMessage}`;
-
-    //     window.open(whatsappLink, "_blank");
   };
-
   // Build the menu items for each row.
   // For "Modifica" we delegate to the parent's onRowClick callback (in "edit" mode).
   const getMenuItems = (order: IOrder, index: number) => [
@@ -487,10 +434,10 @@ const OrderTable: React.FC<OrderTableProps> = ({
     {
       label: (
         <Popconfirm
-          title="Sei sicuro di voler eliminare questo ordine?"
+          title='Sei sicuro di voler eliminare questo ordine?'
           onConfirm={() => order.id && handleDelete(order.id)}
-          okText="Sì"
-          cancelText="No"
+          okText='Sì'
+          cancelText='No'
         >
           <span>
             <DeleteOutlined /> Elimina
@@ -525,7 +472,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Nome Guida"
+            placeholder='Cerca Nome Guida'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -536,9 +483,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
@@ -549,7 +496,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
                 setSelectedKeys([]);
                 confirm();
               }}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -616,7 +563,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Luogo Consegna"
+            placeholder='Cerca Luogo Consegna'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -627,16 +574,16 @@ const OrderTable: React.FC<OrderTableProps> = ({
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -675,7 +622,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       }) => (
         <div style={{ padding: 8 }}>
           <Input
-            placeholder="Cerca Luogo Ritiro"
+            placeholder='Cerca Luogo Ritiro'
             value={selectedKeys[0]}
             onChange={(e) => {
               setSelectedKeys(e.target.value ? [e.target.value] : []);
@@ -686,16 +633,16 @@ const OrderTable: React.FC<OrderTableProps> = ({
           />
           <Space>
             <Button
-              type="primary"
+              type='primary'
               onClick={() => confirm()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Cerca
             </Button>
             <Button
               onClick={() => clearFilters && clearFilters()}
-              size="small"
+              size='small'
               style={{ width: 90 }}
             >
               Reset
@@ -716,10 +663,10 @@ const OrderTable: React.FC<OrderTableProps> = ({
       fixed: "right",
       width: 120,
       render: (_, record) => (
-        <Row justify="center">
+        <Row justify='center'>
           <Button
-            type="text"
-            shape="circle"
+            type='text'
+            shape='circle'
             onClick={() => onRowClick && onRowClick(record, "view")}
           >
             <EyeOutlined style={{ marginRight: 4 }} />
@@ -729,8 +676,8 @@ const OrderTable: React.FC<OrderTableProps> = ({
             trigger={["click"]}
           >
             <Button
-              shape="circle"
-              type="text"
+              shape='circle'
+              type='text'
               style={{ display: "flex", alignItems: "center" }}
             >
               <MoreOutlined />
@@ -749,11 +696,11 @@ const OrderTable: React.FC<OrderTableProps> = ({
         <Button
           icon={<FilePdfOutlined />}
           onClick={() => exportToPDF(orders)}
-          type="primary"
+          type='primary'
         >
           Esporta PDF
         </Button>
-        <Button type="default" onClick={() => setOpen(true)}>
+        <Button type='default' onClick={() => setOpen(true)}>
           Gestisci canali
         </Button>
 
@@ -774,7 +721,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
         columns={columns}
         rowKey={(record) => record.id as string}
         loading={loading}
-        tableLayout="fixed"
+        tableLayout='fixed'
         scroll={{ x: 1200, y: 2000 }}
       />
     </>

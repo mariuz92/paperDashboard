@@ -14,62 +14,329 @@ import {
   startAfter,
   getDoc,
   Timestamp,
+  onSnapshot,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "../../../config/firebaseConfig";
-import { IOrder, IGetOrdersParams } from "../../../types/interfaces";
+import {
+  IOrder,
+  IGetOrdersParams,
+  IOrderStatus,
+} from "../../../types/interfaces";
+import { IRiderStatus } from "../../../types/interfaces/IRIderStatus";
 import dayjs from "dayjs";
- import { updateTenantById } from "../../users/api/userApi";
+
 /* ------------------------------------------------------------------
-   1) INTERFACES FOR COUNTING DAILY & MONTHLY ORDERS (DELIVERIES + PICKUPS)
+   INTERFACES FOR COUNTING DAILY & MONTHLY ORDERS
    ------------------------------------------------------------------ */
 
-/**
- * Tracks how many orders were *delivered* (consegne) and *picked up* (ritiri)
- * on a particular date (YYYY-MM-DD).
- */
 export interface IDailyCount {
-  date: string; // e.g. "2025-01-15"
-  consegne: number; // # of deliveries on that date
-  ritiri: number; // # of pickups on that date
+  date: string;
+  consegne: number;
+  ritiri: number;
 }
 
-/**
- * Tracks total orders (deliveries + pickups) in a particular month (YYYY-MM).
- */
 export interface IMonthlyCount {
-  month: string; // e.g. "2025-01"
-  total: number; // # of all orders (deliveries + pickups) in that month
+  month: string;
+  total: number;
 }
 
 /* ------------------------------------------------------------------
-   2) CRUD FUNCTIONS
+   HELPER: UPDATE RIDER STATUS FROM ORDER
    ------------------------------------------------------------------ */
 
 /**
- * Save an order to Firebase Firestore.
- * @param {Omit<IOrder, "id">} order - The order object to save (excluding the ID).
- * @returns {Promise<string>} - The document ID of the saved order.
+ * ✅ ENHANCED: Update rider_status collection based on order changes
+ * This keeps the rider status in sync with their assigned orders
  */
-export const saveOrder = async (order: Omit<IOrder, "id">): Promise<string> => {
+const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
   try {
+    // Determine which rider to update and what their status should be
+    let riderId: string | undefined;
+    let headingTo: string | undefined;
+    let lastStatus: IOrderStatus;
+    let isBusy: boolean;
+
+    // Priority: consegnatoDa (delivery) > ritiratoDa (pickup)
+    if (
+      order.consegnatoDa &&
+      order.status !== "Consegnato" &&
+      order.status !== "Annullato"
+    ) {
+      riderId = order.consegnatoDa;
+      headingTo = order.luogoConsegna;
+      lastStatus = order.status;
+      isBusy = true;
+    } else if (
+      order.ritiratoDa &&
+      (order.status === "In Ritiro" || order.status === "Ritirato")
+    ) {
+      riderId = order.ritiratoDa;
+      headingTo = order.luogoRitiro;
+      lastStatus = order.status;
+      isBusy = true;
+    }
+
+    // If order is completed or cancelled, mark rider as free
+    if (order.status === "Consegnato" || order.status === "Annullato") {
+      if (order.consegnatoDa) {
+        riderId = order.consegnatoDa;
+      } else if (order.ritiratoDa) {
+        riderId = order.ritiratoDa;
+      }
+      isBusy = false;
+      lastStatus = order.status;
+      headingTo = undefined;
+    }
+
+    // Update rider_status document if we have a rider
+    if (riderId) {
+      const riderStatusRef = doc(db, "rider_status", riderId);
+
+      const statusUpdate: Partial<IRiderStatus> = {
+        riderId: riderId,
+        lastUpdate: Timestamp.now(),
+        lastStatus: lastStatus!,
+        isBusy: isBusy!,
+        headingTo: headingTo || null,
+      };
+
+      // Use setDoc with merge to create or update
+      await setDoc(riderStatusRef, statusUpdate, { merge: true });
+
+      console.log(
+        `[updateRiderStatusFromOrder] Updated status for rider ${riderId}`
+      );
+    }
+
+    // Also update the user document with last activity
+    if (order.consegnatoDa && order.oraConsegna) {
+      const riderRef = doc(db, "users", order.consegnatoDa);
+      await updateDoc(riderRef, {
+        lastDeliveryTime: order.oraConsegna,
+        lastDeliveryOrderId: order.id,
+        updatedAt: Timestamp.now(),
+      }).catch((err) =>
+        console.warn("Could not update user delivery time:", err)
+      );
+    }
+
+    if (order.ritiratoDa && order.oraRitiro) {
+      const riderRef = doc(db, "users", order.ritiratoDa);
+      await updateDoc(riderRef, {
+        lastPickupTime: order.oraRitiro,
+        lastPickupOrderId: order.id,
+        updatedAt: Timestamp.now(),
+      }).catch((err) =>
+        console.warn("Could not update user pickup time:", err)
+      );
+    }
+  } catch (error) {
+    console.error("[updateRiderStatusFromOrder] Error:", error);
+    // Don't throw - order operations should succeed even if status update fails
+  }
+};
+
+/**
+ * ✅ NEW: Clear rider status when they're no longer assigned to any active order
+ */
+const clearRiderStatusIfNoActiveOrders = async (
+  riderId: string
+): Promise<void> => {
+  try {
+    // Check if rider has any active orders
+    const activeOrdersQuery = query(
+      collection(db, "orders"),
+      where("status", "in", [
+        "In Ritiro",
+        "Ritirato",
+        "Presa in Carico",
+        "In Consegna",
+      ])
+    );
+
+    const snapshot = await getDocs(activeOrdersQuery);
+    const hasActiveOrders = snapshot.docs.some((doc) => {
+      const order = doc.data() as IOrder;
+      return order.consegnatoDa === riderId || order.ritiratoDa === riderId;
+    });
+
+    // If no active orders, mark rider as free
+    if (!hasActiveOrders) {
+      const riderStatusRef = doc(db, "rider_status", riderId);
+      await setDoc(
+        riderStatusRef,
+        {
+          riderId: riderId,
+          lastUpdate: Timestamp.now(),
+          lastStatus: "Attesa ritiro" as IOrderStatus,
+          isBusy: false,
+          headingTo: null,
+        },
+        { merge: true }
+      );
+
+      console.log(
+        `[clearRiderStatusIfNoActiveOrders] Rider ${riderId} marked as free`
+      );
+    }
+  } catch (error) {
+    console.error("[clearRiderStatusIfNoActiveOrders] Error:", error);
+  }
+};
+
+/* ------------------------------------------------------------------
+   CRUD FUNCTIONS
+   ------------------------------------------------------------------ */
+
+/**
+ * ✅ ENHANCED: Save order and update rider status
+ */
+export const saveOrder = async (order: IOrder): Promise<string> => {
+  try {
+    const orderToSave: any = {
+      nomeGuida: order.nomeGuida || null,
+      telefonoGuida: order.telefonoGuida || null,
+      canaleRadio: order.canaleRadio || null,
+      oraConsegna: order.oraConsegna
+        ? order.oraConsegna instanceof Timestamp
+          ? order.oraConsegna
+          : Timestamp.fromDate((order.oraConsegna as any).toDate())
+        : null,
+      luogoConsegna: order.luogoConsegna || null,
+      oraRitiro: order.oraRitiro
+        ? order.oraRitiro instanceof Timestamp
+          ? order.oraRitiro
+          : Timestamp.fromDate((order.oraRitiro as any).toDate())
+        : null,
+      luogoRitiro: order.luogoRitiro || null,
+      radioguideConsegnate: order.radioguideConsegnate ?? null,
+      extra: order.extra ?? null,
+      saldo: order.saldo ?? null,
+      lost: order.lost ?? null,
+      status: order.status || "Attesa ritiro",
+      note: order.note || null,
+      consegnatoDa: order.consegnatoDa || null,
+      ritiratoDa: order.ritiratoDa || null,
+    };
+
+    // Remove undefined values
+    Object.keys(orderToSave).forEach((key) => {
+      if (orderToSave[key] === undefined) {
+        orderToSave[key] = null;
+      }
+    });
+
     const ordersCollection = collection(db, "orders");
-    const docRef = await addDoc(ordersCollection, order);
-    // updateTenantById(123123, updates: ); // Update tenant with the user who delivered or picked up the order
+    const docRef = await addDoc(ordersCollection, orderToSave);
+
+    // ✅ Update rider status after creating order
+    const orderWithId = { ...orderToSave, id: docRef.id };
+    await updateRiderStatusFromOrder(orderWithId);
+
+    console.log(`[saveOrder] Order created with ID: ${docRef.id}`);
     return docRef.id;
   } catch (error) {
-    console.error("Error saving order:", error);
+    console.error("[saveOrder] Error:", error);
     throw error;
   }
 };
 
 /**
- * Build a Firestore query with optional Timestamp filters.
- *
- * @param {Timestamp | undefined} startDate
- * @param {Timestamp | undefined} endDate
- * @param {keyof IOrder | string} orderByField - e.g. "oraConsegna"
- * @param {"asc" | "desc"} orderDirection
+ * ✅ ENHANCED: Update order and sync rider status
  */
+export const updateOrder = async (
+  id: string,
+  updatedOrder: Partial<IOrder>
+): Promise<void> => {
+  try {
+    const orderToUpdate: any = { ...updatedOrder };
+
+    // Convert timestamp fields
+    if (
+      orderToUpdate.oraConsegna &&
+      !(orderToUpdate.oraConsegna instanceof Timestamp)
+    ) {
+      orderToUpdate.oraConsegna = Timestamp.fromDate(
+        (orderToUpdate.oraConsegna as any).toDate()
+      );
+    }
+
+    if (
+      orderToUpdate.oraRitiro &&
+      !(orderToUpdate.oraRitiro instanceof Timestamp)
+    ) {
+      orderToUpdate.oraRitiro = Timestamp.fromDate(
+        (orderToUpdate.oraRitiro as any).toDate()
+      );
+    }
+
+    const orderDocRef = doc(db, "orders", id);
+    await updateDoc(orderDocRef, orderToUpdate);
+
+    // ✅ Get the full order after update and sync rider status
+    const orderSnap = await getDoc(orderDocRef);
+    if (orderSnap.exists()) {
+      const fullOrder = { id: orderSnap.id, ...orderSnap.data() } as IOrder;
+      await updateRiderStatusFromOrder(fullOrder);
+
+      // ✅ If rider was removed from order, check if they have other active orders
+      if (
+        updatedOrder.consegnatoDa === null ||
+        updatedOrder.ritiratoDa === null
+      ) {
+        const previousRiderId =
+          updatedOrder.consegnatoDa || updatedOrder.ritiratoDa;
+        if (previousRiderId) {
+          await clearRiderStatusIfNoActiveOrders(previousRiderId);
+        }
+      }
+    }
+
+    console.log(`[updateOrder] Order ${id} updated successfully`);
+  } catch (error) {
+    console.error(`[updateOrder] Error updating order ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * ✅ ENHANCED: Delete order and clear rider status if needed
+ */
+export const deleteOrder = async (id: string): Promise<void> => {
+  try {
+    // Get order before deleting to clear rider status
+    const orderDocRef = doc(db, "orders", id);
+    const orderSnap = await getDoc(orderDocRef);
+
+    if (orderSnap.exists()) {
+      const order = { id: orderSnap.id, ...orderSnap.data() } as IOrder;
+
+      // Delete the order
+      await deleteDoc(orderDocRef);
+
+      // Clear rider status if they have no other active orders
+      if (order.consegnatoDa) {
+        await clearRiderStatusIfNoActiveOrders(order.consegnatoDa);
+      }
+      if (order.ritiratoDa) {
+        await clearRiderStatusIfNoActiveOrders(order.ritiratoDa);
+      }
+    } else {
+      await deleteDoc(orderDocRef);
+    }
+
+    console.log(`[deleteOrder] Order ${id} deleted successfully`);
+  } catch (error) {
+    console.error(`[deleteOrder] Error deleting order ${id}:`, error);
+    throw error;
+  }
+};
+
+/* ------------------------------------------------------------------
+   QUERY FUNCTIONS
+   ------------------------------------------------------------------ */
+
 const buildBaseQuery = (
   startDate?: Timestamp,
   endDate?: Timestamp,
@@ -86,28 +353,107 @@ const buildBaseQuery = (
     q = query(q, where("oraConsegna", "<=", endDate));
   }
 
-  // `orderBy` expects a string. Cast if orderByField is keyof IOrder.
   q = query(q, orderBy(orderByField as string, orderDirection));
 
   return q;
 };
 
 /**
- * Fetch orders from Firestore with pagination, date filters, and sorting.
- * If a date range is provided (startDate and endDate), orders will be fetched
- * if either their delivery date (**oraConsegna**) OR their retrieval date (**oraRitiro**)
- * fall within the range. Additionally, orders with status "Attesa ritiro" that are missing
- * the retrieval time are always included.
- *
- * @param {IGetOrdersParams} params
- * @returns {Promise<{ data: IOrder[]; total: number }>}
+ * ✅ Real-time stream for orders
+ */
+export const getOrdersStream = (
+  currentUserId: string,
+  isAdmin: boolean,
+  ascending: boolean = true,
+  callback: (orders: IOrder[]) => void,
+  onError?: (error: Error) => void
+): (() => void) => {
+  const ordersMap = new Map<string, IOrder>();
+  const unsubscribers: (() => void)[] = [];
+
+  const updateOrders = () => {
+    const allOrders = Array.from(ordersMap.values());
+
+    allOrders.sort((a, b) => {
+      const aTime = (a.oraRitiro ?? a.oraConsegna)?.toDate?.() ?? new Date(0);
+      const bTime = (b.oraRitiro ?? b.oraConsegna)?.toDate?.() ?? new Date(0);
+      const cmp = aTime.getTime() - bTime.getTime();
+      return ascending ? cmp : -cmp;
+    });
+
+    callback(allOrders);
+  };
+
+  if (isAdmin) {
+    const q = query(collection(db, "orders"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        snapshot.docs.forEach((doc) => {
+          ordersMap.set(doc.id, {
+            id: doc.id,
+            ...(doc.data() as IOrder),
+          });
+        });
+        updateOrders();
+      },
+      (error) => {
+        console.error("Error in orders stream:", error);
+        if (onError) onError(error);
+      }
+    );
+    unsubscribers.push(unsubscribe);
+  } else {
+    // Rider queries
+    const q1 = query(
+      collection(db, "orders"),
+      where("consegnatoDa", "==", currentUserId)
+    );
+    const unsub1 = onSnapshot(q1, (snapshot) => {
+      snapshot.docs.forEach((doc) => {
+        ordersMap.set(doc.id, { id: doc.id, ...(doc.data() as IOrder) });
+      });
+      updateOrders();
+    });
+    unsubscribers.push(unsub1);
+
+    const q2 = query(
+      collection(db, "orders"),
+      where("ritiratoDa", "==", currentUserId)
+    );
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+      snapshot.docs.forEach((doc) => {
+        ordersMap.set(doc.id, { id: doc.id, ...(doc.data() as IOrder) });
+      });
+      updateOrders();
+    });
+    unsubscribers.push(unsub2);
+
+    const q3 = query(
+      collection(db, "orders"),
+      where("status", "==", "Attesa ritiro")
+    );
+    const unsub3 = onSnapshot(q3, (snapshot) => {
+      snapshot.docs.forEach((doc) => {
+        ordersMap.set(doc.id, { id: doc.id, ...(doc.data() as IOrder) });
+      });
+      updateOrders();
+    });
+    unsubscribers.push(unsub3);
+  }
+
+  return () => {
+    unsubscribers.forEach((unsub) => unsub());
+    ordersMap.clear();
+  };
+};
+
+/**
+ * Fetch orders with pagination
  */
 export const getOrders = async (
   params: IGetOrdersParams
-): Promise<{
-  data: IOrder[];
-  total: number;
-}> => {
+): Promise<{ data: IOrder[]; total: number }> => {
   const {
     page = 1,
     pageSize = 10,
@@ -122,11 +468,6 @@ export const getOrders = async (
     let total = 0;
 
     if (startDate && endDate) {
-      // -----------------------------------------------------------
-      // 1. Run two queries:
-      //    a. Orders where the delivery date (oraConsegna) is in range.
-      //    b. Orders where the retrieval date (oraRitiro) is in range.
-      // -----------------------------------------------------------
       const consegnaQuery = query(
         collection(db, "orders"),
         where("oraConsegna", ">=", startDate),
@@ -156,7 +497,6 @@ export const getOrders = async (
         ...(doc.data() as IOrder),
       }));
 
-      // Merge and deduplicate orders (an order may match both queries)
       mergedData = [...consegnaData, ...ritiroData].filter(
         (order, index, self) =>
           self.findIndex((o) => o.id === order.id) === index
@@ -164,38 +504,31 @@ export const getOrders = async (
 
       total = mergedData.length;
 
-      // -----------------------------------------------------------
-      // 2. Sort the merged results by the chosen date field.
-      //    For orders missing the field, treat the date as 0 (very early).
-      // -----------------------------------------------------------
       mergedData.sort((a, b) => {
-        // Attempt to convert to Date if using a Firestore Timestamp.
         const aField = a[orderByField as keyof IOrder];
         const bField = b[orderByField as keyof IOrder];
 
-        const aDate =
-          aField && (aField as any).toDate
-            ? (aField as any).toDate()
-            : new Date(aField || 0);
-        const bDate =
-          bField && (bField as any).toDate
-            ? (bField as any).toDate()
-            : new Date(bField || 0);
+        const getDate = (field: any): Date => {
+          if (!field) return new Date(0);
+          if (field.toDate && typeof field.toDate === "function") {
+            return field.toDate();
+          }
+          if (field instanceof Date) return field;
+          const parsed = new Date(field);
+          return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+        };
+
+        const aDate = getDate(aField);
+        const bDate = getDate(bField);
 
         return orderDirection === "asc"
           ? aDate.getTime() - bDate.getTime()
           : bDate.getTime() - aDate.getTime();
       });
 
-      // -----------------------------------------------------------
-      // 3. Apply manual pagination.
-      // -----------------------------------------------------------
       const startIdx = (page - 1) * pageSize;
       mergedData = mergedData.slice(startIdx, startIdx + pageSize);
     } else {
-      // -----------------------------------------------------------
-      // Fallback: If no date range is provided, use the standard base query.
-      // -----------------------------------------------------------
       let baseQuery = buildBaseQuery(
         startDate,
         endDate,
@@ -203,11 +536,9 @@ export const getOrders = async (
         orderDirection
       );
 
-      // Count total docs for pagination.
       const totalSnapshot = await getDocs(baseQuery);
       total = totalSnapshot.size;
 
-      // Pagination: Skip docs if needed.
       const offset = (page - 1) * pageSize;
       let lastVisibleDoc = null;
 
@@ -234,9 +565,6 @@ export const getOrders = async (
       }));
     }
 
-    // -----------------------------------------------------------
-    // 4. Always include orders with status "Attesa ritiro" that have missing oraRitiro.
-    // -----------------------------------------------------------
     const attesaRitiroNoTimeQuery = query(
       collection(db, "orders"),
       where("status", "==", "Attesa ritiro"),
@@ -250,9 +578,6 @@ export const getOrders = async (
       })
     );
 
-    // -----------------------------------------------------------
-    // 5. Merge the main results with the "Attesa ritiro" orders and deduplicate.
-    // -----------------------------------------------------------
     let combinedData = [...mergedData, ...attesaRitiroNoTimeData];
     combinedData = combinedData.filter(
       (order, index, self) => self.findIndex((o) => o.id === order.id) === index
@@ -264,41 +589,30 @@ export const getOrders = async (
     throw error;
   }
 };
-// // Example placeholder for your existing base query builder
-// function buildBaseQuery(
-//   startDate?: Date,
-//   endDate?: Date,
-//   orderByField?: string,
-//   orderDirection?: "asc" | "desc"
-// ) {
-//   let q = collection(db, "orders");
-//   // Set up your date-range, orderBy, etc.
-//   // e.g. q = query(q, where("oraConsegna", ">=", startDate), ... );
-//   // e.g. q = query(q, orderBy(orderByField, orderDirection));
-//   return q;
-// }
-
-/**
- * Get an order by ID from Firebase Firestore.
- * @param id - The document ID of the order
- * @returns The order object if found, otherwise null.
- */
 
 export const getOrderById = async (
   orderId: string,
   riderId: string
 ): Promise<IOrder | null> => {
   try {
-    // First, verify that the rider exists and has role "rider"
     const riderRef = doc(db, "users", riderId);
     const riderSnap = await getDoc(riderRef);
 
-    if (!riderSnap.exists() || riderSnap.data()?.role !== "rider") {
-      console.log("Unauthorized: Rider does not exist or is not a rider");
+    if (!riderSnap.exists()) {
+      console.log("Unauthorized: Rider does not exist");
       return null;
     }
 
-    // Then, fetch the order and ensure the rider is assigned to it
+    const userData = riderSnap.data();
+    const roles = Array.isArray(userData?.role)
+      ? userData.role
+      : [userData?.role].filter(Boolean);
+
+    if (!roles.includes("rider")) {
+      console.log("Unauthorized: User is not a rider");
+      return null;
+    }
+
     const orderRef = doc(db, "orders", orderId);
     const orderSnap = await getDoc(orderRef);
 
@@ -307,19 +621,9 @@ export const getOrderById = async (
       return null;
     }
 
-    const orderData = orderSnap.data() as IOrder;
-
-    // if (orderData.riderId !== riderId) {
-    //   console.log(
-    //     "Unauthorized: This order is not assigned to the provided rider."
-    //   );
-    //   return null;
-    // }
-
-    // If all checks pass, return the order
     return {
       id: orderSnap.id,
-      ...orderData,
+      ...(orderSnap.data() as IOrder),
     };
   } catch (error) {
     console.error("Error getting order:", error);
@@ -327,57 +631,6 @@ export const getOrderById = async (
   }
 };
 
-/**
- * Update an order in Firebase Firestore.
- * @param id - The document ID of the order to update.
- * @param updatedOrder - The fields to update.
- */
-export const updateOrder = async (
-  id: string,
-  updatedOrder: Partial<IOrder>
-): Promise<void> => {
-  try {
-    const orderDocRef = doc(db, "orders", id);
-    await updateDoc(orderDocRef, updatedOrder);
-    console.log(`Order with ID: ${id} updated successfully.`);
-  } catch (error) {
-    console.error(`Error updating order with ID: ${id}`, error);
-    throw error;
-  }
-};
-
-/**
- * Delete an order from Firebase Firestore.
- * @param {string} id - The document ID of the order to delete.
- * @returns {Promise<void>} - Resolves when the document is deleted.
- */
-export const deleteOrder = async (id: string): Promise<void> => {
-  try {
-    const orderDocRef = doc(db, "orders", id);
-    await deleteDoc(orderDocRef);
-    console.log(`Order with ID: ${id} deleted successfully.`);
-  } catch (error) {
-    console.error(`Error deleting order with ID: ${id}`, error);
-    throw error;
-  }
-};
-
-/* ------------------------------------------------------------------
-   3) AGGREGATOR FOR DAILY & MONTHLY COUNTS (DELIVERIES & PICKUPS)
-   ------------------------------------------------------------------ */
-
-/**
- * Fetch orders grouped by day and month for both deliveries (consegne)
- * and pickups (ritiri). If `oraRitiro` is on a different date than
- * `oraConsegna`, that order appears on two distinct days.
- *
- * Also calculates monthly totals (sum of deliveries+pickups in that month).
- *
- * @returns {Promise<{
- *   dailyCounts: IDailyCount[];
- *   monthlyCounts: IMonthlyCount[];
- * }>}
- */
 export const fetchOrderCounts = async (): Promise<{
   dailyCounts: IDailyCount[];
   monthlyCounts: IMonthlyCount[];
@@ -386,16 +639,12 @@ export const fetchOrderCounts = async (): Promise<{
     const ordersRef = collection(db, "orders");
     const snapshot = await getDocs(ordersRef);
 
-    // For day-level data, keep a map { dateString: { consegne, ritiri } }
     const dailyMap: Record<string, { consegne: number; ritiri: number }> = {};
-
-    // For month-level data, keep a map { monthString: total }
     const monthlyMap: Record<string, number> = {};
 
     snapshot.forEach((docSnap) => {
       const data = docSnap.data() as IOrder;
 
-      // 1) If we have oraConsegna, increment that day's "consegne".
       if (data.oraConsegna) {
         const dateObj = (data.oraConsegna as Timestamp).toDate();
         const day = dayjs(dateObj).format("YYYY-MM-DD");
@@ -409,7 +658,6 @@ export const fetchOrderCounts = async (): Promise<{
         monthlyMap[month] = (monthlyMap[month] || 0) + 1;
       }
 
-      // 2) If we have oraRitiro, increment that day's "ritiri".
       if (data.oraRitiro) {
         const ritiroObj = (data.oraRitiro as Timestamp).toDate();
         const rDay = dayjs(ritiroObj).format("YYYY-MM-DD");
@@ -424,7 +672,6 @@ export const fetchOrderCounts = async (): Promise<{
       }
     });
 
-    // Convert dailyMap -> array of IDailyCount
     const dailyCounts: IDailyCount[] = Object.entries(dailyMap).map(
       ([date, { consegne, ritiri }]) => ({
         date,
@@ -433,7 +680,6 @@ export const fetchOrderCounts = async (): Promise<{
       })
     );
 
-    // Convert monthlyMap -> array of IMonthlyCount
     const monthlyCounts: IMonthlyCount[] = Object.entries(monthlyMap).map(
       ([month, total]) => ({
         month,

@@ -25,7 +25,6 @@ import {
   CheckOutlined,
   EditFilled,
   SaveFilled,
-  PlusOutlined,
   InfoCircleFilled,
 } from "@ant-design/icons";
 import { IOrderStatus } from "../../../types/interfaces/index";
@@ -34,23 +33,14 @@ import { syncChannelsAfterOrderChange } from "../helper/channelsSync";
 
 const { Title } = Typography;
 
-// Define the available modes
 type Mode = "create" | "view" | "edit";
 
 interface OrderDrawerProps {
   visible: boolean;
   mode: Mode;
-  order?: IOrder; // Used in view/edit modes
+  order?: IOrder;
   onClose: () => void;
-  /**
-   * onModeChange allows the parent to update the mode (e.g., from "view" to "edit").
-   */
   onModeChange: (mode: Mode) => void;
-  /**
-   * onSubmit will be called with the processed order data.
-   * The parent component can decide whether to call saveOrder (for create)
-   * or updateOrder (for edit) based on the mode.
-   */
   onSubmit: (
     orderData: Partial<IOrder>,
     mode: "create" | "edit"
@@ -81,7 +71,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
   const [freeChannels, setFreeChannels] = useState<number[]>(
     JSON.parse(localStorage.getItem("freeChannels") || "[]")
   );
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
   const getTenantIdFromStorage = (): string => {
     const raw = localStorage.getItem("tenantId");
@@ -105,7 +95,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
     syncChannelsAfterOrderChange({
       tenantId: tid || undefined,
       setFreeChannels,
-    }); // no ops → just recompute
+    });
   }, [visible]);
 
   // When the drawer opens or the mode/order changes, pre-populate or reset the form.
@@ -113,6 +103,8 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
     if ((mode === "edit" || mode === "view") && order) {
       form.setFieldsValue({
         ...order,
+        // ✅ Ensure canaleRadio is always a string
+        canaleRadio: order.canaleRadio ? String(order.canaleRadio) : undefined,
         // Convert Timestamps to dayjs objects for DatePicker/TimePicker
         oraConsegna: order.oraConsegna
           ? dayjs(order.oraConsegna.toDate())
@@ -145,7 +137,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
   // Handle guide selection changes in create/edit modes.
   const handleGuideChange = (value: string) => {
     if (value === "aggiungiGuida") {
-      // Navigate to the user page to add a new guide
       navigate("/Collaboratori");
       return;
     }
@@ -174,17 +165,18 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
 
   // Process the form submission: convert date/time fields & call onSubmit.
   const handleFinish = async (values: any) => {
-    let oraConsegna: Timestamp | null = null;
-    // --- Stato/canale PRECEDENTI (utili in edit) ---
+    // Previous state for channel sync logic
     const prevStatus = order?.status ?? null;
     const prevChannelStr = order?.canaleRadio ?? undefined;
     const prevChannelNum = prevChannelStr ? Number(prevChannelStr) : undefined;
 
+    // ✅ Build oraConsegna Timestamp
+    let oraConsegna: Timestamp | null = null;
     if (values.oraConsegna) {
       const time = values.oraConsegna;
 
       if (mode === "edit" && order?.oraConsegna) {
-        // Mantieni la DATA originale e cambia solo l’orario
+        // Keep original date, only change time
         const originalDate = dayjs(order.oraConsegna.toDate());
         const mergedDateTime = originalDate
           .hour(time.hour())
@@ -193,7 +185,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           .millisecond(0);
         oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
       } else {
-        // In create → usa la data di oggi
+        // In create → use today's date
         const mergedDateTime = dayjs()
           .hour(time.hour())
           .minute(time.minute())
@@ -203,34 +195,52 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       }
     }
 
+    // ✅ Build oraRitiro Timestamp (or null if not provided)
     let oraRitiro: Timestamp | null = null;
     if (values.oraRitiro) {
       oraRitiro = Timestamp.fromDate(values.oraRitiro.toDate());
     }
 
     if (!oraConsegna) {
-      message.error("Orario Consegna (Time) is required!");
+      message.error("Orario Consegna is required!");
       return;
     }
 
-    const selectedChannelStr: string = values.canaleRadio ?? "";
+    // ✅ Ensure canaleRadio is always a string (matching Flutter's String type)
+    const selectedChannelStr: string = values.canaleRadio
+      ? String(values.canaleRadio)
+      : "";
     const selectedChannelNum = selectedChannelStr
       ? Number(selectedChannelStr)
       : undefined;
 
+    // ✅ Build complete order data matching Flutter's Order.toMap()
     const orderData: Partial<IOrder> = {
-      nomeGuida: values.nomeGuida || "",
-      telefonoGuida: values.telefonoGuida || "",
+      // Guide information
+      nomeGuida: values.nomeGuida || null,
+      telefonoGuida: values.telefonoGuida || null,
       canaleRadio: selectedChannelStr,
+
+      // Delivery information
       oraConsegna,
-      luogoConsegna: values.luogoConsegna || "",
-      oraRitiro: oraRitiro,
-      luogoRitiro: values.luogoRitiro || "",
-      saldo: values.saldo || 0,
-      radioguideConsegnate: values.radioguideConsegnate || 0,
-      extra: values.extra || 0,
-      note: values.note || "",
+      luogoConsegna: values.luogoConsegna || null,
+
+      // Pickup information
+      oraRitiro,
+      luogoRitiro: values.luogoRitiro || null,
+
+      // Quantities and amounts (use ?? to preserve 0 values)
+      radioguideConsegnate: values.radioguideConsegnate ?? null,
+      extra: values.extra ?? null,
+      saldo: values.saldo ?? null,
+      lost: values.lost ?? null,
+
+      // Status and notes
       status: values.status || "Presa in Carico",
+      note: values.note || null,
+
+      // Rider information (don't include in create/edit from web - these are set by riders)
+      // consegnatoDa and ritiratoDa are managed by the Flutter app
     };
 
     try {
@@ -241,6 +251,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           : "Ordine aggiornato con successo!"
       );
 
+      // Channel sync logic
       const tid = getTenantIdFromStorage() || undefined;
       const newStatus = orderData.status;
 
@@ -253,7 +264,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           prevChannelStr !== selectedChannelStr;
 
         if (becameRitirato) {
-          // Stato -> "Ritirato": libera il canale associato all'ordine
           await syncChannelsAfterOrderChange({
             tenantId: tid,
             free:
@@ -267,7 +277,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
             setFreeChannels,
           });
         } else if (channelChanged) {
-          // Ha cambiato canale in edit: libera il vecchio e riserva il nuovo
           await syncChannelsAfterOrderChange({
             tenantId: tid,
             free:
@@ -283,7 +292,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
             setFreeChannels,
           });
         } else {
-          // Nessun caso speciale: se c'è un canale valido, (ri)riserva per coerenza; altrimenti solo recompute
           await syncChannelsAfterOrderChange({
             tenantId: tid,
             reserve:
@@ -297,7 +305,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       } else {
         // CREATE
         if (newStatus === "Ritirato") {
-          // Nasce già "Ritirato": libera (se presente) e ricalcola
           await syncChannelsAfterOrderChange({
             tenantId: tid,
             free:
@@ -308,7 +315,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
             setFreeChannels,
           });
         } else {
-          // Prenota il canale selezionato (se presente)
           await syncChannelsAfterOrderChange({
             tenantId: tid,
             reserve:
@@ -346,12 +352,13 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           {order?.canaleRadio || "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Radioguide'>
-          {order?.radioguideConsegnate || 0}
+          {order?.radioguideConsegnate ?? 0}
         </Descriptions.Item>
-        <Descriptions.Item label='Extra'>{order?.extra || 0}</Descriptions.Item>
+        <Descriptions.Item label='Extra'>{order?.extra ?? 0}</Descriptions.Item>
         <Descriptions.Item label='Saldo (€)'>
-          {order?.saldo || 0}
+          {order?.saldo ?? 0}
         </Descriptions.Item>
+        <Descriptions.Item label='Lost'>{order?.lost ?? 0}</Descriptions.Item>
         <Descriptions.Item label='Orario Consegna'>
           {order?.oraConsegna
             ? dayjs(order.oraConsegna.toDate()).format("HH:mm")
@@ -360,11 +367,9 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         <Descriptions.Item label='Luogo Consegna'>
           {order?.luogoConsegna || "-"}
         </Descriptions.Item>
-
         <Descriptions.Item label='Consegnato da'>
           {order?.consegnatoDa || "-"}
         </Descriptions.Item>
-
         <Descriptions.Item label='Data e Ora Ritiro'>
           {order?.oraRitiro
             ? dayjs(order.oraRitiro.toDate()).format("YYYY-MM-DD HH:mm")
@@ -373,14 +378,12 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         <Descriptions.Item label='Luogo Ritiro'>
           {order?.luogoRitiro || "-"}
         </Descriptions.Item>
-
         <Descriptions.Item label='Ritirato da'>
           {order?.ritiratoDa || "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Note'>{order?.note || "-"}</Descriptions.Item>
       </Descriptions>
       <div style={{ marginTop: 16, textAlign: "right" }}>
-        {/* Call parent's onModeChange to switch to edit mode */}
         <Button
           type='primary'
           icon={<EditFilled />}
@@ -398,16 +401,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       {mode === "create" && (
         <Row gutter={16} style={{ paddingBottom: 8 }}>
           <Col span={12}>
-            <Form.Item
-              label='Seleziona Guida'
-              name='guideSelection'
-              rules={[
-                {
-                  required: false,
-                  message: "Seleziona Guida o inserisci manualmente",
-                },
-              ]}
-            >
+            <Form.Item label='Seleziona Guida' name='guideSelection'>
               <Select
                 style={{ width: "100%" }}
                 placeholder='Seleziona '
@@ -425,9 +419,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
                     {guide.displayName}
                   </Select.Option>
                 ))}
-                {/* <Select.Option key="aggiungiGuida" value="aggiungiGuida">
-                  <PlusOutlined /> Aggiungi Guida
-                </Select.Option> */}
               </Select>
             </Form.Item>
           </Col>
@@ -461,13 +452,13 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       <Row gutter={16} style={{ paddingBottom: 24 }}>
         <Col span={6}>
           <Form.Item label='Canale' name='canaleRadio'>
-            {/* Map the free channels from localStorage */}
+            {/* ✅ Map channels as strings to match Flutter */}
             <Select
               placeholder='Seleziona Canale Radio'
               disabled={mode === "view"}
             >
               {freeChannels.map((ch) => (
-                <Select.Option key={ch} value={ch}>
+                <Select.Option key={ch} value={String(ch)}>
                   {ch}
                 </Select.Option>
               ))}
@@ -486,6 +477,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
               placeholder='Radioguide Consegnate'
               style={{ width: "100%" }}
               disabled={mode === "view"}
+              min={0}
             />
           </Form.Item>
         </Col>
@@ -495,10 +487,24 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
               placeholder='Radio Extra'
               style={{ width: "100%" }}
               disabled={mode === "view"}
+              min={0}
             />
           </Form.Item>
         </Col>
-        <Col span={6}>
+        {/* ✅ Lost field only shown in edit mode */}
+        {mode === "edit" && (
+          <Col span={4}>
+            <Form.Item label='Lost' name='lost'>
+              <InputNumber
+                placeholder='Lost'
+                style={{ width: "100%" }}
+                min={0}
+              />
+            </Form.Item>
+          </Col>
+        )}
+
+        <Col span={mode === "edit" ? 4 : 8}>
           <Form.Item label='Saldo (€)' name='saldo'>
             <InputNumber
               placeholder='Saldo (€)'
@@ -513,15 +519,8 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       {mode === "edit" && (
         <Row>
           <Col span={8}>
-            <Form.Item
-              label='Stato Ordine'
-              name='status'
-              rules={[
-                { required: false, message: "Seleziona lo stato dell'ordine" },
-              ]}
-            >
+            <Form.Item label='Stato Ordine' name='status'>
               <Select placeholder='Seleziona Stato'>
-                {/* If the current order status is not part of the predefined statuses, add it */}
                 {order?.status && !orderStatuses.includes(order.status) && (
                   <Select.Option key={order.status} value={order.status}>
                     {order.status} (attuale)
@@ -541,13 +540,14 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       <Row gutter={16}>
         <Col span={8}>
           <Form.Item
-            label='Orario Consegna (Oggi)'
+            label='Data e Orario Consegna '
             name='oraConsegna'
             rules={[{ required: true, message: "Inserisci Orario Consegna" }]}
           >
-            <TimePicker
+            <DatePicker
+              showTime
               placeholder='Inserisci Orario Consegna'
-              format='HH:mm'
+              format='YYYY-MM-DD HH:mm'
               style={{ width: "100%" }}
               disabled={mode === "view"}
             />

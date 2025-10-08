@@ -11,36 +11,21 @@ export type IOrderStatus =
 
 export interface IOrder {
   id?: string;
-
   nomeGuida?: string;
-
   telefonoGuida?: string;
-
   canaleRadio?: string;
-
-  oraConsegna?: Timestamp | Dayjs;
-
+  oraConsegna?: Timestamp | null;
   luogoConsegna?: string;
-
-  oraRitiro?: Timestamp | Dayjs;
-
+  oraRitiro?: Timestamp | null; // ✅ Changed: explicitly allow null
   luogoRitiro?: string;
-
   radioguideConsegnate?: number;
-
   extra?: number;
-
   saldo?: number;
-
   status: IOrderStatus;
-
   note?: string;
-
   lost?: number;
-
-  consegnatoDa?: string 
-  
-  ritiratoDa? : string 
+  consegnatoDa?: string;
+  ritiratoDa?: string;
 }
 
 const colors: Record<IOrderStatus, string> = {

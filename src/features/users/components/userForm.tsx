@@ -9,17 +9,17 @@ import {
   notification,
 } from "antd";
 import { IUser } from "../../../types/interfaces/IUser";
-import { MailOutlined, UserAddOutlined } from "@ant-design/icons";
-import { generateOTP } from "../../../shared/utils/generateOTP";
+import { UserAddOutlined } from "@ant-design/icons";
 import { sendInvitationEmail, storeInvitation } from "../api/invitationApi";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../../../config/firebaseConfig";
 
 interface UserFormProps {
-  addUser: (user: Omit<IUser, "id">) => void;
+  addUser: (user: IUser) => void;
   updateUser: (id: string, user: Partial<IUser>) => void;
   userToEdit?: IUser | null;
   setUserToEdit: (user: IUser | null) => void;
+  userType: "rider" | "guide"; // New prop to differentiate
 }
 
 const UserForm: React.FC<UserFormProps> = ({
@@ -27,6 +27,7 @@ const UserForm: React.FC<UserFormProps> = ({
   updateUser,
   userToEdit,
   setUserToEdit,
+  userType,
 }) => {
   const [form] = Form.useForm();
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -51,10 +52,8 @@ const UserForm: React.FC<UserFormProps> = ({
     });
   };
 
-  // Handle new user invitation
-  // ⬇️ REPLACE handleNewUser with this version
   const handleNewUser = async (values: Omit<IUser, "id">) => {
-    const { email, displayName, role } = values;
+    const { email, displayName } = values;
     const tenantId = localStorage.getItem("tenantId") || "";
 
     if (!tenantId) {
@@ -62,25 +61,23 @@ const UserForm: React.FC<UserFormProps> = ({
       return;
     }
 
-    if (!email || !displayName || !role?.length) {
+    if (!email || !displayName) {
       openNotification(
         "error",
         "Dati mancanti",
-        "Nome, email e ruolo sono obbligatori."
+        "Nome ed email sono obbligatori."
       );
       return;
     }
 
     setIsLoading(true);
     try {
-      // 1) Crea invito (ritorna token)
       const token = await storeInvitation({
         email,
         tenantId,
-        role, // preassegna i ruoli
-      } as any); // tip match con IInvitation esteso
+        role: [userType], // Automatically assign role based on userType
+      } as any);
 
-      // 2) Invia email con link /join?token=...
       await sendInvitationEmail(email, token);
 
       openNotification(
@@ -104,7 +101,6 @@ const UserForm: React.FC<UserFormProps> = ({
     }
   };
 
-  // ⬆️ ADD inside the component (with other handlers)
   const handleSendPasswordReset = async () => {
     try {
       const email = form.getFieldValue("email") || userToEdit?.email;
@@ -120,7 +116,6 @@ const UserForm: React.FC<UserFormProps> = ({
     }
   };
 
-  // Handle updating existing user
   const handleUpdateUser = async (values: Partial<IUser>) => {
     if (userToEdit) {
       try {
@@ -149,7 +144,6 @@ const UserForm: React.FC<UserFormProps> = ({
     }
   };
 
-  // Handle form submission
   const onFinish = async (values: Omit<IUser, "id">) => {
     if (userToEdit) {
       await handleUpdateUser(values);
@@ -169,6 +163,13 @@ const UserForm: React.FC<UserFormProps> = ({
     setUserToEdit(null);
   };
 
+  const getTitle = () => {
+    if (userToEdit) {
+      return `Modifica ${userType === "rider" ? "Rider" : "Guida"}`;
+    }
+    return `Aggiungi ${userType === "rider" ? "Rider" : "Guida"}`;
+  };
+
   return (
     <>
       <FloatButton
@@ -178,7 +179,7 @@ const UserForm: React.FC<UserFormProps> = ({
         style={{ position: "fixed", bottom: 24, right: 24 }}
       />
       <Drawer
-        title={userToEdit ? "Modifica Utente" : "Aggiungi Collaboratore"}
+        title={getTitle()}
         width={360}
         onClose={closeDrawer}
         open={drawerVisible}
@@ -204,43 +205,19 @@ const UserForm: React.FC<UserFormProps> = ({
               },
             ]}
           >
-            <Input placeholder='Email' />
+            <Input placeholder='Email' disabled={!!userToEdit} />
           </Form.Item>
 
           {userToEdit && (
-            <Form.Item
-              label='Numero di Telefono'
-              name='phoneNumber'
-              rules={[
-                {
-                  required: false,
-                  message: "Per favore inserisci il numero di telefono",
-                },
-              ]}
-            >
+            <Form.Item label='Numero di Telefono' name='phoneNumber'>
               <Input placeholder='Numero di Telefono' />
             </Form.Item>
           )}
-          <Form.Item
-            label='Ruolo'
-            name='role'
-            rules={[
-              { required: true, message: "Per favore seleziona il ruolo" },
-            ]}
-          >
-            <Select
-              mode='multiple'
-              placeholder='Seleziona uno o più ruoli'
-              allowClear
-            >
-              <Select.Option value='admin'>Admin</Select.Option>
-              <Select.Option value='rider'>Rider</Select.Option>
-              <Select.Option value='guide'>Guida</Select.Option>
-            </Select>
-          </Form.Item>
 
           <Button type='primary' htmlType='submit' loading={isLoading} block>
-            {userToEdit ? "Modifica Utente" : "Invita"}
+            {userToEdit
+              ? `Modifica ${userType === "rider" ? "Rider" : "Guida"}`
+              : "Invita"}
           </Button>
 
           {userToEdit && (

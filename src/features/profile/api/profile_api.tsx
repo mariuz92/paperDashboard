@@ -1,41 +1,71 @@
 import { db } from "../../../config/firebaseConfig";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { IUser } from "../../../types/interfaces/IUser";
 
 /**
- * Recupera il profilo utente da Firestore.
- * @param userId - L'ID dell'utente (Firebase UID).
- * @returns Una Promise che risolve in un oggetto IUser.
- * @throws Errore se il profilo non viene trovato o se si verifica un problema durante il recupero.
+ * Fetch user profile from Firestore
+ * Matches Flutter's User.fromJson structure
  */
 export const getProfile = async (userId: string): Promise<IUser> => {
   try {
-    // Crea un riferimento al documento dell'utente nella collezione "users"
     const userDocRef = doc(db, "users", userId);
-    // Recupera il documento da Firestore
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
       throw new Error("Profilo non trovato per l'utente specificato.");
     }
 
-    // Restituisce i dati tipizzati come IUser
-    return userDocSnap.data() as IUser;
+    const data = userDocSnap.data();
+
+    // Ensure data matches IUser structure with proper defaults
+    return {
+      id: data.id || userId,
+      email: data.email,
+      displayName: data.displayName,
+      photoURL: data.photoURL || null,
+      emailVerified: data.emailVerified || false,
+      phoneNumber: data.phoneNumber || null,
+      createdAt:
+        data.createdAt instanceof Timestamp ? data.createdAt : Timestamp.now(),
+      lastLoginAt:
+        data.lastLoginAt instanceof Timestamp
+          ? data.lastLoginAt
+          : Timestamp.now(),
+      role: Array.isArray(data.role) ? data.role : [],
+      disabled: data.disabled || false,
+      tenantId: data.tenantId || "",
+    } as IUser;
   } catch (error) {
+    console.error("Error fetching profile:", error);
     throw new Error("Errore durante il recupero del profilo: " + error);
   }
 };
 
+/**
+ * Update user profile in Firestore
+ * Matches Flutter's User.toJson structure
+ */
 export const updateUserProfile = async (
   userId: string,
   updateData: Partial<IUser>
 ): Promise<void> => {
   try {
-    // Crea un riferimento al documento dell'utente
     const userDocRef = doc(db, "users", userId);
-    // Aggiorna il documento con i nuovi dati
-    await updateDoc(userDocRef, updateData);
+
+    // Clean update object - only include provided fields
+    const cleanedData: any = {};
+
+    // Copy only the fields that exist in updateData
+    Object.keys(updateData).forEach((key) => {
+      cleanedData[key] = (updateData as any)[key];
+    });
+
+    // Always update lastLoginAt timestamp
+    cleanedData.lastLoginAt = Timestamp.now();
+
+    await updateDoc(userDocRef, cleanedData);
   } catch (error) {
+    console.error("Error updating profile:", error);
     throw new Error("Errore durante l'aggiornamento del profilo: " + error);
   }
 };

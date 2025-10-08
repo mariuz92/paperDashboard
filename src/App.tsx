@@ -38,7 +38,6 @@ import { CalendarPage } from "./features/calendar/pages/calendar";
 import { DashboardPage } from "./features/dashboard/pages/dashboard";
 import GuideOrderPage from "./features/orders/pages/guideOrder";
 import { OrdersPage } from "./features/orders/pages/orders";
-import RiderUpdatePage from "./features/orders/pages/rider";
 import { ProfilePage } from "./features/profile/pages/profile";
 import { CONFIG } from "./config/configuration";
 import { auth } from "./config/firebaseConfig";
@@ -49,7 +48,7 @@ import {
   signOutUser,
   signUpWithEmail,
 } from "./features/auth/api/authApi";
-import UsersPage from "./features/users/pages/users";
+import UsersPage from "./features/users/pages/riders";
 import CustomOutlet from "./shared/components/customOutlet";
 const App: React.FC = () => {
   const authProvider: AuthProvider = {
@@ -270,9 +269,9 @@ const App: React.FC = () => {
               },
               {
                 name: "users",
-                list: "/Collaboratori",
+                list: "/Riders",
                 meta: {
-                  label: "Collaboratori",
+                  label: "Gestione Riders",
                   icon: <TeamOutlined />,
                 },
               },
@@ -291,7 +290,7 @@ const App: React.FC = () => {
             <Routes>
               {/* Public Auth Routes */}
               <Route
-                path="/login"
+                path='/login'
                 element={
                   <AuthPage
                     title={
@@ -302,7 +301,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type="login"
+                    type='login'
                     formProps={{ initialValues: {} }}
                     providers={[
                       {
@@ -315,7 +314,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path="/register"
+                path='/register'
                 element={
                   <AuthPage
                     title={
@@ -326,7 +325,7 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type="register"
+                    type='register'
                     providers={[
                       {
                         name: "google",
@@ -338,7 +337,7 @@ const App: React.FC = () => {
                 }
               />
               <Route
-                path="/forgot-password"
+                path='/forgot-password'
                 element={
                   <AuthPage
                     title={
@@ -349,12 +348,12 @@ const App: React.FC = () => {
                         collapsed={true}
                       />
                     }
-                    type="forgotPassword"
+                    type='forgotPassword'
                   />
                 }
               />
               <Route
-                path="/update-password"
+                path='/update-password'
                 element={
                   <AuthPage
                     title={
@@ -365,7 +364,7 @@ const App: React.FC = () => {
                         collapsed={false}
                       />
                     }
-                    type="updatePassword"
+                    type='updatePassword'
                   />
                 }
               />
@@ -374,8 +373,8 @@ const App: React.FC = () => {
               <Route
                 element={
                   <Authenticated
-                    fallback={<Navigate to="/login" />}
-                    key="authenticated"
+                    fallback={<Navigate to='/login' />}
+                    key='authenticated'
                   >
                     <ThemedLayout
                       Header={ThemedHeader}
@@ -394,26 +393,20 @@ const App: React.FC = () => {
                 }
               >
                 <Route index element={<OrdersPage />} />
-                <Route path="/Calendario" element={<CalendarPage />} />
-                <Route path="/Dashboard" element={<DashboardPage />} />
-                <Route path="/Profilo" element={<ProfilePage />} />
-                <Route path="/Collaboratori" element={<UsersPage />} />
+                <Route path='/Calendario' element={<CalendarPage />} />
+                <Route path='/Dashboard' element={<DashboardPage />} />
+                <Route path='/Profilo' element={<ProfilePage />} />
+                <Route path='/Riders' element={<UsersPage />} />
                 {/* 404 inside default layout */}
-                <Route path="*" element={<ErrorComponent />} />
-              </Route>
-
-              {/* Minimal Layout for Rider */}
-              <Route path="/rider" element={<CustomOutlet />}>
-                <Route index element={<RiderUpdatePage />} />
-                <Route path=":id" element={<RiderUpdatePage />} />
+                <Route path='*' element={<ErrorComponent />} />
               </Route>
 
               {/* Minimal Layout for Guida */}
-              <Route path="/OrdineGuida" element={<CustomOutlet />}>
+              <Route path='/OrdineGuida' element={<CustomOutlet />}>
                 <Route index element={<GuideOrderPage />} />
               </Route>
 
-              <Route path="/join" element={<CustomOutlet />}>
+              <Route path='/join' element={<CustomOutlet />}>
                 <Route index element={<JoinPage />} />
               </Route>
             </Routes>
