@@ -49,6 +49,7 @@ export interface IMonthlyCount {
  * ✅ ENHANCED: Update rider_status collection based on order changes
  * This keeps the rider status in sync with their assigned orders
  */
+// Update the updateRiderStatusFromOrder function (around line 34-95)
 const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
   try {
     // Determine which rider to update and what their status should be
@@ -67,6 +68,25 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       headingTo = order.luogoConsegna;
       lastStatus = order.status;
       isBusy = true;
+
+      // ✅ Fetch and set deliveryName if not already set
+      if (!order.deliveryName) {
+        const riderDoc = await getDoc(doc(db, "users", riderId));
+        if (riderDoc.exists()) {
+          const riderData = riderDoc.data();
+          order.deliveryName = riderData.displayName || null;
+
+          // ✅ Update order document with deliveryName
+          if (order.id) {
+            const orderRef = doc(db, "orders", order.id);
+            await updateDoc(orderRef, {
+              deliveryName: order.deliveryName,
+            }).catch((err) =>
+              console.warn("Could not update deliveryName in order:", err)
+            );
+          }
+        }
+      }
     } else if (
       order.ritiratoDa &&
       (order.status === "In Ritiro" || order.status === "Ritirato")
@@ -75,6 +95,25 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       headingTo = order.luogoRitiro;
       lastStatus = order.status;
       isBusy = true;
+
+      // ✅ Fetch and set pickupName if not already set
+      if (!order.pickupName) {
+        const riderDoc = await getDoc(doc(db, "users", riderId));
+        if (riderDoc.exists()) {
+          const riderData = riderDoc.data();
+          order.pickupName = riderData.displayName || null;
+
+          // ✅ Update order document with pickupName
+          if (order.id) {
+            const orderRef = doc(db, "orders", order.id);
+            await updateDoc(orderRef, {
+              pickupName: order.pickupName,
+            }).catch((err) =>
+              console.warn("Could not update pickupName in order:", err)
+            );
+          }
+        }
+      }
     }
 
     // If order is completed or cancelled, mark rider as free
@@ -101,7 +140,6 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
         headingTo: headingTo || null,
       };
 
-      // Use setDoc with merge to create or update
       await setDoc(riderStatusRef, statusUpdate, { merge: true });
 
       console.log(
@@ -213,11 +251,14 @@ export const saveOrder = async (order: IOrder): Promise<string> => {
       radioguideConsegnate: order.radioguideConsegnate ?? null,
       extra: order.extra ?? null,
       saldo: order.saldo ?? null,
+      invoiceRequired: order.invoiceRequired ?? false, // ✅ Add this
       lost: order.lost ?? null,
       status: order.status || "Attesa ritiro",
       note: order.note || null,
       consegnatoDa: order.consegnatoDa || null,
       ritiratoDa: order.ritiratoDa || null,
+      deliveryName: order.deliveryName || null, // ✅ Add this
+      pickupName: order.pickupName || null, // ✅ Add this
     };
 
     // Remove undefined values

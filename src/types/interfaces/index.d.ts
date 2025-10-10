@@ -26,6 +26,9 @@ export interface IOrder {
   lost?: number;
   consegnatoDa?: string;
   ritiratoDa?: string;
+  invoiceRequired?: boolean;
+  deliveryName?: string;
+  pickupName?: string;
 }
 
 const colors: Record<IOrderStatus, string> = {

@@ -14,6 +14,7 @@ import {
   Select,
   Descriptions,
   Tooltip,
+  Switch,
 } from "antd";
 import dayjs from "dayjs";
 import { Timestamp } from "firebase/firestore";
@@ -105,6 +106,8 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         ...order,
         // ✅ Ensure canaleRadio is always a string
         canaleRadio: order.canaleRadio ? String(order.canaleRadio) : undefined,
+        invoiceRequired: order.invoiceRequired ?? false,
+
         // Convert Timestamps to dayjs objects for DatePicker/TimePicker
         oraConsegna: order.oraConsegna
           ? dayjs(order.oraConsegna.toDate())
@@ -233,6 +236,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       radioguideConsegnate: values.radioguideConsegnate ?? null,
       extra: values.extra ?? null,
       saldo: values.saldo ?? null,
+      invoiceRequired: values.invoiceRequired ?? null,
       lost: values.lost ?? null,
 
       // Status and notes
@@ -355,9 +359,14 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           {order?.radioguideConsegnate ?? 0}
         </Descriptions.Item>
         <Descriptions.Item label='Extra'>{order?.extra ?? 0}</Descriptions.Item>
-        <Descriptions.Item label='Saldo (€)'>
-          {order?.saldo ?? 0}
+        <Descriptions.Item label='Fattura richiesta'>
+          {order?.invoiceRequired ? "Sì" : "No"}
         </Descriptions.Item>
+        {!order?.invoiceRequired && (
+          <Descriptions.Item label='Saldo (€)'>
+            {order?.saldo ?? 0}
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label='Lost'>{order?.lost ?? 0}</Descriptions.Item>
         <Descriptions.Item label='Orario Consegna'>
           {order?.oraConsegna
@@ -368,7 +377,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           {order?.luogoConsegna || "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Consegnato da'>
-          {order?.consegnatoDa || "-"}
+          {order?.deliveryName || "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Data e Ora Ritiro'>
           {order?.oraRitiro
@@ -379,7 +388,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           {order?.luogoRitiro || "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Ritirato da'>
-          {order?.ritiratoDa || "-"}
+          {order?.pickupName || "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Note'>{order?.note || "-"}</Descriptions.Item>
       </Descriptions>
@@ -452,7 +461,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       <Row gutter={16} style={{ paddingBottom: 24 }}>
         <Col span={6}>
           <Form.Item label='Canale' name='canaleRadio'>
-            {/* ✅ Map channels as strings to match Flutter */}
             <Select
               placeholder='Seleziona Canale Radio'
               disabled={mode === "view"}
@@ -491,7 +499,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
             />
           </Form.Item>
         </Col>
-        {/* ✅ Lost field only shown in edit mode */}
         {mode === "edit" && (
           <Col span={4}>
             <Form.Item label='Lost' name='lost'>
@@ -504,15 +511,42 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           </Col>
         )}
 
-        <Col span={mode === "edit" ? 4 : 8}>
-          <Form.Item label='Saldo (€)' name='saldo'>
-            <InputNumber
-              placeholder='Saldo (€)'
-              style={{ width: "100%" }}
+        {/* ✅ Invoice Required Switch */}
+        <Col span={mode === "edit" ? 4 : 4}>
+          <Form.Item
+            label='Fattura'
+            name='invoiceRequired'
+            valuePropName='checked'
+          >
+            <Switch
+              checkedChildren='Sì'
+              unCheckedChildren='No'
               disabled={mode === "view"}
             />
           </Form.Item>
         </Col>
+
+        {/* ✅ Conditionally show Saldo based on invoiceRequired */}
+        <Form.Item
+          noStyle
+          shouldUpdate={(prevValues, currentValues) =>
+            prevValues.invoiceRequired !== currentValues.invoiceRequired
+          }
+        >
+          {({ getFieldValue }) =>
+            !getFieldValue("invoiceRequired") && (
+              <Col span={mode === "edit" ? 4 : 4}>
+                <Form.Item label='Saldo (€)' name='saldo'>
+                  <InputNumber
+                    placeholder='Saldo (€)'
+                    style={{ width: "100%" }}
+                    disabled={mode === "view"}
+                  />
+                </Form.Item>
+              </Col>
+            )
+          }
+        </Form.Item>
       </Row>
 
       <Title level={4}>Informazioni Ordine</Title>
