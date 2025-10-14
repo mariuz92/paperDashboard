@@ -4,6 +4,7 @@ import {
   DashboardOutlined,
   FileOutlined,
   GoogleOutlined,
+  SolutionOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 import {
@@ -50,6 +51,7 @@ import {
 } from "./features/auth/api/authApi";
 import UsersPage from "./features/users/pages/riders";
 import CustomOutlet from "./shared/components/customOutlet";
+import GuidesPage from "./features/users/pages/guide";
 const App: React.FC = () => {
   const authProvider: AuthProvider = {
     forgotPassword: async ({ email }) => {
@@ -275,6 +277,14 @@ const App: React.FC = () => {
                   icon: <TeamOutlined />,
                 },
               },
+              {
+                name: "guides",
+                list: "/Guides",
+                meta: {
+                  label: "Gestione Guide",
+                  icon: <SolutionOutlined />,
+                },
+              },
               // potential other resources...
             ]}
             notificationProvider={useNotificationProvider}
@@ -397,6 +407,8 @@ const App: React.FC = () => {
                 <Route path='/Dashboard' element={<DashboardPage />} />
                 <Route path='/Profilo' element={<ProfilePage />} />
                 <Route path='/Riders' element={<UsersPage />} />
+                <Route path='/Guides' element={<GuidesPage />} />
+
                 {/* 404 inside default layout */}
                 <Route path='*' element={<ErrorComponent />} />
               </Route>

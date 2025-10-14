@@ -426,15 +426,22 @@ export const getOrdersStream = (
   };
 
   if (isAdmin) {
+    // ✅ Admin sees everything - simple and straightforward
     const q = query(collection(db, "orders"));
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        snapshot.docs.forEach((doc) => {
-          ordersMap.set(doc.id, {
-            id: doc.id,
-            ...(doc.data() as IOrder),
-          });
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "removed") {
+            // Only remove if actually deleted
+            ordersMap.delete(change.doc.id);
+          } else {
+            // Add or update
+            ordersMap.set(change.doc.id, {
+              id: change.doc.id,
+              ...(change.doc.data() as IOrder),
+            });
+          }
         });
         updateOrders();
       },
@@ -445,38 +452,67 @@ export const getOrdersStream = (
     );
     unsubscribers.push(unsubscribe);
   } else {
-    // Rider queries
+    // ✅ Rider-specific logic: check if THIS rider should see the order
+    const shouldRiderSeeOrder = (order: IOrder): boolean => {
+      return (
+        order.consegnatoDa === currentUserId ||
+        order.ritiratoDa === currentUserId ||
+        order.status === "Attesa ritiro"
+      );
+    };
+
+    // Rider query 1: assigned deliveries
     const q1 = query(
       collection(db, "orders"),
       where("consegnatoDa", "==", currentUserId)
     );
     const unsub1 = onSnapshot(q1, (snapshot) => {
-      snapshot.docs.forEach((doc) => {
-        ordersMap.set(doc.id, { id: doc.id, ...(doc.data() as IOrder) });
+      snapshot.docChanges().forEach((change) => {
+        const order = { id: change.doc.id, ...(change.doc.data() as IOrder) };
+
+        if (change.type === "removed" && !shouldRiderSeeOrder(order)) {
+          ordersMap.delete(change.doc.id);
+        } else {
+          ordersMap.set(change.doc.id, order);
+        }
       });
       updateOrders();
     });
     unsubscribers.push(unsub1);
 
+    // Rider query 2: assigned pickups
     const q2 = query(
       collection(db, "orders"),
       where("ritiratoDa", "==", currentUserId)
     );
     const unsub2 = onSnapshot(q2, (snapshot) => {
-      snapshot.docs.forEach((doc) => {
-        ordersMap.set(doc.id, { id: doc.id, ...(doc.data() as IOrder) });
+      snapshot.docChanges().forEach((change) => {
+        const order = { id: change.doc.id, ...(change.doc.data() as IOrder) };
+
+        if (change.type === "removed" && !shouldRiderSeeOrder(order)) {
+          ordersMap.delete(change.doc.id);
+        } else {
+          ordersMap.set(change.doc.id, order);
+        }
       });
       updateOrders();
     });
     unsubscribers.push(unsub2);
 
+    // Rider query 3: available orders
     const q3 = query(
       collection(db, "orders"),
       where("status", "==", "Attesa ritiro")
     );
     const unsub3 = onSnapshot(q3, (snapshot) => {
-      snapshot.docs.forEach((doc) => {
-        ordersMap.set(doc.id, { id: doc.id, ...(doc.data() as IOrder) });
+      snapshot.docChanges().forEach((change) => {
+        const order = { id: change.doc.id, ...(change.doc.data() as IOrder) };
+
+        if (change.type === "removed" && !shouldRiderSeeOrder(order)) {
+          ordersMap.delete(change.doc.id);
+        } else {
+          ordersMap.set(change.doc.id, order);
+        }
       });
       updateOrders();
     });

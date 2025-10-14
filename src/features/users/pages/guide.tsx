@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Layout, Row, Col, Typography, message, Card } from "antd";
-import { TeamOutlined } from "@ant-design/icons";
+import { SolutionOutlined } from "@ant-design/icons"; // ✅ Better icon for guides
 import { getUsers, updateUser } from "../api/userApi";
 import { IUser } from "../../../types/interfaces/IUser";
 import { useDocumentTitle } from "@refinedev/react-router";
@@ -35,7 +35,7 @@ const GuidesPage: React.FC = () => {
     }
   };
 
-  const addUser = (user: IUser) => {
+  const addGuide = (user: IUser) => {
     setGuides([...guides, user]);
   };
 
@@ -43,7 +43,9 @@ const GuidesPage: React.FC = () => {
     try {
       await updateUser(id, updates);
       setGuides(guides.map((g) => (g.id === id ? { ...g, ...updates } : g)));
+      message.success("Guida aggiornata con successo!");
     } catch (error) {
+      console.error("Error updating guide:", error);
       throw error;
     }
   };
@@ -56,41 +58,21 @@ const GuidesPage: React.FC = () => {
         </Title>
       </Header>
 
-      <Content>
-        {/* Summary Card */}
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={8}>
-            <Card>
-              <div style={{ textAlign: "center" }}>
-                <TeamOutlined
-                  style={{ fontSize: 32, color: "#1890ff", marginBottom: 8 }}
-                />
-                <div
-                  style={{ fontSize: 32, fontWeight: "bold", color: "#1890ff" }}
-                >
-                  {guides.length}
-                </div>
-                <div style={{ color: "#666", fontSize: 14 }}>Totale Guide</div>
-              </div>
-            </Card>
-          </Col>
-        </Row>
+      {/* Summary Card */}
 
-        {/* Guides Table */}
-        <Card>
-          <UserTable
-            users={guides}
-            setUsers={setGuides}
-            loading={loading}
-            setUserToEdit={setUserToEdit}
-            userType='guide'
-          />
-        </Card>
-      </Content>
+      {/* Guides Table */}
+
+      <UserTable
+        users={guides}
+        setUsers={setGuides}
+        loading={loading}
+        setUserToEdit={setUserToEdit}
+        userType='guide'
+      />
 
       {/* User Form */}
       <UserForm
-        addUser={addUser}
+        addUser={addGuide}
         updateUser={handleUpdateUser}
         userToEdit={userToEdit}
         setUserToEdit={setUserToEdit}

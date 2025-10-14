@@ -362,11 +362,11 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         <Descriptions.Item label='Fattura richiesta'>
           {order?.invoiceRequired ? "Sì" : "No"}
         </Descriptions.Item>
-        {!order?.invoiceRequired && (
-          <Descriptions.Item label='Saldo (€)'>
-            {order?.saldo ?? 0}
-          </Descriptions.Item>
-        )}
+
+        <Descriptions.Item label='Saldo (€)'>
+          {order?.saldo ?? 0}
+        </Descriptions.Item>
+
         <Descriptions.Item label='Lost'>{order?.lost ?? 0}</Descriptions.Item>
         <Descriptions.Item label='Orario Consegna'>
           {order?.oraConsegna
@@ -527,25 +527,16 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         </Col>
 
         {/* ✅ Conditionally show Saldo based on invoiceRequired */}
-        <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) =>
-            prevValues.invoiceRequired !== currentValues.invoiceRequired
-          }
-        >
-          {({ getFieldValue }) =>
-            !getFieldValue("invoiceRequired") && (
-              <Col span={mode === "edit" ? 4 : 4}>
-                <Form.Item label='Saldo (€)' name='saldo'>
-                  <InputNumber
-                    placeholder='Saldo (€)'
-                    style={{ width: "100%" }}
-                    disabled={mode === "view"}
-                  />
-                </Form.Item>
-              </Col>
-            )
-          }
+        <Form.Item noStyle>
+          <Col span={mode === "edit" ? 4 : 4}>
+            <Form.Item label='Saldo (€)' name='saldo'>
+              <InputNumber
+                placeholder='Saldo (€)'
+                style={{ width: "100%" }}
+                disabled={mode === "view"}
+              />
+            </Form.Item>
+          </Col>
         </Form.Item>
       </Row>
 

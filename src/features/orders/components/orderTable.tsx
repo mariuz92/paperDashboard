@@ -14,22 +14,23 @@ import {
   Space,
   Typography,
   Row,
+  Tooltip,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { FormInstance, MenuProps } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import { Timestamp } from "firebase/firestore"; // If you need to convert back to Timestamps
+import { Timestamp } from "firebase/firestore";
 import { colors, IOrder, IOrderStatus } from "../../../types/interfaces";
 import { updateOrder, deleteOrder } from "../api/orderApi";
 import {
   EditOutlined,
   DeleteOutlined,
   MoreOutlined,
-  FileExcelOutlined,
   FilePdfOutlined,
   ShareAltOutlined,
   UserAddOutlined,
   EyeOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 
 import jsPDF from "jspdf";
@@ -40,11 +41,10 @@ import "../../../shared/style.css";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { useNavigate } from "react-router";
 import ManageChannels from "./manageChannels";
-/** Helper: Safely convert a `Timestamp|string|undefined` to a Dayjs object. */
+
 /** Helper: Safely convert a `Timestamp|string|null|undefined` to a Dayjs object. */
 function dayjsValue(value?: Timestamp | string | null) {
   if (!value) {
-    // Return an invalid Dayjs by passing an un-parseable string
     return dayjs("");
   }
   if (value instanceof Timestamp) {
@@ -56,7 +56,7 @@ function dayjsValue(value?: Timestamp | string | null) {
 /** Helper: Format a `Timestamp|string` nicely for display in the table. */
 function formatDateCell(value?: Timestamp | string | null) {
   const d = dayjsValue(value);
-  return d.isValid() ? d.format("YYYY-MM-DD HH:mm") : "";
+  return d.isValid() ? d.format("DD/MM/YYYY HH:mm") : "";
 }
 
 /** Extended column type: can be editable, required, etc. */
@@ -73,7 +73,7 @@ interface EditableCellProps {
   title: string;
   inputType: "text" | "number" | "select" | "date" | "places";
   children: React.ReactNode;
-  form: FormInstance; // <-- Must declare this!
+  form: FormInstance;
 }
 
 /** Main props for OrderTable */
@@ -82,10 +82,6 @@ interface OrderTableProps {
   setOrders: React.Dispatch<React.SetStateAction<IOrder[]>>;
   loading: boolean;
   selectedDate: Dayjs;
-  /**
-   * onRowClick will be called when a row or its menu “Modifica” action is clicked.
-   * The parent component can then open the unified OrderDrawer in either view or edit mode.
-   */
   onRowClick?: (order: IOrder, mode?: "view" | "edit") => void;
 }
 
@@ -94,29 +90,24 @@ const exportToPDF = (orders: IOrder[]) => {
   const doc = new jsPDF("landscape");
   const columns = [
     { header: "Nome Guida", dataKey: "nomeGuida" },
-    // { header: "Canale Radio", dataKey: "canaleRadio" },
+    { header: "Status", dataKey: "status" },
     { header: "Orario Consegna", dataKey: "oraConsegna" },
     { header: "Luogo Consegna", dataKey: "luogoConsegna" },
+    { header: "Consegnato Da", dataKey: "deliveryName" },
     { header: "Ora Ritiro", dataKey: "oraRitiro" },
     { header: "Luogo Ritiro", dataKey: "luogoRitiro" },
-    { header: "Radioguida", dataKey: "radioguideConsegnate" },
-    { header: "Extra", dataKey: "extra" },
-    { header: "Saldo", dataKey: "saldo" },
-    { header: "Note", dataKey: "note" },
+    { header: "Ritirato Da", dataKey: "pickupName" },
   ];
 
   const rows = orders.map((order) => ({
     nomeGuida: order.nomeGuida || "",
-    canaleRadio: order.canaleRadio || "",
+    status: order.status || "",
     oraConsegna: formatDateCell(order.oraConsegna),
     luogoConsegna: order.luogoConsegna || "",
+    deliveryName: order.deliveryName || "-",
     oraRitiro: formatDateCell(order.oraRitiro),
     luogoRitiro: order.luogoRitiro || "",
-    radioguideConsegnate: order.radioguideConsegnate ?? 0,
-    extra: order.extra ?? 0,
-    saldo: order.saldo?.toFixed(2) ?? "0.00",
-    note: order.note || "Nessuna nota",
-    lost: order.lost ?? 0,
+    pickupName: order.pickupName || "-",
   }));
 
   autoTable(doc, { columns, body: rows, margin: { top: 20 } });
@@ -124,151 +115,9 @@ const exportToPDF = (orders: IOrder[]) => {
   doc.save(`ordini_${date}.pdf`);
 };
 
-/**
- * Editable cell component
- */
-const EditableCell: React.FC<EditableCellProps> = ({
-  editing,
-  col,
-  dataIndex,
-  title,
-  inputType,
-  children,
-  form,
-  ...restProps
-}) => {
-  const inputNode = (() => {
-    switch (inputType) {
-      case "select":
-        return (
-          <Select>
-            <Select.Option value='Presa in Carico'>
-              Presa in Carico
-            </Select.Option>
-            <Select.Option value='In Consegna'>In Consegna</Select.Option>
-            <Select.Option value='Consegnato'>Consegnato</Select.Option>
-            <Select.Option value='Attesa ritiro'>Attesa ritiro</Select.Option>
-            <Select.Option value='In Ritiro'>In Ritiro</Select.Option>
-            <Select.Option value='Ritirato'>Ritirato</Select.Option>
-            <Select.Option value='Annullato'>Annullato</Select.Option>
-          </Select>
-        );
-      case "number":
-        return <InputNumber style={{ width: "100%" }} />;
-      case "date":
-        return (
-          <DatePicker
-            showTime
-            style={{ width: "100%" }}
-            format='YYYY-MM-DD hh-mm'
-          />
-        );
-      case "places":
-        // Use GooglePlacesAutocomplete for luogoConsegna/luogoRitiro
-        const currentValue = form.getFieldValue(dataIndex);
-        return (
-          <GooglePlacesAutocomplete
-            placeholder={title} // e.g. "Luogo Consegna" or "Luogo Ritiro"
-            initialValue={currentValue}
-            onPlaceSelect={(address: string) => {
-              // Update this field in the Form
-              form.setFieldsValue({ [dataIndex]: address });
-            }}
-          />
-        );
-      default:
-        // "text"
-        return <Input />;
-    }
-  })();
-
-  const rules = col?.required
-    ? [{ required: true, message: `Inserisci ${title}` }]
-    : [];
-
-  return (
-    <td {...restProps}>
-      {editing ? (
-        <Form.Item name={dataIndex} style={{ margin: 0 }} rules={rules}>
-          {inputNode}
-        </Form.Item>
-      ) : (
-        children
-      )}
-    </td>
-  );
-};
-
-/**
- * Render the type of order with icons and/or text based on the logic:
- * 1. New Order (no `canaleRadio`)
- * 2. Delivered and Retrieved on the same day
- * 3. Only Delivered on the selected date
- * 4. Only Retrieved on the selected date
- */
-function renderOrderTypeIcon(order: IOrder, selectedDate: Dayjs) {
-  // 1) If no canaleRadio => New Order
-  if (!order.canaleRadio) {
-    return (
-      <span title='Nuovo Ordine'>
-        <Typography.Text>Nuovo</Typography.Text>
-      </span>
-    );
-  }
-
-  const consegnaDay = dayjsValue(order.oraConsegna);
-  const ritiroDay = dayjsValue(order.oraRitiro);
-
-  // 2) Both consegna and ritiro exist and are on the same day
-  if (
-    consegnaDay.isValid() &&
-    ritiroDay.isValid() &&
-    consegnaDay.isSame(ritiroDay, "day")
-  ) {
-    return (
-      <span title='Consegna e Ritiro lo Stesso Giorno'>
-        <Typography.Text>Consegna & Ritiro</Typography.Text>
-      </span>
-    );
-  }
-
-  // 3) Only oraConsegna is on the selected day
-  if (
-    consegnaDay.isValid() &&
-    consegnaDay.isSame(selectedDate, "day") &&
-    (!ritiroDay.isValid() || !ritiroDay.isSame(selectedDate, "day"))
-  ) {
-    return (
-      <span title='Consegna in Questa Data'>
-        <Typography.Text>Consegna</Typography.Text>
-      </span>
-    );
-  }
-
-  // 4) Only oraRitiro is on the selected day
-  if (
-    ritiroDay.isValid() &&
-    ritiroDay.isSame(selectedDate, "day") &&
-    (!consegnaDay.isValid() || !consegnaDay.isSame(selectedDate, "day"))
-  ) {
-    return (
-      <span title='Ritiro in Questa Data'>
-        {/* If you prefer to have an icon, uncomment the next line and ensure the icon is imported */}
-        {/* <SwapLeftOutlined style={{ color: "red", marginRight: 4 }} /> */}
-        <Typography.Text>Ritiro</Typography.Text>
-      </span>
-    );
-  }
-
-  // Default fallback: No special icon or label
-  return <span>-</span>;
-}
-
-// put this near the top of the file (above OrderTable)
 const getTenantIdFromStorage = (): string => {
   const raw = localStorage.getItem("tenantId");
   if (!raw) return "";
-  // supports raw string or JSON string
   try {
     const parsed = JSON.parse(raw);
     if (typeof parsed === "string") return parsed;
@@ -277,7 +126,7 @@ const getTenantIdFromStorage = (): string => {
     }
     return String(parsed);
   } catch {
-    return raw; // not JSON, plain string
+    return raw;
   }
 };
 
@@ -291,6 +140,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const [riders, setRiders] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchRiders = async () => {
       try {
@@ -314,19 +164,12 @@ const OrderTable: React.FC<OrderTableProps> = ({
   useEffect(() => {
     setTenantId(getTenantIdFromStorage());
 
-    // optional: keep in sync if another tab changes it
     const onStorage = (e: StorageEvent) => {
       if (e.key === "tenantId") setTenantId(getTenantIdFromStorage());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
-
-  /** Helper: Format a `Timestamp|string` nicely for display in European format. */
-  function formatDateCell(value?: Timestamp | string) {
-    const d = dayjsValue(value);
-    return d.isValid() ? d.format("DD/MM/YYYY HH:mm") : "";
-  }
 
   const handleDelete = async (id: string) => {
     try {
@@ -342,47 +185,37 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
   const handleShare = async (rider: IUser, index: number) => {
     const order = orders[index];
-    const now = dayjs();
-    const toleranceMinutes = 30;
 
-    // Initialize new status and an object to hold updates
-    let newStatus: IOrderStatus = order.status;
-    let orderUpdates: Partial<IOrder> = {};
-
-    // Check if delivery time exists and is already passed
-    if (order.oraConsegna) {
-      const deliveryTime = dayjsValue(order.oraConsegna);
-      if (deliveryTime.isValid() && now.isAfter(deliveryTime)) {
-        newStatus = "In Consegna";
-        orderUpdates.consegnatoDa = rider.id; // ✅ Use rider.id instead of rider.displayName
-      }
+    if (order.status === "Annullato") {
+      message.warning("Non è possibile assegnare un ordine annullato");
+      return;
     }
 
-    // Otherwise, check the pickup time condition
-    if (order.oraRitiro && newStatus !== "In Consegna") {
-      const pickupTime = dayjsValue(order.oraRitiro);
-      if (
-        pickupTime.isValid() &&
-        Math.abs(pickupTime.diff(now, "minute")) <= toleranceMinutes
-      ) {
-        newStatus = "In Ritiro";
-        orderUpdates.ritiratoDa = rider.id; // ✅ Use rider.id instead of rider.displayName
-      }
-    }
+    const isPickupAssignment =
+      order.status === "Consegnato" || order.status === "Attesa ritiro";
 
-    // Build the updated order object
-    const updatedOrder: IOrder = {
-      ...order,
-      ...orderUpdates,
-      status: newStatus,
-    };
+    const updatedOrder: IOrder = isPickupAssignment
+      ? {
+          ...order,
+          status: "In Ritiro",
+          ritiratoDa: rider.id,
+          pickupName: rider.displayName,
+        }
+      : {
+          ...order,
+          status: "In Consegna",
+          consegnatoDa: rider.id,
+          deliveryName: rider.displayName,
+        };
 
-    // Update the order
     try {
       await updateOrder(order.id as string, updatedOrder);
-      message.success(`Ordine assegnato a ${rider.displayName} con successo`);
 
-      // ✅ Refresh the orders list to show the updated assignment
+      const actionType = isPickupAssignment ? "ritiro" : "consegna";
+      message.success(
+        `Ordine assegnato a ${rider.displayName} per ${actionType}`
+      );
+
       setOrders((prevOrders) =>
         prevOrders.map((o) => (o.id === order.id ? updatedOrder : o))
       );
@@ -391,8 +224,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       console.error(error);
     }
   };
-  // Build the menu items for each row.
-  // For "Modifica" we delegate to the parent's onRowClick callback (in "edit" mode).
+
   const getMenuItems = (order: IOrder, index: number) => [
     {
       label: (
@@ -448,15 +280,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
     },
   ];
 
-  // Build columns
   const columns: ColumnType<IOrder>[] = [
-    // {
-    //   title: "Ordine",
-    //   key: "tipoOrdine",
-    //   render: (_, record) => renderOrderTypeIcon(record, selectedDate),
-    //   width: 120,
-    //   fixed: "left",
-    // },
     {
       title: "Nome Guida",
       dataIndex: "nomeGuida",
@@ -515,29 +339,31 @@ const OrderTable: React.FC<OrderTableProps> = ({
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 130,
+      width: 140,
       sorter: (a, b) => (a.status || "").localeCompare(b.status || ""),
       filters: [
+        { text: "Attesa ritiro", value: "Attesa ritiro" },
         { text: "Presa in Carico", value: "Presa in Carico" },
         { text: "In Consegna", value: "In Consegna" },
         { text: "Consegnato", value: "Consegnato" },
+        { text: "In Ritiro", value: "In Ritiro" },
         { text: "Ritirato", value: "Ritirato" },
+        { text: "Annullato", value: "Annullato" },
       ],
       onFilter: (value, record) => record.status === value,
       render: (status: IOrderStatus) => {
         const colors: Record<IOrderStatus, string> = {
-          "In Consegna": "blue",
-          "Presa in Carico": "gold",
-          Consegnato: "green",
           "Attesa ritiro": "orange",
-          Annullato: "red",
+          "Presa in Carico": "gold",
+          "In Consegna": "blue",
+          Consegnato: "green",
           "In Ritiro": "purple",
           Ritirato: "cyan",
+          Annullato: "red",
         };
         return <Tag color={colors[status]}>{status}</Tag>;
       },
     },
-
     {
       title: "Orario Consegna",
       dataIndex: "oraConsegna",
@@ -552,7 +378,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       title: "Luogo Consegna",
       dataIndex: "luogoConsegna",
       key: "luogoConsegna",
-      width: 160,
+      width: 220,
       sorter: (a, b) =>
         (a.luogoConsegna || "").localeCompare(b.luogoConsegna || ""),
       filterDropdown: ({
@@ -582,7 +408,11 @@ const OrderTable: React.FC<OrderTableProps> = ({
               Cerca
             </Button>
             <Button
-              onClick={() => clearFilters && clearFilters()}
+              onClick={() => {
+                clearFilters && clearFilters();
+                setSelectedKeys([]);
+                confirm();
+              }}
               size='small'
               style={{ width: 90 }}
             >
@@ -597,6 +427,48 @@ const OrderTable: React.FC<OrderTableProps> = ({
               .toLowerCase()
               .includes((value as string).toLowerCase())
           : false,
+      render: (text) => (
+        <Tooltip title={text}>
+          <span
+            style={{
+              display: "block",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {text || "-"}
+          </span>
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Consegnato Da",
+      dataIndex: "deliveryName",
+      key: "deliveryName",
+      width: 180,
+      sorter: (a, b) =>
+        (a.deliveryName || "").localeCompare(b.deliveryName || ""),
+      render: (text) =>
+        text ? (
+          <Tooltip title={text}>
+            <Tag
+              icon={<UserOutlined />}
+              color='blue'
+              style={{
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                display: "inline-block",
+              }}
+            >
+              {text}
+            </Tag>
+          </Tooltip>
+        ) : (
+          <span style={{ color: "#999" }}>-</span>
+        ),
     },
     {
       title: "Ora Ritiro",
@@ -611,7 +483,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
       title: "Luogo Ritiro",
       dataIndex: "luogoRitiro",
       key: "luogoRitiro",
-      width: 160,
+      width: 220,
       sorter: (a, b) =>
         (a.luogoRitiro || "").localeCompare(b.luogoRitiro || ""),
       filterDropdown: ({
@@ -641,7 +513,11 @@ const OrderTable: React.FC<OrderTableProps> = ({
               Cerca
             </Button>
             <Button
-              onClick={() => clearFilters && clearFilters()}
+              onClick={() => {
+                clearFilters && clearFilters();
+                setSelectedKeys([]);
+                confirm();
+              }}
               size='small'
               style={{ width: 90 }}
             >
@@ -656,6 +532,47 @@ const OrderTable: React.FC<OrderTableProps> = ({
               .toLowerCase()
               .includes((value as string).toLowerCase())
           : false,
+      render: (text) => (
+        <Tooltip title={text}>
+          <span
+            style={{
+              display: "block",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {text || "-"}
+          </span>
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Ritirato Da",
+      dataIndex: "pickupName",
+      key: "pickupName",
+      width: 180,
+      sorter: (a, b) => (a.pickupName || "").localeCompare(b.pickupName || ""),
+      render: (text) =>
+        text ? (
+          <Tooltip title={text}>
+            <Tag
+              icon={<UserOutlined />}
+              color='purple'
+              style={{
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                display: "inline-block",
+              }}
+            >
+              {text}
+            </Tag>
+          </Tooltip>
+        ) : (
+          <span style={{ color: "#999" }}>-</span>
+        ),
     },
     {
       title: "Azione",
@@ -706,12 +623,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
         <ManageChannels
           tenantId={tenantId}
-          visible={open} // antd v2
+          visible={open}
           onClose={() => setOpen(false)}
-          onSaved={() => {
-            // optional: refresh page data
-          }}
-          // startFromZero={false}       // uncomment to switch to 1..N
+          onSaved={() => {}}
         />
       </Space>
       <Table<IOrder>
@@ -722,7 +636,13 @@ const OrderTable: React.FC<OrderTableProps> = ({
         rowKey={(record) => record.id as string}
         loading={loading}
         tableLayout='fixed'
-        scroll={{ x: 1200, y: 2000 }}
+        scroll={{ x: 1480, y: 2000 }}
+        pagination={{
+          pageSize: 50,
+          showSizeChanger: true,
+          showTotal: (total) => `Totale: ${total} ordini`,
+          pageSizeOptions: ["20", "50", "100", "200"],
+        }}
       />
     </>
   );
