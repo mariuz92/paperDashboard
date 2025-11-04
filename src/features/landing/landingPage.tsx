@@ -435,8 +435,8 @@ const LandingPage: React.FC = () => {
             <details className='faq-item'>
               <summary>How many riders can I add to my team?</summary>
               <p>
-                On the free plan, you can add up to 3 riders. Professional and
-                Enterprise plans support unlimited riders.
+                On the standard plan, you can add up to 3 riders. Professional
+                and Enterprise plans support unlimited riders.
               </p>
             </details>
 
@@ -447,14 +447,6 @@ const LandingPage: React.FC = () => {
               <p>
                 Riders only see orders that are assigned to them. Administrators
                 have full visibility over all orders and team members.
-              </p>
-            </details>
-
-            <details className='faq-item'>
-              <summary>What happens if my connection drops?</summary>
-              <p>
-                The app works offline and automatically syncs all changes when
-                your connection is restored. No data is lost.
               </p>
             </details>
 
