@@ -15,6 +15,7 @@ import {
   Typography,
   Row,
   Tooltip,
+  Badge,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { FormInstance, MenuProps } from "antd";
@@ -41,6 +42,8 @@ import "../../../shared/style.css";
 import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { useNavigate } from "react-router";
 import ManageChannels from "./manageChannels";
+import { IRiderStatus } from "../../../types/interfaces/IRIderStatus";
+import { watchAllRiderStatuses } from "../../users/api/riderStatusApi";
 
 /** Helper: Safely convert a `Timestamp|string|null|undefined` to a Dayjs object. */
 function dayjsValue(value?: Timestamp | string | null) {
@@ -140,6 +143,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const [riders, setRiders] = useState<any[]>([]);
+  const [riderStatuses, setRiderStatuses] = useState<Map<string, IRiderStatus>>(
+    new Map()
+  );
 
   useEffect(() => {
     const fetchRiders = async () => {
@@ -152,6 +158,17 @@ const OrderTable: React.FC<OrderTableProps> = ({
     };
 
     fetchRiders();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = watchAllRiderStatuses((statuses) => {
+      const statusMap = new Map<string, IRiderStatus>();
+      statuses.forEach((status) => {
+        statusMap.set(status.riderId, status);
+      });
+      setRiderStatuses(statusMap);
+    });
+    return () => unsubscribe();
   }, []);
 
   const [tenantId, setTenantId] = useState<string>("");
@@ -197,13 +214,13 @@ const OrderTable: React.FC<OrderTableProps> = ({
     const updatedOrder: IOrder = isPickupAssignment
       ? {
           ...order,
-          status: "In Ritiro",
+          status: "Assegnato", // Changed from "In Ritiro" to "Assegnato"
           ritiratoDa: rider.id,
           pickupName: rider.displayName,
         }
       : {
           ...order,
-          status: "In Consegna",
+          status: "Assegnato", // Changed from "In Consegna" to "Assegnato"
           consegnatoDa: rider.id,
           deliveryName: rider.displayName,
         };
@@ -251,14 +268,36 @@ const OrderTable: React.FC<OrderTableProps> = ({
                 key: "add_rider",
               },
             ]
-          : riders.map((rider) => ({
-              label: (
-                <span onClick={() => handleShare(rider, index)}>
-                  {rider.displayName}
-                </span>
-              ),
-              key: rider.id,
-            })),
+          : riders.map((rider) => {
+              const riderStatus = riderStatuses.get(rider.id);
+              const isBusy = riderStatus?.isBusy || false;
+
+              return {
+                label: (
+                  <span
+                    onClick={() => !isBusy && handleShare(rider, index)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      opacity: isBusy ? 0.5 : 1,
+                      cursor: isBusy ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <span>{rider.displayName}</span>
+                    {isBusy && (
+                      <Badge
+                        status='processing'
+                        text='Occupato'
+                        style={{ marginLeft: 8, fontSize: 12 }}
+                      />
+                    )}
+                  </span>
+                ),
+                key: rider.id,
+                disabled: isBusy, // ✅ Disables the menu item
+              };
+            }),
     },
     {
       type: "divider",
@@ -360,6 +399,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
           "In Ritiro": "purple",
           Ritirato: "cyan",
           Annullato: "red",
+          Assegnato: "geekblue",
         };
         return <Tag color={colors[status]}>{status}</Tag>;
       },

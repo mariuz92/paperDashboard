@@ -3,6 +3,7 @@ import { Timestamp } from "firebase/firestore";
 export type IOrderStatus =
   | "In Consegna"
   | "Presa in Carico"
+  | "Assegnato"
   | "Consegnato"
   | "Attesa ritiro"
   | "Annullato"
@@ -34,6 +35,7 @@ export interface IOrder {
 const colors: Record<IOrderStatus, string> = {
   "In Consegna": "blue",
   "Presa in Carico": "gold",
+  Assegnato: "geekblue", // ✅ Added: color for Assegnato status
   Consegnato: "green",
   "Attesa ritiro": "orange",
   Annullato: "red",

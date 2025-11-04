@@ -52,6 +52,7 @@ import {
 import UsersPage from "./features/users/pages/riders";
 import CustomOutlet from "./shared/components/customOutlet";
 import GuidesPage from "./features/users/pages/guide";
+import LandingPage from "./features/landing/landingPage";
 const App: React.FC = () => {
   const authProvider: AuthProvider = {
     forgotPassword: async ({ email }) => {
@@ -234,202 +235,205 @@ const App: React.FC = () => {
       },
     },
   };
+  const hostname = window.location.hostname;
+
+  const isAppDomain = hostname.startsWith("platform.");
 
   return (
     <BrowserRouter>
       <ConfigProvider theme={RefineThemes.Blue}>
-        <AntdApp>
-          <Refine
-            authProvider={authProvider}
-            routerProvider={routerProvider}
-            // i18nProvider={i18nProvider}
-            accessControlProvider={accessControlProvider}
-            resources={[
-              {
-                name: "orders",
-                list: "/",
-                meta: {
-                  label: "Ordini",
-                  icon: <FileOutlined />,
+        {isAppDomain ? (
+          <AntdApp>
+            <Refine
+              authProvider={authProvider}
+              routerProvider={routerProvider}
+              accessControlProvider={accessControlProvider}
+              resources={[
+                {
+                  name: "orders",
+                  list: "/",
+                  meta: {
+                    label: "Ordini",
+                    icon: <FileOutlined />,
+                  },
                 },
-              },
-              {
-                name: "calendar",
-                list: "/Calendario",
-                meta: {
-                  label: "Calendario Ordini",
-                  icon: <CalendarOutlined />,
+                {
+                  name: "calendar",
+                  list: "/Calendario",
+                  meta: {
+                    label: "Calendario Ordini",
+                    icon: <CalendarOutlined />,
+                  },
                 },
-              },
-              {
-                name: "dashboard",
-                list: "/Dashboard",
-                meta: {
-                  label: "Dashboard",
-                  icon: <DashboardOutlined />,
+                {
+                  name: "dashboard",
+                  list: "/Dashboard",
+                  meta: {
+                    label: "Dashboard",
+                    icon: <DashboardOutlined />,
+                  },
                 },
-              },
-              {
-                name: "users",
-                list: "/Riders",
-                meta: {
-                  label: "Gestione Riders",
-                  icon: <TeamOutlined />,
+                {
+                  name: "users",
+                  list: "/Riders",
+                  meta: {
+                    label: "Gestione Riders",
+                    icon: <TeamOutlined />,
+                  },
                 },
-              },
-              {
-                name: "guides",
-                list: "/Guides",
-                meta: {
-                  label: "Gestione Guide",
-                  icon: <SolutionOutlined />,
+                {
+                  name: "guides",
+                  list: "/Guides",
+                  meta: {
+                    label: "Gestione Guide",
+                    icon: <SolutionOutlined />,
+                  },
                 },
-              },
-              // potential other resources...
-            ]}
-            notificationProvider={useNotificationProvider}
-            options={{
-              syncWithLocation: true,
-              warnWhenUnsavedChanges: true,
-              title: {
-                text: CONFIG.appName,
-                icon: CONFIG.logo,
-              },
-            }}
-          >
-            <Routes>
-              {/* Public Auth Routes */}
-              <Route
-                path='/login'
-                element={
-                  <AuthPage
-                    title={
-                      <ThemedTitle
-                        image={CONFIG.logo}
-                        icon={<AndroidOutlined />}
-                        text={CONFIG.appName}
-                        collapsed={false}
-                      />
-                    }
-                    type='login'
-                    formProps={{ initialValues: {} }}
-                    providers={[
-                      {
-                        name: "google",
-                        label: "Sign in with Google",
-                        icon: <GoogleOutlined style={{ fontSize: 24 }} />,
-                      },
-                    ]}
-                  />
-                }
-              />
-              <Route
-                path='/register'
-                element={
-                  <AuthPage
-                    title={
-                      <ThemedTitle
-                        icon={<AndroidOutlined />}
-                        image={CONFIG.logo}
-                        text={CONFIG.appName}
-                        collapsed={true}
-                      />
-                    }
-                    type='register'
-                    providers={[
-                      {
-                        name: "google",
-                        label: "Sign in with Google",
-                        icon: <GoogleOutlined style={{ fontSize: 24 }} />,
-                      },
-                    ]}
-                  />
-                }
-              />
-              <Route
-                path='/forgot-password'
-                element={
-                  <AuthPage
-                    title={
-                      <ThemedTitle
-                        icon={<AndroidOutlined />}
-                        image={CONFIG.logo}
-                        text={CONFIG.appName}
-                        collapsed={true}
-                      />
-                    }
-                    type='forgotPassword'
-                  />
-                }
-              />
-              <Route
-                path='/update-password'
-                element={
-                  <AuthPage
-                    title={
-                      <ThemedTitle
-                        icon={<AndroidOutlined />}
-                        image={CONFIG.logo}
-                        text={CONFIG.appName}
-                        collapsed={false}
-                      />
-                    }
-                    type='updatePassword'
-                  />
-                }
-              />
-
-              {/* Main (Default) Protected Layout */}
-              <Route
-                element={
-                  <Authenticated
-                    fallback={<Navigate to='/login' />}
-                    key='authenticated'
-                  >
-                    <ThemedLayout
-                      Header={ThemedHeader}
-                      Title={({ collapsed }) => (
+              ]}
+              notificationProvider={useNotificationProvider}
+              options={{
+                syncWithLocation: true,
+                warnWhenUnsavedChanges: true,
+                title: {
+                  text: CONFIG.appName,
+                  icon: CONFIG.logo,
+                },
+              }}
+            >
+              <Routes>
+                {/* Auth Routes */}
+                <Route
+                  path='/login'
+                  element={
+                    <AuthPage
+                      title={
                         <ThemedTitle
-                          collapsed={collapsed}
                           image={CONFIG.logo}
                           icon={<AndroidOutlined />}
                           text={CONFIG.appName}
+                          collapsed={false}
                         />
-                      )}
+                      }
+                      type='login'
+                      formProps={{ initialValues: {} }}
+                      providers={[
+                        {
+                          name: "google",
+                          label: "Sign in with Google",
+                          icon: <GoogleOutlined style={{ fontSize: 24 }} />,
+                        },
+                      ]}
+                    />
+                  }
+                />
+                <Route
+                  path='/register'
+                  element={
+                    <AuthPage
+                      title={
+                        <ThemedTitle
+                          icon={<AndroidOutlined />}
+                          image={CONFIG.logo}
+                          text={CONFIG.appName}
+                          collapsed={true}
+                        />
+                      }
+                      type='register'
+                      providers={[
+                        {
+                          name: "google",
+                          label: "Sign in with Google",
+                          icon: <GoogleOutlined style={{ fontSize: 24 }} />,
+                        },
+                      ]}
+                    />
+                  }
+                />
+                <Route
+                  path='/forgot-password'
+                  element={
+                    <AuthPage
+                      title={
+                        <ThemedTitle
+                          icon={<AndroidOutlined />}
+                          image={CONFIG.logo}
+                          text={CONFIG.appName}
+                          collapsed={true}
+                        />
+                      }
+                      type='forgotPassword'
+                    />
+                  }
+                />
+                <Route
+                  path='/update-password'
+                  element={
+                    <AuthPage
+                      title={
+                        <ThemedTitle
+                          icon={<AndroidOutlined />}
+                          image={CONFIG.logo}
+                          text={CONFIG.appName}
+                          collapsed={false}
+                        />
+                      }
+                      type='updatePassword'
+                    />
+                  }
+                />
+
+                {/* Protected Routes */}
+                <Route
+                  element={
+                    <Authenticated
+                      fallback={<Navigate to='/login' />}
+                      key='authenticated'
                     >
-                      <Outlet />
-                    </ThemedLayout>
-                  </Authenticated>
-                }
-              >
-                <Route index element={<OrdersPage />} />
-                <Route path='/Calendario' element={<CalendarPage />} />
-                <Route path='/Dashboard' element={<DashboardPage />} />
-                <Route path='/Profilo' element={<ProfilePage />} />
-                <Route path='/Riders' element={<UsersPage />} />
-                <Route path='/Guides' element={<GuidesPage />} />
+                      <ThemedLayout
+                        Header={ThemedHeader}
+                        Title={({ collapsed }) => (
+                          <ThemedTitle
+                            collapsed={collapsed}
+                            image={CONFIG.logo}
+                            icon={<AndroidOutlined />}
+                            text={CONFIG.appName}
+                          />
+                        )}
+                      >
+                        <Outlet />
+                      </ThemedLayout>
+                    </Authenticated>
+                  }
+                >
+                  <Route index element={<OrdersPage />} />
+                  <Route path='/Calendario' element={<CalendarPage />} />
+                  <Route path='/Dashboard' element={<DashboardPage />} />
+                  <Route path='/Profilo' element={<ProfilePage />} />
+                  <Route path='/Riders' element={<UsersPage />} />
+                  <Route path='/Guides' element={<GuidesPage />} />
+                  <Route path='*' element={<ErrorComponent />} />
+                </Route>
 
-                {/* 404 inside default layout */}
-                <Route path='*' element={<ErrorComponent />} />
-              </Route>
+                {/* Public Routes */}
+                <Route path='/OrdineGuida' element={<CustomOutlet />}>
+                  <Route index element={<GuideOrderPage />} />
+                </Route>
+                <Route path='/join' element={<CustomOutlet />}>
+                  <Route index element={<JoinPage />} />
+                </Route>
+              </Routes>
 
-              {/* Minimal Layout for Guida */}
-              <Route path='/OrdineGuida' element={<CustomOutlet />}>
-                <Route index element={<GuideOrderPage />} />
-              </Route>
-
-              <Route path='/join' element={<CustomOutlet />}>
-                <Route index element={<JoinPage />} />
-              </Route>
-            </Routes>
-
-            <UnsavedChangesNotifier />
-            <DocumentTitleHandler />
-          </Refine>
-        </AntdApp>
+              <UnsavedChangesNotifier />
+              <DocumentTitleHandler />
+            </Refine>
+          </AntdApp>
+        ) : (
+          <Routes>
+            <Route path='/' element={<LandingPage />} />
+          </Routes>
+        )}
       </ConfigProvider>
     </BrowserRouter>
   );
 };
-
 export default App;

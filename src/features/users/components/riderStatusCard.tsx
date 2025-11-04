@@ -31,10 +31,15 @@ interface RiderStatusCardProps {
 }
 
 // Pickup statuses
-const PICKUP_STATUSES = ["Attesa ritiro", "In Ritiro", "Ritirato"];
+const PICKUP_STATUSES = ["Assegnato", "Attesa ritiro", "In Ritiro", "Ritirato"];
 
 // Delivery statuses
-const DELIVERY_STATUSES = ["Presa in Carico", "In Consegna", "Consegnato"];
+const DELIVERY_STATUSES = [
+  "Assegnato",
+  "Presa in Carico",
+  "In Consegna",
+  "Consegnato",
+];
 
 // Check if status is pickup or delivery
 const isPickupStatus = (status: string): boolean => {
@@ -48,9 +53,10 @@ const isDeliveryStatus = (status: string): boolean => {
 // Map status to step index for PICKUP flow
 const getPickupStepIndex = (status: string): number => {
   const statusMap: Record<string, number> = {
-    "Attesa ritiro": 0,
-    "In Ritiro": 1,
-    Ritirato: 2,
+    Assegnato: 0,
+    "Attesa ritiro": 1,
+    "In Ritiro": 2,
+    Ritirato: 3,
   };
   return statusMap[status] ?? 0;
 };
@@ -58,16 +64,17 @@ const getPickupStepIndex = (status: string): number => {
 // Map status to step index for DELIVERY flow
 const getDeliveryStepIndex = (status: string): number => {
   const statusMap: Record<string, number> = {
-    "Presa in Carico": 0,
-    "In Consegna": 1,
-    Consegnato: 2,
+    Assegnato: 0,
+    "Presa in Carico": 1,
+    "In Consegna": 2,
+    Consegnato: 3,
   };
   return statusMap[status] ?? 0;
 };
-
 // Get color for status tag
 const getStatusColor = (status: string): string => {
   const colorMap: Record<string, string> = {
+    Assegnato: "geekblue",
     "Attesa ritiro": "orange",
     "In Ritiro": "purple",
     Ritirato: "cyan",
@@ -95,8 +102,29 @@ const getStepDescription = (
 };
 
 const RiderStatusCard: React.FC<RiderStatusCardProps> = ({ rider, status }) => {
-  const isPickup = isPickupStatus(status.lastStatus);
-  const isDelivery = isDeliveryStatus(status.lastStatus);
+  let isPickup: boolean;
+  let isDelivery: boolean;
+
+  if (status.lastStatus === "Assegnato") {
+    // For "Assegnato" status, check the headingTo field or destination
+    // to determine if it's heading to pickup or delivery
+    // If headingTo contains pickup location keywords, it's a pickup flow
+    // Otherwise default to delivery flow
+
+    // Option A: Check headingTo field
+    const headingToLower = status.headingTo?.toLowerCase() || "";
+    isPickup =
+      headingToLower.includes("ritiro") || headingToLower.includes("pickup");
+    isDelivery = !isPickup;
+
+    // Option B: Or default to delivery if no clear indication
+    // isDelivery = true;
+    // isPickup = false;
+  } else {
+    isPickup = isPickupStatus(status.lastStatus);
+    isDelivery = isDeliveryStatus(status.lastStatus);
+  }
+
   const isCancelled = status.lastStatus === "Annullato";
 
   // Determine current step based on type
@@ -111,37 +139,46 @@ const RiderStatusCard: React.FC<RiderStatusCardProps> = ({ rider, status }) => {
   // Define steps based on type
   const pickupSteps = [
     {
-      title: "Attesa Ritiro",
+      title: "Assegnato",
       description: getStepDescription(0, currentStep, status),
       subTitle: currentStep === 0 ? timeAgo : undefined,
+    },
+    {
+      title: "Attesa Ritiro",
+      description: getStepDescription(1, currentStep, status),
+      subTitle: currentStep === 1 ? timeAgo : undefined,
     },
     {
       title: "In Ritiro",
-      description: getStepDescription(1, currentStep, status),
-      subTitle: currentStep === 1 ? timeAgo : undefined,
-    },
-    {
-      title: "Ritirato",
       description: getStepDescription(2, currentStep, status),
       subTitle: currentStep === 2 ? timeAgo : undefined,
     },
+    {
+      title: "Ritirato",
+      description: getStepDescription(3, currentStep, status),
+      subTitle: currentStep === 3 ? timeAgo : undefined,
+    },
   ];
-
   const deliverySteps = [
     {
-      title: "Presa in Carico",
+      title: "Assegnato",
       description: getStepDescription(0, currentStep, status),
       subTitle: currentStep === 0 ? timeAgo : undefined,
     },
     {
-      title: "In Consegna",
+      title: "Presa in Carico",
       description: getStepDescription(1, currentStep, status),
       subTitle: currentStep === 1 ? timeAgo : undefined,
     },
     {
-      title: "Consegnato",
+      title: "In Consegna",
       description: getStepDescription(2, currentStep, status),
       subTitle: currentStep === 2 ? timeAgo : undefined,
+    },
+    {
+      title: "Consegnato",
+      description: getStepDescription(3, currentStep, status),
+      subTitle: currentStep === 3 ? timeAgo : undefined,
     },
   ];
 

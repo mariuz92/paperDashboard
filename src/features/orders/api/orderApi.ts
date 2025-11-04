@@ -67,7 +67,7 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       riderId = order.consegnatoDa;
       headingTo = order.luogoConsegna;
       lastStatus = order.status;
-      isBusy = true;
+      isBusy = order.status !== "Assegnato"; // ✅ Changed: rider is not busy when just assigned
 
       // ✅ Fetch and set deliveryName if not already set
       if (!order.deliveryName) {
@@ -89,12 +89,15 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       }
     } else if (
       order.ritiratoDa &&
-      (order.status === "In Ritiro" || order.status === "Ritirato")
+      (order.status === "Assegnato" || // ✅ Added: handle Assegnato for pickup
+        order.status === "Attesa ritiro" ||
+        order.status === "In Ritiro" ||
+        order.status === "Ritirato")
     ) {
       riderId = order.ritiratoDa;
       headingTo = order.luogoRitiro;
       lastStatus = order.status;
-      isBusy = true;
+      isBusy = order.status !== "Assegnato"; // ✅ Changed: rider is not busy when just assigned
 
       // ✅ Fetch and set pickupName if not already set
       if (!order.pickupName) {
@@ -117,7 +120,12 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
     }
 
     // If order is completed or cancelled, mark rider as free
-    if (order.status === "Consegnato" || order.status === "Annullato") {
+    if (
+      order.status === "Consegnato" ||
+      order.status === "Annullato" ||
+      order.status === "Ritirato"
+    ) {
+      // ✅ Added: Ritirato
       if (order.consegnatoDa) {
         riderId = order.consegnatoDa;
       } else if (order.ritiratoDa) {
