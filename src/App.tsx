@@ -53,6 +53,9 @@ import UsersPage from "./features/users/pages/riders";
 import CustomOutlet from "./shared/components/customOutlet";
 import GuidesPage from "./features/users/pages/guide";
 import LandingPage from "./features/landing/landingPage";
+import PrivacyPolicy from "./features/landing/privacy";
+import TermsAndConditions from "./features/landing/terms";
+import CookiePolicy from "./features/landing/cookies";
 const App: React.FC = () => {
   const authProvider: AuthProvider = {
     forgotPassword: async ({ email }) => {
@@ -430,6 +433,9 @@ const App: React.FC = () => {
         ) : (
           <Routes>
             <Route path='/' element={<LandingPage />} />
+            <Route path='/privacy' element={<PrivacyPolicy />} />
+            <Route path='/terms' element={<TermsAndConditions />} />
+            <Route path='/cookies' element={<CookiePolicy />} />
           </Routes>
         )}
       </ConfigProvider>
