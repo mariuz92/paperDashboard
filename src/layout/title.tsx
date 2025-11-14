@@ -37,7 +37,7 @@ export const ThemedTitle: React.FC<ExtendedThemedTitleProps> = ({
   let iconNode: React.ReactNode = null;
   if (!hideIcon) {
     iconNode = image ? (
-      <img src={image} alt="title icon" style={{ width: 24, height: 24 }} />
+      <img src={image} alt="title icon" style={{ width: 24, height: 24, borderRadius:"50%" }} />
     ) : (
       iconFromProps ?? defaultIcon
     );

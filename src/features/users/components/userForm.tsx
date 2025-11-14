@@ -285,7 +285,7 @@ const UserForm: React.FC<UserFormProps> = ({
             label='Email'
             name='email'
             rules={[
-              { required: true, message: "Per favore inserisci l'email" },
+              { required: false, message: "Per favore inserisci l'email" },
               {
                 type: "email",
                 message: "Per favore inserisci un'email valida",

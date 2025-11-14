@@ -300,12 +300,7 @@ export const ProfilePage: React.FC = () => {
                     : "N/A"}
                 </Col>
               </Row>
-              <Row>
-                <Col span={10} style={{ color: "#999" }}>
-                  Tenant ID:
-                </Col>
-                <Col span={14}>{userProfile.tenantId || "N/A"}</Col>
-              </Row>
+          
             </div>
           </Card>
         </Col>
