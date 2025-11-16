@@ -175,7 +175,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
   const [open, setOpen] = useState(false);
 
   const handleNavigateToUsersPage = () => {
-    navigate("/Collaboratori");
+    navigate("/Riders");
   };
 
   useEffect(() => {
