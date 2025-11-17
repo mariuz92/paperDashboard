@@ -211,16 +211,57 @@ const OrderTable: React.FC<OrderTableProps> = ({
     const isPickupAssignment =
       order.status === "Consegnato" || order.status === "Attesa ritiro";
 
+    // Validate location and time before assignment
+    if (isPickupAssignment) {
+      if (!order.luogoRitiro && !order.oraRitiro) {
+        message.error(
+          "Impossibile assegnare: luogo ritiro e orario ritiro devono essere specificati"
+        );
+        return;
+      }
+      if (!order.luogoRitiro) {
+        message.error(
+          "Impossibile assegnare: luogo ritiro deve essere specificato"
+        );
+        return;
+      }
+      if (!order.oraRitiro) {
+        message.error(
+          "Impossibile assegnare: orario ritiro deve essere specificato"
+        );
+        return;
+      }
+    } else {
+      if (!order.luogoConsegna && !order.oraConsegna) {
+        message.error(
+          "Impossibile assegnare: luogo consegna e orario consegna devono essere specificati"
+        );
+        return;
+      }
+      if (!order.luogoConsegna) {
+        message.error(
+          "Impossibile assegnare: luogo consegna deve essere specificato"
+        );
+        return;
+      }
+      if (!order.oraConsegna) {
+        message.error(
+          "Impossibile assegnare: orario consegna deve essere specificato"
+        );
+        return;
+      }
+    }
+
     const updatedOrder: IOrder = isPickupAssignment
       ? {
           ...order,
-          status: "Assegnato", // Changed from "In Ritiro" to "Assegnato"
+          status: "Assegnato",
           ritiratoDa: rider.id,
           pickupName: rider.displayName,
         }
       : {
           ...order,
-          status: "Assegnato", // Changed from "In Consegna" to "Assegnato"
+          status: "Assegnato",
           consegnatoDa: rider.id,
           deliveryName: rider.displayName,
         };
