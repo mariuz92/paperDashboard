@@ -8,4 +8,5 @@ export interface IRiderStatus {
   headingTo: string | null;
   lastStatus: IOrderStatus;
   isBusy: boolean;
+  riderName?: string | null; // Add this field
 }

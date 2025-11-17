@@ -37,6 +37,7 @@ export const watchAllRiderStatuses = (
         headingTo: doc.data().headingTo || null,
         lastStatus: doc.data().lastStatus,
         isBusy: doc.data().isBusy || false,
+        riderName: doc.data().riderName || null, // Add this
       }));
       callback(statuses);
     },
@@ -74,6 +75,7 @@ export const watchRiderStatus = (
         headingTo: data.headingTo || null,
         lastStatus: data.lastStatus,
         isBusy: data.isBusy || false,
+        riderName: data.riderName || null, // Add this
       };
       callback(status);
     },
@@ -107,6 +109,7 @@ export const getRiderStatus = async (
       headingTo: data.headingTo || null,
       lastStatus: data.lastStatus,
       isBusy: data.isBusy || false,
+      riderName: data.riderName || null, // Add this
     };
   } catch (error) {
     console.error("Error getting rider status:", error);

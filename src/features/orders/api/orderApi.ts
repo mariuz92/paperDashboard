@@ -57,6 +57,7 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
     let headingTo: string | undefined;
     let lastStatus: IOrderStatus;
     let isBusy: boolean;
+    let riderName: string | undefined;
 
     // Priority: consegnatoDa (delivery) > ritiratoDa (pickup)
     if (
@@ -67,20 +68,22 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       riderId = order.consegnatoDa;
       headingTo = order.luogoConsegna;
       lastStatus = order.status;
-      isBusy = order.status !== "Assegnato"; // ✅ Changed: rider is not busy when just assigned
+      isBusy = order.status !== "Assegnato";
+      riderName = order.deliveryName;
 
       // ✅ Fetch and set deliveryName if not already set
       if (!order.deliveryName) {
         const riderDoc = await getDoc(doc(db, "users", riderId));
         if (riderDoc.exists()) {
           const riderData = riderDoc.data();
-          order.deliveryName = riderData.displayName || null;
+          riderName = riderData.displayName || null;
+          order.deliveryName = riderName;
 
           // ✅ Update order document with deliveryName
           if (order.id) {
             const orderRef = doc(db, "orders", order.id);
             await updateDoc(orderRef, {
-              deliveryName: order.deliveryName,
+              deliveryName: riderName,
             }).catch((err) =>
               console.warn("Could not update deliveryName in order:", err)
             );
@@ -89,7 +92,7 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       }
     } else if (
       order.ritiratoDa &&
-      (order.status === "Assegnato" || // ✅ Added: handle Assegnato for pickup
+      (order.status === "Assegnato" ||
         order.status === "Attesa ritiro" ||
         order.status === "In Ritiro" ||
         order.status === "Ritirato")
@@ -97,20 +100,22 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       riderId = order.ritiratoDa;
       headingTo = order.luogoRitiro;
       lastStatus = order.status;
-      isBusy = order.status !== "Assegnato"; // ✅ Changed: rider is not busy when just assigned
+      isBusy = order.status !== "Assegnato";
+      riderName = order.pickupName;
 
       // ✅ Fetch and set pickupName if not already set
       if (!order.pickupName) {
         const riderDoc = await getDoc(doc(db, "users", riderId));
         if (riderDoc.exists()) {
           const riderData = riderDoc.data();
-          order.pickupName = riderData.displayName || null;
+          riderName = riderData.displayName || null;
+          order.pickupName = riderName;
 
           // ✅ Update order document with pickupName
           if (order.id) {
             const orderRef = doc(db, "orders", order.id);
             await updateDoc(orderRef, {
-              pickupName: order.pickupName,
+              pickupName: riderName,
             }).catch((err) =>
               console.warn("Could not update pickupName in order:", err)
             );
@@ -125,11 +130,12 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       order.status === "Annullato" ||
       order.status === "Ritirato"
     ) {
-      // ✅ Added: Ritirato
       if (order.consegnatoDa) {
         riderId = order.consegnatoDa;
+        riderName = order.deliveryName;
       } else if (order.ritiratoDa) {
         riderId = order.ritiratoDa;
+        riderName = order.pickupName;
       }
       isBusy = false;
       lastStatus = order.status;
@@ -146,6 +152,7 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
         lastStatus: lastStatus!,
         isBusy: isBusy!,
         headingTo: headingTo || null,
+        riderName: riderName,
       };
 
       await setDoc(riderStatusRef, statusUpdate, { merge: true });
@@ -209,6 +216,14 @@ const clearRiderStatusIfNoActiveOrders = async (
 
     // If no active orders, mark rider as free
     if (!hasActiveOrders) {
+      // Fetch rider name for status update
+      let riderName: string | null = null;
+      const riderDoc = await getDoc(doc(db, "users", riderId));
+      if (riderDoc.exists()) {
+        const riderData = riderDoc.data();
+        riderName = riderData.displayName || null;
+      }
+
       const riderStatusRef = doc(db, "rider_status", riderId);
       await setDoc(
         riderStatusRef,
@@ -218,6 +233,7 @@ const clearRiderStatusIfNoActiveOrders = async (
           lastStatus: "Attesa ritiro" as IOrderStatus,
           isBusy: false,
           headingTo: null,
+          riderName: riderName,
         },
         { merge: true }
       );
