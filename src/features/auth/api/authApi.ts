@@ -324,10 +324,11 @@ export const signOutUser = async () => {
   }
 };
 
-/// ⬇️ REPLACE your current registerWithInvitation with this version
+/// ⬇️ UPDATED registerWithInvitation - now accepts and saves user data
 export const registerWithInvitation = async (
   token: string,
-  password: string
+  password: string,
+  userData?: { name?: string; phone?: string }
 ): Promise<IUser> => {
   try {
     // 1) Fetch invite (email, tenantId, role[], optional displayName)
@@ -357,13 +358,15 @@ export const registerWithInvitation = async (
     );
 
     // 3) Create Firestore user profile bound to the invited tenant
+    // ✅ Use the name and phone from userData if provided, otherwise fall back to invite data
     const newUser: IUser = {
       id: fbUser.uid,
       email: fbUser.email ?? email,
-      displayName: invite.displayName ?? fbUser.displayName ?? "",
+      displayName:
+        userData?.name || invite.displayName || fbUser.displayName || "",
       photoURL: fbUser.photoURL || "",
       emailVerified: fbUser.emailVerified,
-      phoneNumber: fbUser.phoneNumber || "",
+      phoneNumber: userData?.phone || fbUser.phoneNumber || "",
       createdAt: Timestamp.now(),
       lastLoginAt: Timestamp.now(),
       role: rolesToAssign,

@@ -270,7 +270,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
             ]
           : riders.map((rider) => {
               const riderStatus = riderStatuses.get(rider.id);
-              const isBusy = riderStatus?.isBusy || false;
+
+              // ✅ If no status exists, treat as available (not busy)
+              const isBusy = riderStatus?.isBusy ?? false;
 
               return {
                 label: (
@@ -295,7 +297,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
                   </span>
                 ),
                 key: rider.id,
-                disabled: isBusy, // ✅ Disables the menu item
+                disabled: isBusy,
               };
             }),
     },

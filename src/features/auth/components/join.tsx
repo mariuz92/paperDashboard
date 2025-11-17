@@ -72,7 +72,7 @@ const JoinPage: React.FC = () => {
   const onFinish = async (values: any) => {
     try {
       setLoading(true);
-      const { password, confirmPassword } = values;
+      const { password, confirmPassword, name, phone } = values;
 
       if (password !== confirmPassword) {
         notification.error({
@@ -83,7 +83,8 @@ const JoinPage: React.FC = () => {
       }
 
       // Token-driven registration: tenant & roles are enforced server-side from the invite
-      await registerWithInvitation(token, password);
+      // Pass the user's name, phone and any other data they entered
+      await registerWithInvitation(token, password, { name, phone });
 
       notification.success({
         message: "Registrazione completata",
@@ -169,6 +170,11 @@ const JoinPage: React.FC = () => {
             <Input placeholder='Il tuo nome' />
           </Form.Item>
 
+          {/* Optional: phone number */}
+          <Form.Item name='phone' label='Numero di Telefono'>
+            <Input placeholder='Il tuo numero di telefono' />
+          </Form.Item>
+
           {/* Password setup */}
           <Form.Item
             name='password'
@@ -233,7 +239,7 @@ const JoinPage: React.FC = () => {
             type='secondary'
             style={{ display: "block", textAlign: "center" }}
           >
-            L’azienda è preassegnata dall’invito e non può essere modificata.
+            L'azienda è preassegnata dall'invito e non può essere modificata.
           </Text>
         </Form>
       </Card>
