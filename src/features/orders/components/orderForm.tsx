@@ -168,6 +168,8 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
 
   // Process the form submission: convert date/time fields & call onSubmit.
   const handleFinish = async (values: any) => {
+    console.log("🔵 [handleFinish] Starting form submission", { mode, values });
+
     // Previous state for channel sync logic
     const prevStatus = order?.status ?? null;
     const prevChannelStr = order?.canaleRadio ?? undefined;
@@ -179,7 +181,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       const time = values.oraConsegna;
 
       if (mode === "edit" && order?.oraConsegna) {
-        // Keep original date, only change time
         const originalDate = dayjs(order.oraConsegna.toDate());
         const mergedDateTime = originalDate
           .hour(time.hour())
@@ -188,7 +189,6 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
           .millisecond(0);
         oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
       } else {
-        // In create → use today's date
         const mergedDateTime = dayjs()
           .hour(time.hour())
           .minute(time.minute())
@@ -209,7 +209,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       return;
     }
 
-    // ✅ Ensure canaleRadio is always a string (matching Flutter's String type)
+    // ✅ Ensure canaleRadio is always a string
     const selectedChannelStr: string = values.canaleRadio
       ? String(values.canaleRadio)
       : "";
@@ -217,7 +217,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       ? Number(selectedChannelStr)
       : undefined;
 
-    // ✅ Build complete order data matching Flutter's Order.toMap()
+    // ✅ Build complete order data - PRESERVE rider assignments in edit mode
     const orderData: Partial<IOrder> = {
       // Guide information
       nomeGuida: values.nomeGuida || null,
@@ -232,7 +232,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       oraRitiro,
       luogoRitiro: values.luogoRitiro || null,
 
-      // Quantities and amounts (use ?? to preserve 0 values)
+      // Quantities and amounts
       radioguideConsegnate: values.radioguideConsegnate ?? null,
       extra: values.extra ?? null,
       saldo: values.saldo ?? null,
@@ -240,15 +240,41 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       lost: values.lost ?? null,
 
       // Status and notes
-      status: values.status || "Presa in Carico",
+      status:
+        values.status ||
+        (mode === "edit" && order?.status) ||
+        "Presa in Carico",
       note: values.note || null,
-
-      // Rider information (don't include in create/edit from web - these are set by riders)
-      // consegnatoDa and ritiratoDa are managed by the Flutter app
     };
 
+    // ✅ CRITICAL: Only add rider fields if they have actual values (not undefined)
+    if (mode === "edit" && order) {
+      if (order.consegnatoDa !== undefined) {
+        orderData.consegnatoDa = order.consegnatoDa;
+      }
+      if (order.deliveryName !== undefined) {
+        orderData.deliveryName = order.deliveryName;
+      }
+      if (order.ritiratoDa !== undefined) {
+        orderData.ritiratoDa = order.ritiratoDa;
+      }
+      if (order.pickupName !== undefined) {
+        orderData.pickupName = order.pickupName;
+      }
+    }
+
+    console.log("📦 [handleFinish] Order data prepared:", {
+      orderData,
+      mode,
+      orderId: order?.id,
+    });
+
     try {
+      console.log("🚀 [handleFinish] Calling onSubmit...");
       await onSubmit(orderData, mode === "create" ? "create" : "edit");
+
+      console.log("✅ [handleFinish] onSubmit successful");
+
       message.success(
         mode === "create"
           ? "Ordine creato con successo!"
@@ -334,11 +360,25 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
       if (mode === "create") form.resetFields();
       onClose();
     } catch (error) {
-      console.error("Errore durante l'invio dell'ordine:", error);
-      message.error("Errore, riprova.");
+      console.error(
+        "❌ [handleFinish] Error durante l'invio dell'ordine:",
+        error
+      );
+
+      // More detailed error message
+      if (error instanceof Error) {
+        console.error("❌ Error details:", {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        });
+        message.error(`Errore: ${error.message}`);
+      } else {
+        console.error("❌ Unknown error:", error);
+        message.error("Errore, riprova.");
+      }
     }
   };
-
   // Render a read-only view for the "view" mode.
   const renderViewMode = () => (
     <div>

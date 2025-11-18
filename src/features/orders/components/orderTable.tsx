@@ -39,7 +39,6 @@ import autoTable from "jspdf-autotable";
 import { IUser } from "../../../types/interfaces/IUser";
 import { getUsers } from "../../users/api/userApi";
 import "../../../shared/style.css";
-import GooglePlacesAutocomplete from "../../../shared/components/googlePlacesAuto";
 import { useNavigate } from "react-router";
 import ManageChannels from "./manageChannels";
 import { IRiderStatus } from "../../../types/interfaces/IRIderStatus";
@@ -208,78 +207,78 @@ const OrderTable: React.FC<OrderTableProps> = ({
       return;
     }
 
-    const isPickupAssignment =
-      order.status === "Consegnato" || order.status === "Attesa ritiro";
+    if (order.status === "Assegnato") {
+      message.warning("Questo ordine è già stato assegnato");
+      return;
+    }
 
-    // Validate location and time before assignment
+    // ✅ Determine if this is a pickup assignment based on delivery status
+    const isPickupAssignment = !!(order.deliveryName || order.consegnatoDa);
+
+    // ✅ Check if order has required info - if not, open edit modal
     if (isPickupAssignment) {
-      if (!order.luogoRitiro && !order.oraRitiro) {
-        message.error(
-          "Impossibile assegnare: luogo ritiro e orario ritiro devono essere specificati"
-        );
-        return;
-      }
-      if (!order.luogoRitiro) {
-        message.error(
-          "Impossibile assegnare: luogo ritiro deve essere specificato"
-        );
-        return;
-      }
-      if (!order.oraRitiro) {
-        message.error(
-          "Impossibile assegnare: orario ritiro deve essere specificato"
-        );
+      if (!order.luogoRitiro || !order.oraRitiro) {
+        if (onRowClick) {
+          onRowClick(order, "edit");
+        }
         return;
       }
     } else {
-      if (!order.luogoConsegna && !order.oraConsegna) {
-        message.error(
-          "Impossibile assegnare: luogo consegna e orario consegna devono essere specificati"
-        );
-        return;
-      }
-      if (!order.luogoConsegna) {
-        message.error(
-          "Impossibile assegnare: luogo consegna deve essere specificato"
-        );
-        return;
-      }
-      if (!order.oraConsegna) {
-        message.error(
-          "Impossibile assegnare: orario consegna deve essere specificato"
-        );
+      if (!order.luogoConsegna || !order.oraConsegna) {
+        if (onRowClick) {
+          onRowClick(order, "edit");
+        }
         return;
       }
     }
 
-    const updatedOrder: IOrder = isPickupAssignment
-      ? {
-          ...order,
-          status: "Assegnato",
-          ritiratoDa: rider.id,
-          pickupName: rider.displayName,
-        }
-      : {
-          ...order,
-          status: "Assegnato",
-          consegnatoDa: rider.id,
-          deliveryName: rider.displayName,
-        };
+    // ✅ Check if rider has any ACTIVE assigned orders
+    const hasActiveAssignedOrders = orders.some((o) => {
+      if (o.id === order.id) return false;
+      if (o.status !== "Assegnato") return false;
+      return o.consegnatoDa === rider.id || o.ritiratoDa === rider.id;
+    });
+
+    if (hasActiveAssignedOrders) {
+      message.warning(`${rider.displayName} ha già un ordine assegnato`);
+      return;
+    }
+
+    // ✅ Build the updated order - ONLY update status and rider fields
+    const updatedOrder: Partial<IOrder> = {
+      status: "Assegnato",
+    };
+
+    if (isPickupAssignment) {
+      updatedOrder.ritiratoDa = rider.id;
+      updatedOrder.pickupName = rider.displayName;
+    } else {
+      updatedOrder.consegnatoDa = rider.id;
+      updatedOrder.deliveryName = rider.displayName;
+    }
 
     try {
+      console.log("🚀 [handleShare] Assigning order:", {
+        orderId: order.id,
+        currentStatus: order.status,
+        newStatus: "Assegnato",
+        riderId: rider.id,
+        riderName: rider.displayName,
+        isPickup: isPickupAssignment,
+        updatedOrder,
+      });
+
       await updateOrder(order.id as string, updatedOrder);
+
+      console.log("✅ [handleShare] Assignment completed");
 
       const actionType = isPickupAssignment ? "ritiro" : "consegna";
       message.success(
         `Ordine assegnato a ${rider.displayName} per ${actionType}`
       );
-
-      setOrders((prevOrders) =>
-        prevOrders.map((o) => (o.id === order.id ? updatedOrder : o))
-      );
     } catch (error) {
       message.error("Errore nell'assegnazione dell'ordine");
-      console.error(error);
+      console.error("❌ [handleShare] Assignment error:", error);
     }
   };
 

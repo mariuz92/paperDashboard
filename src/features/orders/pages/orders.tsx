@@ -1,5 +1,5 @@
 // src/pages/orders/OrdersPage.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Layout,
   Typography,
@@ -11,9 +11,8 @@ import {
 } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { getOrders } from "../api/orderApi";
+import { watchOrders } from "../api/orderApi";
 import { IOrder } from "../../../types/interfaces";
-import { Timestamp } from "firebase/firestore";
 
 import OrderTable from "../components/orderTable";
 import OrderDrawer from "../components/orderForm";
@@ -26,10 +25,50 @@ import { updateFreeChannels } from "../helper/channelsSync";
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
+const getTenantIdFromStorage = (): string => {
+  const raw = localStorage.getItem("tenantId");
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "string") return parsed;
+    if (parsed && typeof parsed === "object" && "id" in parsed) {
+      return String((parsed as any).id);
+    }
+    return String(parsed);
+  } catch {
+    return raw;
+  }
+};
+
+// ✅ Move this function outside the component to prevent recreating it
+const getChannelDataFromStorage = (): {
+  totalChannels: number;
+  iddleChannels: number[];
+  disabledChannels: number[];
+} => {
+  const storedChannels = localStorage.getItem("channels");
+  const totalChannels: number = storedChannels
+    ? Number(JSON.parse(storedChannels))
+    : 0;
+
+  const storedIddleChannels = localStorage.getItem("Iddlechannels");
+  const iddleChannels: number[] = storedIddleChannels
+    ? JSON.parse(storedIddleChannels)
+    : [];
+
+  const storedDisabledChannels = localStorage.getItem("disabledChannels");
+  const disabledChannels: number[] = storedDisabledChannels
+    ? JSON.parse(storedDisabledChannels)
+    : [];
+
+  return { totalChannels, iddleChannels, disabledChannels };
+};
+
 export const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<IOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
+  const [tenantId, setTenantId] = useState<string>("");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   useDocumentTitle(`Ordini | ${CONFIG.appName}`);
@@ -43,62 +82,53 @@ export const OrdersPage: React.FC = () => {
     undefined
   );
 
-  // Function to retrieve and parse total channels and iddle channels from localStorage
-  const getChannelDataFromStorage = (): {
-    totalChannels: number;
-    iddleChannels: number[];
-    disabledChannels: number[];
-  } => {
-    // Retrieve total channels from localStorage, parse it and convert to a number.
-    const storedChannels = localStorage.getItem("channels");
-    const totalChannels: number = storedChannels
-      ? Number(JSON.parse(storedChannels))
-      : 0;
+  // ✅ Get tenantId from storage
+  useEffect(() => {
+    const tid = getTenantIdFromStorage();
+    setTenantId(tid);
 
-    // Retrieve iddle channels from localStorage, parse it to get an array.
-    const storedIddleChannels = localStorage.getItem("Iddlechannels");
-    const iddleChannels: number[] = storedIddleChannels
-      ? JSON.parse(storedIddleChannels)
-      : [];
-    const storedDisabledChannels = localStorage.getItem("disabledChannels");
-    const disabledChannels: number[] = storedDisabledChannels
-      ? JSON.parse(storedDisabledChannels)
-      : [];
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "tenantId") {
+        setTenantId(getTenantIdFromStorage());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
-    return { totalChannels, iddleChannels, disabledChannels };
-  };
-
-  // Usage example: retrieving channel data then updating free channels list
-  const { totalChannels, iddleChannels, disabledChannels } =
-    getChannelDataFromStorage();
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const startOfDay = selectedDate.startOf("day").toDate();
-      const endOfDay = selectedDate.endOf("day").toDate();
-
-      const startTimestamp = Timestamp.fromDate(startOfDay);
-      const endTimestamp = Timestamp.fromDate(endOfDay);
-
-      const { data } = await getOrders({
-        page: 1,
-        pageSize: 50,
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-
-      setOrders(data);
-
-      // Update free channels list using the available orders
-      updateFreeChannels(totalChannels, iddleChannels, disabledChannels, data);
-    } catch (error) {
-      message.error("Failed to fetch orders.");
-      console.error("Error fetching orders:", error);
-    } finally {
+  // ✅ Set up real-time listener for orders
+  useEffect(() => {
+    if (!tenantId) {
       setLoading(false);
+      return;
     }
-  };
+
+    setLoading(true);
+
+    const unsubscribe = watchOrders(
+      tenantId,
+      selectedDate.toDate(),
+      (updatedOrders) => {
+        setOrders(updatedOrders);
+        setLoading(false);
+
+        // ✅ Get channel data inside the callback to avoid dependency issues
+        const { totalChannels, iddleChannels, disabledChannels } =
+          getChannelDataFromStorage();
+
+        // Update free channels list using the available orders
+        updateFreeChannels(
+          totalChannels,
+          iddleChannels,
+          disabledChannels,
+          updatedOrders
+        );
+      }
+    );
+
+    // Cleanup listener on unmount or when dependencies change
+    return () => unsubscribe();
+  }, [tenantId, selectedDate]); // ✅ Removed channel dependencies
 
   // Sync the selected date with the query parameter
   useEffect(() => {
@@ -113,11 +143,6 @@ export const OrdersPage: React.FC = () => {
       }
     }
   }, [searchParams]);
-
-  // Fetch orders whenever the selected date changes
-  useEffect(() => {
-    fetchOrders();
-  }, [selectedDate]);
 
   // Handle DatePicker changes
   const onDateChange = (date: Dayjs | null) => {
@@ -134,20 +159,12 @@ export const OrdersPage: React.FC = () => {
 
   // Callback for when an order is submitted from the drawer (create or edit)
   const handleSubmit = async (orderData: Partial<IOrder>, mode: Mode) => {
+    // ✅ No need to manually update orders state - the watcher will handle it
     if (mode === "create") {
-      // Set default status for new orders
       orderData.status = "Presa in Carico";
-      // Create new order
-      const docId = await saveOrder(orderData as Omit<IOrder, "id">);
-      setOrders((prev) => [...prev, { ...orderData, id: docId } as IOrder]);
+      await saveOrder(orderData as Omit<IOrder, "id">);
     } else if (mode === "edit" && selectedOrder) {
-      // Update existing order
       await updateOrder(selectedOrder.id as string, orderData);
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === selectedOrder.id ? { ...order, ...orderData } : order
-        )
-      );
     }
   };
 
@@ -168,12 +185,12 @@ export const OrdersPage: React.FC = () => {
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
       <Header style={{ background: "#fff", padding: 0, marginBottom: "20px" }}>
-        <Row justify="space-between" align="middle">
+        <Row justify='space-between' align='middle'>
           <Title level={2} style={{ margin: 0 }}>
             Gestione Ordini
           </Title>
           <DatePicker
-            format="DD/MM/YYYY"
+            format='DD/MM/YYYY'
             style={{ width: 200 }}
             value={selectedDate}
             onChange={onDateChange}
@@ -182,31 +199,28 @@ export const OrdersPage: React.FC = () => {
       </Header>
 
       <Content>
-        {/* Button to open the create order drawer */}
         <FloatButton
-          type="primary"
-          tooltip="Aggiungi Ordine"
+          type='primary'
+          tooltip='Aggiungi Ordine'
           icon={<PlusOutlined />}
           onClick={openCreateDrawer}
-        ></FloatButton>
+        />
 
-        {/* Order table; assume it calls onRowClick(order) when a row is clicked */}
         <OrderTable
           orders={orders}
           setOrders={setOrders}
           loading={loading}
           selectedDate={selectedDate}
-          onRowClick={openViewDrawer} // You might need to extend OrderTable to support this prop.
+          onRowClick={openViewDrawer}
         />
 
-        {/* Unified OrderDrawer component */}
         <OrderDrawer
           visible={drawerVisible}
           mode={drawerMode}
           order={selectedOrder}
           onClose={() => {
             setDrawerVisible(false);
-            setDrawerMode("view"); // Reset mode on close
+            setDrawerMode("view");
           }}
           onModeChange={(newMode) => setDrawerMode(newMode)}
           onSubmit={handleSubmit}

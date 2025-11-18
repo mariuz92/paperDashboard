@@ -52,26 +52,24 @@ export interface IMonthlyCount {
 // Update the updateRiderStatusFromOrder function (around line 34-95)
 const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
   try {
-    // Determine which rider to update and what their status should be
     let riderId: string | undefined;
     let headingTo: string | undefined;
     let lastStatus: IOrderStatus;
     let isBusy: boolean;
     let riderName: string | undefined;
 
-    // Priority: consegnatoDa (delivery) > ritiratoDa (pickup)
+    // ✅ Priority: Check delivery assignment first
     if (
       order.consegnatoDa &&
-      order.status !== "Consegnato" &&
-      order.status !== "Annullato"
+      order.status === "Assegnato" // ✅ Only Assegnato means actively delivering
     ) {
       riderId = order.consegnatoDa;
       headingTo = order.luogoConsegna;
       lastStatus = order.status;
-      isBusy = order.status !== "Assegnato";
+      isBusy = true;
       riderName = order.deliveryName;
 
-      // ✅ Fetch and set deliveryName if not already set
+      // Fetch and set deliveryName if not already set
       if (!order.deliveryName) {
         const riderDoc = await getDoc(doc(db, "users", riderId));
         if (riderDoc.exists()) {
@@ -79,7 +77,6 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
           riderName = riderData.displayName || null;
           order.deliveryName = riderName;
 
-          // ✅ Update order document with deliveryName
           if (order.id) {
             const orderRef = doc(db, "orders", order.id);
             await updateDoc(orderRef, {
@@ -90,20 +87,19 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
           }
         }
       }
-    } else if (
+    }
+    // ✅ Check pickup assignment - ONLY for Assegnato status
+    else if (
       order.ritiratoDa &&
-      (order.status === "Assegnato" ||
-        order.status === "Attesa ritiro" ||
-        order.status === "In Ritiro" ||
-        order.status === "Ritirato")
+      order.status === "Assegnato" // ✅ FIXED: Only Assegnato, not "Attesa ritiro"
     ) {
       riderId = order.ritiratoDa;
       headingTo = order.luogoRitiro;
       lastStatus = order.status;
-      isBusy = order.status !== "Assegnato";
+      isBusy = true;
       riderName = order.pickupName;
 
-      // ✅ Fetch and set pickupName if not already set
+      // Fetch and set pickupName if not already set
       if (!order.pickupName) {
         const riderDoc = await getDoc(doc(db, "users", riderId));
         if (riderDoc.exists()) {
@@ -111,7 +107,6 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
           riderName = riderData.displayName || null;
           order.pickupName = riderName;
 
-          // ✅ Update order document with pickupName
           if (order.id) {
             const orderRef = doc(db, "orders", order.id);
             await updateDoc(orderRef, {
@@ -124,22 +119,24 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       }
     }
 
-    // If order is completed or cancelled, mark rider as free
+    // ✅ If order is completed or cancelled, mark rider as free
     if (
       order.status === "Consegnato" ||
       order.status === "Annullato" ||
-      order.status === "Ritirato"
+      order.status === "Ritirato" ||
+      order.status === "Attesa ritiro" // ✅ ADDED: "Attesa ritiro" also means rider is free
     ) {
       if (order.consegnatoDa) {
         riderId = order.consegnatoDa;
         riderName = order.deliveryName;
+        headingTo = order.luogoConsegna;
       } else if (order.ritiratoDa) {
         riderId = order.ritiratoDa;
         riderName = order.pickupName;
+        headingTo = order.luogoRitiro;
       }
-      isBusy = false;
+      isBusy = false; // ✅ Rider is FREE for these statuses
       lastStatus = order.status;
-      headingTo = undefined;
     }
 
     // Update rider_status document if we have a rider
@@ -156,10 +153,6 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
       };
 
       await setDoc(riderStatusRef, statusUpdate, { merge: true });
-
-      console.log(
-        `[updateRiderStatusFromOrder] Updated status for rider ${riderId}`
-      );
     }
 
     // Also update the user document with last activity
@@ -186,7 +179,6 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
     }
   } catch (error) {
     console.error("[updateRiderStatusFromOrder] Error:", error);
-    // Don't throw - order operations should succeed even if status update fails
   }
 };
 
@@ -201,6 +193,7 @@ const clearRiderStatusIfNoActiveOrders = async (
     const activeOrdersQuery = query(
       collection(db, "orders"),
       where("status", "in", [
+        "Assegnato",
         "In Ritiro",
         "Ritirato",
         "Presa in Carico",
@@ -315,6 +308,15 @@ export const updateOrder = async (
   updatedOrder: Partial<IOrder>
 ): Promise<void> => {
   try {
+    console.log("🔄 [updateOrder] Updating order:", {
+      orderId: id,
+      statusBefore: updatedOrder.status,
+      hasRiderAssignment: !!(
+        updatedOrder.consegnatoDa || updatedOrder.ritiratoDa
+      ),
+      updatedFields: Object.keys(updatedOrder),
+    });
+
     const orderToUpdate: any = { ...updatedOrder };
 
     // Convert timestamp fields
@@ -339,10 +341,22 @@ export const updateOrder = async (
     const orderDocRef = doc(db, "orders", id);
     await updateDoc(orderDocRef, orderToUpdate);
 
+    console.log("✅ [updateOrder] Firestore updated successfully");
+
     // ✅ Get the full order after update and sync rider status
     const orderSnap = await getDoc(orderDocRef);
     if (orderSnap.exists()) {
       const fullOrder = { id: orderSnap.id, ...orderSnap.data() } as IOrder;
+
+      console.log("📦 [updateOrder] Full order after update:", {
+        orderId: fullOrder.id,
+        status: fullOrder.status,
+        consegnatoDa: fullOrder.consegnatoDa,
+        ritiratoDa: fullOrder.ritiratoDa,
+        deliveryName: fullOrder.deliveryName,
+        pickupName: fullOrder.pickupName,
+      });
+
       await updateRiderStatusFromOrder(fullOrder);
 
       // ✅ If rider was removed from order, check if they have other active orders
@@ -358,9 +372,9 @@ export const updateOrder = async (
       }
     }
 
-    console.log(`[updateOrder] Order ${id} updated successfully`);
+    console.log(`✅ [updateOrder] Order ${id} updated successfully`);
   } catch (error) {
-    console.error(`[updateOrder] Error updating order ${id}:`, error);
+    console.error(`❌ [updateOrder] Error updating order ${id}:`, error);
     throw error;
   }
 };
@@ -421,6 +435,58 @@ const buildBaseQuery = (
   q = query(q, orderBy(orderByField as string, orderDirection));
 
   return q;
+};
+
+export const watchOrders = (
+  tenantId: string,
+  selectedDate: Date,
+  callback: (orders: IOrder[]) => void
+): (() => void) => {
+  // ✅ Use root orders collection, not tenant subcollection
+  const ordersRef = collection(db, "orders");
+
+  // Get start and end of selected date
+  const startOfDay = new Date(selectedDate);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date(selectedDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  console.log("Watching orders for:", {
+    selectedDate,
+    startOfDay: startOfDay.toISOString(),
+    endOfDay: endOfDay.toISOString(),
+  });
+
+  const q = query(
+    ordersRef,
+    where("oraConsegna", ">=", Timestamp.fromDate(startOfDay)),
+    where("oraConsegna", "<=", Timestamp.fromDate(endOfDay)),
+    orderBy("oraConsegna", "asc")
+  );
+
+  const unsubscribe = onSnapshot(
+    q,
+    (snapshot) => {
+      console.log("Orders snapshot received:", snapshot.size, "documents");
+
+      const orders: IOrder[] = snapshot.docs.map(
+        (doc) =>
+          ({
+            id: doc.id,
+            ...doc.data(),
+          } as IOrder)
+      );
+
+      callback(orders);
+    },
+    (error) => {
+      console.error("Error watching orders:", error);
+      callback([]);
+    }
+  );
+
+  return unsubscribe;
 };
 
 /**
