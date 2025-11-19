@@ -408,9 +408,9 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         </Descriptions.Item>
 
         <Descriptions.Item label='Lost'>{order?.lost ?? 0}</Descriptions.Item>
-        <Descriptions.Item label='Orario Consegna'>
+        <Descriptions.Item label='Data e Orario Consegna'>
           {order?.oraConsegna
-            ? dayjs(order.oraConsegna.toDate()).format("HH:mm")
+            ? dayjs(order.oraConsegna.toDate()).format("DD-MM-YYYY HH:mm")
             : "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Luogo Consegna'>
@@ -421,7 +421,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
         </Descriptions.Item>
         <Descriptions.Item label='Data e Ora Ritiro'>
           {order?.oraRitiro
-            ? dayjs(order.oraRitiro.toDate()).format("YYYY-MM-DD HH:mm")
+            ? dayjs(order.oraRitiro.toDate()).format("DD-MM-YYYY HH:mm")
             : "-"}
         </Descriptions.Item>
         <Descriptions.Item label='Luogo Ritiro'>

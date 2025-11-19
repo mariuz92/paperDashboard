@@ -16,6 +16,7 @@ import {
   Row,
   Tooltip,
   Badge,
+  Modal,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { FormInstance, MenuProps } from "antd";
@@ -202,6 +203,15 @@ const OrderTable: React.FC<OrderTableProps> = ({
   const handleShare = async (rider: IUser, index: number) => {
     const order = orders[index];
 
+    console.log("🎯 [handleShare] Starting assignment:", {
+      orderId: order.id,
+      currentStatus: order.status,
+      hasPickupDetails: !!(order.luogoRitiro && order.oraRitiro),
+      hasDeliveryDetails: !!(order.luogoConsegna && order.oraConsegna),
+      deliveryName: order.deliveryName,
+      pickupName: order.pickupName,
+    });
+
     if (order.status === "Annullato") {
       message.warning("Non è possibile assegnare un ordine annullato");
       return;
@@ -215,19 +225,37 @@ const OrderTable: React.FC<OrderTableProps> = ({
     // ✅ Determine if this is a pickup assignment based on delivery status
     const isPickupAssignment = !!(order.deliveryName || order.consegnatoDa);
 
-    // ✅ Check if order has required info - if not, open edit modal
+    // ✅ Check if order has required info - show modal if missing
     if (isPickupAssignment) {
       if (!order.luogoRitiro || !order.oraRitiro) {
-        if (onRowClick) {
-          onRowClick(order, "edit");
-        }
+        Modal.confirm({
+          title: "Informazioni mancanti",
+          content:
+            "Luogo e/o orario di ritiro non definiti. Vuoi modificare l'ordine ora?",
+          okText: "Sì, modifica",
+          cancelText: "Annulla",
+          onOk: () => {
+            if (onRowClick) {
+              onRowClick(order, "edit");
+            }
+          },
+        });
         return;
       }
     } else {
       if (!order.luogoConsegna || !order.oraConsegna) {
-        if (onRowClick) {
-          onRowClick(order, "edit");
-        }
+        Modal.confirm({
+          title: "Informazioni mancanti",
+          content:
+            "Luogo e/o orario di consegna non definiti. Vuoi modificare l'ordine ora?",
+          okText: "Sì, modifica",
+          cancelText: "Annulla",
+          onOk: () => {
+            if (onRowClick) {
+              onRowClick(order, "edit");
+            }
+          },
+        });
         return;
       }
     }
@@ -244,9 +272,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
       return;
     }
 
-    // ✅ Build the updated order - ONLY update status and rider fields
+    // ✅ Build the updated order - EXPLICITLY set status to Assegnato
     const updatedOrder: Partial<IOrder> = {
-      status: "Assegnato",
+      status: "Assegnato", // ✅ CRITICAL: Always set to Assegnato
     };
 
     if (isPickupAssignment) {
@@ -258,19 +286,19 @@ const OrderTable: React.FC<OrderTableProps> = ({
     }
 
     try {
-      console.log("🚀 [handleShare] Assigning order:", {
+      console.log("🚀 [handleShare] Assigning order with update:", {
         orderId: order.id,
         currentStatus: order.status,
-        newStatus: "Assegnato",
+        newStatus: updatedOrder.status,
         riderId: rider.id,
         riderName: rider.displayName,
         isPickup: isPickupAssignment,
-        updatedOrder,
+        fullUpdate: updatedOrder,
       });
 
       await updateOrder(order.id as string, updatedOrder);
 
-      console.log("✅ [handleShare] Assignment completed");
+      console.log("✅ [handleShare] Assignment API call completed");
 
       const actionType = isPickupAssignment ? "ritiro" : "consegna";
       message.success(

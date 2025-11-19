@@ -123,8 +123,8 @@ const updateRiderStatusFromOrder = async (order: IOrder): Promise<void> => {
     if (
       order.status === "Consegnato" ||
       order.status === "Annullato" ||
-      order.status === "Ritirato" ||
-      order.status === "Attesa ritiro" // ✅ ADDED: "Attesa ritiro" also means rider is free
+      order.status === "Ritirato"
+      // order.status === "Attesa ritiro" // ✅ ADDED: "Attesa ritiro" also means rider is free
     ) {
       if (order.consegnatoDa) {
         riderId = order.consegnatoDa;
