@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Form, Input, Button, Drawer, FloatButton, notification } from "antd";
+import { Form, Input, Button, Drawer, FloatButton, notification, Select } from "antd";
 import { IUser } from "../../../types/interfaces/IUser";
 import { UserAddOutlined } from "@ant-design/icons";
 import { sendInvitationEmail, storeInvitation } from "../api/invitationApi";
@@ -13,7 +13,7 @@ interface UserFormProps {
   updateUser: (id: string, user: Partial<IUser>) => Promise<void>;
   userToEdit?: IUser | null;
   setUserToEdit: (user: IUser | null) => void;
-  userType: "rider" | "guide";
+  userType: "rider" | "guide" | "admin";
 }
 
 const UserForm: React.FC<UserFormProps> = ({
@@ -118,12 +118,13 @@ const UserForm: React.FC<UserFormProps> = ({
     }
   };
 
-  // ✅ Create rider via invitation
-  const handleInviteRider = async (values: {
+  // ✅ Create rider/admin via invitation with multiple roles
+  const handleInviteUser = async (values: {
     email: string;
     displayName: string;
+    role: string[];
   }) => {
-    const { email, displayName } = values;
+    const { email, displayName, role } = values;
     const tenantId = getTenantId();
 
     if (!tenantId) {
@@ -140,20 +141,30 @@ const UserForm: React.FC<UserFormProps> = ({
       return;
     }
 
+    if (!role || role.length === 0) {
+      openNotification(
+        "error",
+        "Ruolo mancante",
+        "Seleziona almeno un ruolo."
+      );
+      return;
+    }
+
     setIsLoading(true);
     try {
       const token = await storeInvitation({
         email,
         tenantId,
-        role: ["rider"],
+        role: role, // ✅ Multiple roles support
       } as any);
 
       await sendInvitationEmail(email, token);
 
+      const roleNames = role.join(", ");
       openNotification(
         "success",
         "Invito inviato",
-        `Abbiamo inviato un link di registrazione a ${email}.`
+        `Abbiamo inviato un link di registrazione a ${email} con i ruoli: ${roleNames}.`
       );
 
       form.resetFields();
@@ -187,34 +198,37 @@ const UserForm: React.FC<UserFormProps> = ({
   };
 
   const handleUpdateUser = async (values: Partial<IUser>) => {
-    if (userToEdit) {
-      try {
-        setIsLoading(true);
-        await updateUser(userToEdit.id, values);
+  if (userToEdit) {
+    try {
+      setIsLoading(true);
+      await updateUser(userToEdit.id, values);
 
-        openNotification(
-          "success",
-          "Utente Aggiornato",
-          `${userType === "rider" ? "Il rider" : "La guida"} ${
-            values.displayName || userToEdit.displayName
-          } è stato aggiornato con successo.`
-        );
+      // ✅ Determine user type label based on actual roles (updated or existing)
+      const updatedRoles = values.role || userToEdit.role;
+      let userTypeLabel = "L'utente";
+      
 
-        form.resetFields();
-        setDrawerVisible(false);
-        setUserToEdit(null);
-      } catch (error) {
-        console.error("Error updating user:", error);
-        openNotification(
-          "error",
-          "Aggiornamento Fallito",
-          "Si è verificato un errore durante l'aggiornamento. Riprova."
-        );
-      } finally {
-        setIsLoading(false);
-      }
+      openNotification(
+        "success",
+        "Utente Aggiornato",
+        `${userTypeLabel} ${values.displayName || userToEdit.displayName} è stato aggiornato con successo.`
+      );
+
+      form.resetFields();
+      setDrawerVisible(false);
+      setUserToEdit(null);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      openNotification(
+        "error",
+        "Aggiornamento Fallito",
+        "Si è verificato un errore durante l'aggiornamento. Riprova."
+      );
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }
+};
 
   const onFinish = async (values: any) => {
     if (userToEdit) {
@@ -224,13 +238,22 @@ const UserForm: React.FC<UserFormProps> = ({
       if (userType === "guide") {
         await handleCreateGuide(values);
       } else {
-        await handleInviteRider(values);
+        // For rider/admin, use invitation with role selection
+        await handleInviteUser(values);
       }
     }
   };
 
   const showDrawer = () => {
     form.resetFields();
+    
+    // ✅ Set default role based on current tab
+    if (userType === "rider") {
+      form.setFieldsValue({ role: ["rider"] });
+    } else if (userType === "admin") {
+      form.setFieldsValue({ role: ["rider", "admin"] }); // Admin is typically also a rider
+    }
+    
     setDrawerVisible(true);
     setUserToEdit(null);
   };
@@ -242,17 +265,24 @@ const UserForm: React.FC<UserFormProps> = ({
 
   const getTitle = () => {
     if (userToEdit) {
-      return `Modifica ${userType === "rider" ? "Rider" : "Guida"}`;
+      return "Modifica Utente";
     }
-    return `Aggiungi ${userType === "rider" ? "Rider" : "Guida"}`;
+    
+    if (userType === "rider") return "Aggiungi Rider";
+    if (userType === "admin") return "Aggiungi Amministratore";
+    return "Aggiungi Guida";
   };
 
   const getSubmitButtonText = () => {
     if (userToEdit) {
-      return `Modifica ${userType === "rider" ? "Rider" : "Guida"}`;
+      return "Aggiorna Utente";
     }
+    
     return userType === "guide" ? "Crea Guida" : "Invia Invito";
   };
+
+  // ✅ Check if this is a rider/admin form (needs role selector)
+  const isRiderOrAdminForm = userType === "rider" || userType === "admin";
 
   return (
     <>
@@ -285,7 +315,7 @@ const UserForm: React.FC<UserFormProps> = ({
             label='Email'
             name='email'
             rules={[
-              { required: false, message: "Per favore inserisci l'email" },
+              { required: true, message: "Per favore inserisci l'email" },
               {
                 type: "email",
                 message: "Per favore inserisci un'email valida",
@@ -299,6 +329,58 @@ const UserForm: React.FC<UserFormProps> = ({
             />
           </Form.Item>
 
+          {/* ✅ Role selector ONLY for rider/admin forms */}
+          {isRiderOrAdminForm && !userToEdit && (
+            <Form.Item
+              label='Ruoli'
+              name='role'
+              rules={[
+                {
+                  required: true,
+                  message: "Seleziona almeno un ruolo",
+                  type: "array",
+                  min: 1,
+                },
+              ]}
+            >
+              <Select
+                mode='multiple'
+                placeholder='Seleziona ruoli'
+                options={[
+                  { label: "Rider", value: "rider" },
+                  { label: "Admin", value: "admin" },
+                ]}
+              />
+            </Form.Item>
+          )}
+
+          {/* ✅ Role selector for EDITING any user type */}
+          {userToEdit && (
+            <Form.Item
+              label='Ruoli'
+              name='role'
+              rules={[
+                {
+                  required: true,
+                  message: "Seleziona almeno un ruolo",
+                  type: "array",
+                  min: 1,
+                },
+              ]}
+            >
+              <Select
+                mode='multiple'
+                placeholder='Seleziona ruoli'
+                options={[
+                  { label: "Rider", value: "rider" },
+                  { label: "Admin", value: "admin" },
+                  { label: "Guide", value: "guide" },
+                ]}
+              />
+            </Form.Item>
+          )}
+
+          {/* ✅ Phone number for guides or when editing */}
           {(userToEdit || userType === "guide") && (
             <Form.Item
               label='Numero di Telefono'

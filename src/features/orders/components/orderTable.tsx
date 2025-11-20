@@ -217,13 +217,55 @@ const handleShare = async (rider: IUser, index: number) => {
     return;
   }
 
-  if (order.status === "Assegnato") {
-    message.warning("Questo ordine è già stato assegnato");
-    return;
+  // ✅ Determine assignment type based on what's already assigned AND what info is available
+  let isPickupAssignment = false;
+  
+  // If delivery is already assigned and pickup info exists, this is a pickup assignment
+  if ((order.deliveryName || order.consegnatoDa) && (order.luogoRitiro && order.oraRitiro)) {
+    isPickupAssignment = true;
+  }
+  // If neither is assigned, check which info is available
+  else if (!order.deliveryName && !order.consegnatoDa && !order.pickupName && !order.ritiratoDa) {
+    // First assignment - determine by which fields are filled
+    if (order.luogoConsegna && order.oraConsegna) {
+      isPickupAssignment = false; // Delivery info exists, assign delivery first
+    } else if (order.luogoRitiro && order.oraRitiro) {
+      isPickupAssignment = true; // Only pickup info exists
+    } else {
+      message.warning("Definire luogo e orario prima di assegnare");
+      return;
+    }
   }
 
-  // ✅ Determine if this is a pickup assignment based on delivery status
-  const isPickupAssignment = !!(order.deliveryName || order.consegnatoDa);
+  console.log("📍 [handleShare] Assignment type determined:", {
+    isPickupAssignment,
+    hasDeliveryAssigned: !!(order.deliveryName || order.consegnatoDa),
+    hasPickupAssigned: !!(order.pickupName || order.ritiratoDa),
+  });
+
+  // ✅ Check if trying to reassign when status is "Assegnato"
+  if (order.status === "Assegnato") {
+    const currentRiderName = isPickupAssignment ? order.pickupName : order.deliveryName;
+    const currentRiderId = isPickupAssignment ? order.ritiratoDa : order.consegnatoDa;
+    
+    // Check if trying to assign to the same rider
+    if (currentRiderId === rider.id) {
+      message.info(`Questo ordine è già assegnato a ${currentRiderName}`);
+      return;
+    }
+
+    // Show confirmation modal for reassignment
+    Modal.confirm({
+      title: "Riassegna ordine",
+      content: `Questo ordine è già assegnato a ${currentRiderName} per ${isPickupAssignment ? 'ritiro' : 'consegna'}. Vuoi riassegnarlo a ${rider.displayName}?`,
+      okText: "Sì, riassegna",
+      cancelText: "Annulla",
+      onOk: async () => {
+        await performAssignment(order, rider, isPickupAssignment);
+      },
+    });
+    return;
+  }
 
   // ✅ Check if order has required info - show modal if missing
   if (isPickupAssignment) {
@@ -260,24 +302,28 @@ const handleShare = async (rider: IUser, index: number) => {
     }
   }
 
-  // ✅ REMOVED ALL BUSY CHECKS - Riders can always receive new orders
-  // The busy status is purely informational and managed by the app
+  // Proceed with normal assignment
+  await performAssignment(order, rider, isPickupAssignment);
+};
 
-  // ✅ Build the updated order - EXPLICITLY set status to Assegnato
+// Helper function to perform the actual assignment
+const performAssignment = async (order: IOrder, rider: IUser, isPickupAssignment: boolean) => {
   const updatedOrder: Partial<IOrder> = {
-    status: "Assegnato", // ✅ CRITICAL: Always set to Assegnato
+    status: "Assegnato",
   };
 
   if (isPickupAssignment) {
+    // ✅ Assigning pickup rider - only update pickup fields
     updatedOrder.ritiratoDa = rider.id;
     updatedOrder.pickupName = rider.displayName;
   } else {
+    // ✅ Assigning delivery rider - only update delivery fields
     updatedOrder.consegnatoDa = rider.id;
     updatedOrder.deliveryName = rider.displayName;
   }
 
   try {
-    console.log("🚀 [handleShare] Assigning order with update:", {
+    console.log("🚀 [performAssignment] Assigning order with update:", {
       orderId: order.id,
       currentStatus: order.status,
       newStatus: updatedOrder.status,
@@ -289,7 +335,16 @@ const handleShare = async (rider: IUser, index: number) => {
 
     await updateOrder(order.id as string, updatedOrder);
 
-    console.log("✅ [handleShare] Assignment API call completed");
+    console.log("✅ [performAssignment] Assignment API call completed");
+
+    // ✅ OPTIMISTIC UPDATE
+    setOrders(prevOrders => 
+      prevOrders.map(o => 
+        o.id === order.id 
+          ? { ...o, ...updatedOrder } 
+          : o
+      )
+    );
 
     const actionType = isPickupAssignment ? "ritiro" : "consegna";
     message.success(
@@ -297,7 +352,7 @@ const handleShare = async (rider: IUser, index: number) => {
     );
   } catch (error) {
     message.error("Errore nell'assegnazione dell'ordine");
-    console.error("❌ [handleShare] Assignment error:", error);
+    console.error("❌ [performAssignment] Assignment error:", error);
   }
 };
 

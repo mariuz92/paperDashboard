@@ -37,7 +37,7 @@ interface UserTableProps {
   setUsers: (users: IUser[]) => void;
   loading: boolean;
   setUserToEdit: (user: IUser | null) => void;
-  userType: "rider" | "guide"; // New prop
+  userType: "rider" | "guide" | "admin"; // New prop
   riderStatuses?: IRiderStatus[]; // Optional for riders only
 }
 
