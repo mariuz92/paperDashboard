@@ -200,194 +200,183 @@ const OrderTable: React.FC<OrderTableProps> = ({
     }
   };
 
-  const handleShare = async (rider: IUser, index: number) => {
-    const order = orders[index];
+const handleShare = async (rider: IUser, index: number) => {
+  const order = orders[index];
 
-    console.log("🎯 [handleShare] Starting assignment:", {
-      orderId: order.id,
-      currentStatus: order.status,
-      hasPickupDetails: !!(order.luogoRitiro && order.oraRitiro),
-      hasDeliveryDetails: !!(order.luogoConsegna && order.oraConsegna),
-      deliveryName: order.deliveryName,
-      pickupName: order.pickupName,
-    });
+  console.log("🎯 [handleShare] Starting assignment:", {
+    orderId: order.id,
+    currentStatus: order.status,
+    hasPickupDetails: !!(order.luogoRitiro && order.oraRitiro),
+    hasDeliveryDetails: !!(order.luogoConsegna && order.oraConsegna),
+    deliveryName: order.deliveryName,
+    pickupName: order.pickupName,
+  });
 
-    if (order.status === "Annullato") {
-      message.warning("Non è possibile assegnare un ordine annullato");
-      return;
-    }
+  if (order.status === "Annullato") {
+    message.warning("Non è possibile assegnare un ordine annullato");
+    return;
+  }
 
-    if (order.status === "Assegnato") {
-      message.warning("Questo ordine è già stato assegnato");
-      return;
-    }
+  if (order.status === "Assegnato") {
+    message.warning("Questo ordine è già stato assegnato");
+    return;
+  }
 
-    // ✅ Determine if this is a pickup assignment based on delivery status
-    const isPickupAssignment = !!(order.deliveryName || order.consegnatoDa);
+  // ✅ Determine if this is a pickup assignment based on delivery status
+  const isPickupAssignment = !!(order.deliveryName || order.consegnatoDa);
 
-    // ✅ Check if order has required info - show modal if missing
-    if (isPickupAssignment) {
-      if (!order.luogoRitiro || !order.oraRitiro) {
-        Modal.confirm({
-          title: "Informazioni mancanti",
-          content:
-            "Luogo e/o orario di ritiro non definiti. Vuoi modificare l'ordine ora?",
-          okText: "Sì, modifica",
-          cancelText: "Annulla",
-          onOk: () => {
-            if (onRowClick) {
-              onRowClick(order, "edit");
-            }
-          },
-        });
-        return;
-      }
-    } else {
-      if (!order.luogoConsegna || !order.oraConsegna) {
-        Modal.confirm({
-          title: "Informazioni mancanti",
-          content:
-            "Luogo e/o orario di consegna non definiti. Vuoi modificare l'ordine ora?",
-          okText: "Sì, modifica",
-          cancelText: "Annulla",
-          onOk: () => {
-            if (onRowClick) {
-              onRowClick(order, "edit");
-            }
-          },
-        });
-        return;
-      }
-    }
-
-    // ✅ Check if rider has any ACTIVE assigned orders
-    const hasActiveAssignedOrders = orders.some((o) => {
-      if (o.id === order.id) return false;
-      if (o.status !== "Assegnato") return false;
-      return o.consegnatoDa === rider.id || o.ritiratoDa === rider.id;
-    });
-
-    if (hasActiveAssignedOrders) {
-      message.warning(`${rider.displayName} ha già un ordine assegnato`);
-      return;
-    }
-
-    // ✅ Build the updated order - EXPLICITLY set status to Assegnato
-    const updatedOrder: Partial<IOrder> = {
-      status: "Assegnato", // ✅ CRITICAL: Always set to Assegnato
-    };
-
-    if (isPickupAssignment) {
-      updatedOrder.ritiratoDa = rider.id;
-      updatedOrder.pickupName = rider.displayName;
-    } else {
-      updatedOrder.consegnatoDa = rider.id;
-      updatedOrder.deliveryName = rider.displayName;
-    }
-
-    try {
-      console.log("🚀 [handleShare] Assigning order with update:", {
-        orderId: order.id,
-        currentStatus: order.status,
-        newStatus: updatedOrder.status,
-        riderId: rider.id,
-        riderName: rider.displayName,
-        isPickup: isPickupAssignment,
-        fullUpdate: updatedOrder,
+  // ✅ Check if order has required info - show modal if missing
+  if (isPickupAssignment) {
+    if (!order.luogoRitiro || !order.oraRitiro) {
+      Modal.confirm({
+        title: "Informazioni mancanti",
+        content:
+          "Luogo e/o orario di ritiro non definiti. Vuoi modificare l'ordine ora?",
+        okText: "Sì, modifica",
+        cancelText: "Annulla",
+        onOk: () => {
+          if (onRowClick) {
+            onRowClick(order, "edit");
+          }
+        },
       });
-
-      await updateOrder(order.id as string, updatedOrder);
-
-      console.log("✅ [handleShare] Assignment API call completed");
-
-      const actionType = isPickupAssignment ? "ritiro" : "consegna";
-      message.success(
-        `Ordine assegnato a ${rider.displayName} per ${actionType}`
-      );
-    } catch (error) {
-      message.error("Errore nell'assegnazione dell'ordine");
-      console.error("❌ [handleShare] Assignment error:", error);
+      return;
     }
+  } else {
+    if (!order.luogoConsegna || !order.oraConsegna) {
+      Modal.confirm({
+        title: "Informazioni mancanti",
+        content:
+          "Luogo e/o orario di consegna non definiti. Vuoi modificare l'ordine ora?",
+        okText: "Sì, modifica",
+        cancelText: "Annulla",
+        onOk: () => {
+          if (onRowClick) {
+            onRowClick(order, "edit");
+          }
+        },
+      });
+      return;
+    }
+  }
+
+  // ✅ REMOVED ALL BUSY CHECKS - Riders can always receive new orders
+  // The busy status is purely informational and managed by the app
+
+  // ✅ Build the updated order - EXPLICITLY set status to Assegnato
+  const updatedOrder: Partial<IOrder> = {
+    status: "Assegnato", // ✅ CRITICAL: Always set to Assegnato
   };
 
-  const getMenuItems = (order: IOrder, index: number) => [
-    {
-      label: (
-        <span onClick={() => onRowClick && onRowClick(order, "edit")}>
-          <EditOutlined /> Modifica
+  if (isPickupAssignment) {
+    updatedOrder.ritiratoDa = rider.id;
+    updatedOrder.pickupName = rider.displayName;
+  } else {
+    updatedOrder.consegnatoDa = rider.id;
+    updatedOrder.deliveryName = rider.displayName;
+  }
+
+  try {
+    console.log("🚀 [handleShare] Assigning order with update:", {
+      orderId: order.id,
+      currentStatus: order.status,
+      newStatus: updatedOrder.status,
+      riderId: rider.id,
+      riderName: rider.displayName,
+      isPickup: isPickupAssignment,
+      fullUpdate: updatedOrder,
+    });
+
+    await updateOrder(order.id as string, updatedOrder);
+
+    console.log("✅ [handleShare] Assignment API call completed");
+
+    const actionType = isPickupAssignment ? "ritiro" : "consegna";
+    message.success(
+      `Ordine assegnato a ${rider.displayName} per ${actionType}`
+    );
+  } catch (error) {
+    message.error("Errore nell'assegnazione dell'ordine");
+    console.error("❌ [handleShare] Assignment error:", error);
+  }
+};
+
+const getMenuItems = (order: IOrder, index: number) => [
+  {
+    label: (
+      <span onClick={() => onRowClick && onRowClick(order, "edit")}>
+        <EditOutlined /> Modifica
+      </span>
+    ),
+    key: "edit",
+  },
+  {
+    label: "Assegna a",
+    key: "share",
+    icon: <ShareAltOutlined />,
+    children:
+      riders.length === 0
+        ? [
+            {
+              label: (
+                <span onClick={handleNavigateToUsersPage}>
+                  <UserAddOutlined style={{ marginRight: 8 }} />
+                  Aggiungi Rider
+                </span>
+              ),
+              key: "add_rider",
+            },
+          ]
+        : riders.map((rider) => {
+            const riderStatus = riderStatuses.get(rider.id);
+
+            // ✅ Show busy indicator but DON'T disable assignment
+            const isBusy = riderStatus?.isBusy ?? false;
+
+            return {
+              label: (
+                <span
+                  onClick={() => handleShare(rider, index)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span>{rider.displayName}</span>
+                  {isBusy && (
+                    <Badge
+                      status='processing'
+                      text='Occupato'
+                      style={{ marginLeft: 8, fontSize: 12 }}
+                    />
+                  )}
+                </span>
+              ),
+              key: rider.id,
+              disabled: false, // ✅ NEVER disabled - always assignable
+            };
+          }),
+  },
+  {
+    type: "divider",
+  } as const,
+  {
+    label: (
+      <Popconfirm
+        title='Sei sicuro di voler eliminare questo ordine?'
+        onConfirm={() => order.id && handleDelete(order.id)}
+        okText='Sì'
+        cancelText='No'
+      >
+        <span>
+          <DeleteOutlined /> Elimina
         </span>
-      ),
-      key: "edit",
-    },
-    {
-      label: "Assegna a",
-      key: "share",
-      icon: <ShareAltOutlined />,
-      children:
-        riders.length === 0
-          ? [
-              {
-                label: (
-                  <span onClick={handleNavigateToUsersPage}>
-                    <UserAddOutlined style={{ marginRight: 8 }} />
-                    Aggiungi Rider
-                  </span>
-                ),
-                key: "add_rider",
-              },
-            ]
-          : riders.map((rider) => {
-              const riderStatus = riderStatuses.get(rider.id);
-
-              // ✅ If no status exists, treat as available (not busy)
-              const isBusy = riderStatus?.isBusy ?? false;
-
-              return {
-                label: (
-                  <span
-                    onClick={() => !isBusy && handleShare(rider, index)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      opacity: isBusy ? 0.5 : 1,
-                      cursor: isBusy ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    <span>{rider.displayName}</span>
-                    {isBusy && (
-                      <Badge
-                        status='processing'
-                        text='Occupato'
-                        style={{ marginLeft: 8, fontSize: 12 }}
-                      />
-                    )}
-                  </span>
-                ),
-                key: rider.id,
-                disabled: isBusy,
-              };
-            }),
-    },
-    {
-      type: "divider",
-    } as const,
-    {
-      label: (
-        <Popconfirm
-          title='Sei sicuro di voler eliminare questo ordine?'
-          onConfirm={() => order.id && handleDelete(order.id)}
-          okText='Sì'
-          cancelText='No'
-        >
-          <span>
-            <DeleteOutlined /> Elimina
-          </span>
-        </Popconfirm>
-      ),
-      key: "delete",
-    },
-  ];
+      </Popconfirm>
+    ),
+    key: "delete",
+  },
+];
 
   const columns: ColumnType<IOrder>[] = [
     {

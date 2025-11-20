@@ -73,9 +73,17 @@ const RidersPage: React.FC = () => {
     }
   };
 
-  // Filter riders by status
-  const busyRiders = riderStatuses.filter((s) => s.isBusy);
-  const freeRiders = riderStatuses.filter((s) => !s.isBusy);
+  // ✅ Show cards ONLY for active/in-progress statuses (exclude completed and cancelled)
+  const activeRiders = riderStatuses.filter((s) => {
+    // Show cards for these active statuses only
+    const activeStatuses = [
+      "Presa in Carico",    
+      "In Consegna",
+      "In Ritiro",
+    ];
+    
+    return activeStatuses.includes(s.lastStatus);
+  });
 
   return (
     <Layout style={{ padding: "20px", background: "#fff" }}>
@@ -86,26 +94,24 @@ const RidersPage: React.FC = () => {
       </Header>
 
       <Content>
-        {/* Summary Cards */}
-
-        {/* Active Riders Section with Steps Component */}
-        {busyRiders.length > 0 && (
+        {/* Active Riders Section - Only shown for riders with active/in-progress orders */}
+        {activeRiders.length > 0 && (
           <Card
             title={
               <span style={{ fontSize: 16, fontWeight: 600 }}>
                 <ClockCircleOutlined style={{ marginRight: 8 }} />
-                Riders Attivi - Stato Consegne ({busyRiders.length})
+                Riders Attivi - Stato Consegne ({activeRiders.length})
               </span>
             }
             style={{ marginBottom: 24 }}
           >
-            {busyRiders.map((status) => {
+            {activeRiders.map((status) => {
               const rider = riders.find((r) => r.id === status.riderId);
               if (!rider) return null;
 
               return (
                 <div key={status.riderId}>
-                  {/* Full width Steps component for each rider */}
+                  {/* Full width card component for each rider */}
                   <RiderStatusCard rider={rider} status={status} />
                 </div>
               );
