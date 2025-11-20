@@ -23,8 +23,6 @@ import { saveOrder } from "../api/orderApi";
 import { IOrder } from "../../../types/interfaces";
 import { useDocumentTitle } from "@refinedev/react-router";
 import { CONFIG } from "../../../config/configuration";
-import { ensureUserExists } from "../../users/api/userApi";
-import { IUser } from "../../../types/interfaces/IUser";
 import {
   EnvironmentOutlined,
   ClockCircleOutlined,
@@ -123,23 +121,6 @@ const GuideOrderPage: React.FC = () => {
         return;
       }
 
-      const userDetails: Omit<IUser, "id"> = {
-        email: values.email,
-        displayName: values.nomeGuida,
-        emailVerified: false,
-        phoneNumber: fullPhoneNumber || null,
-        photoURL: null,
-        createdAt: Timestamp.now(),
-        lastLoginAt: Timestamp.now(),
-        role: ["guide"],
-        disabled: false,
-        tenantId: "",
-      };
-
-      if (values.email || fullPhoneNumber) {
-        await ensureUserExists(userDetails);
-      }
-
       const newOrder: Omit<IOrder, "id"> = {
         nomeGuida: values.nomeGuida,
         telefonoGuida: fullPhoneNumber,
@@ -152,7 +133,7 @@ const GuideOrderPage: React.FC = () => {
         extra: undefined,
         saldo: undefined,
         invoiceRequired: false,
-        status: "Attesa ritiro",
+        status: "Presa in Carico",
         note: values.note || null,
         lost: undefined,
         consegnatoDa: undefined,
@@ -249,7 +230,6 @@ const GuideOrderPage: React.FC = () => {
                   fontSize: 16,
                   fontWeight: 500,
                   minWidth: 180,
-
                   border: "none",
                 }}
               >
@@ -465,7 +445,7 @@ const GuideOrderPage: React.FC = () => {
                       <UserOutlined
                         style={{ marginRight: 8, color: "#667eea" }}
                       />
-                      Nome Guida / Gruppo
+                      Nome Guida o Gruppo
                     </span>
                   }
                   name='nomeGuida'
@@ -741,7 +721,6 @@ const GuideOrderPage: React.FC = () => {
                   fontSize: 17,
                   fontWeight: 600,
                   minWidth: 280,
-
                   border: "none",
                   boxShadow: "0 4px 16px rgba(102, 126, 234, 0.4)",
                 }}
