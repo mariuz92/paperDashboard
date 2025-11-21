@@ -13,7 +13,7 @@ interface UserFormProps {
   updateUser: (id: string, user: Partial<IUser>) => Promise<void>;
   userToEdit?: IUser | null;
   setUserToEdit: (user: IUser | null) => void;
-  userType: "rider" | "guide" | "admin";
+  userType: "rider" | "riders" | "guide" | "admin" | "admins";
 }
 
 const UserForm: React.FC<UserFormProps> = ({
@@ -82,7 +82,7 @@ const UserForm: React.FC<UserFormProps> = ({
         phoneNumber: values.phoneNumber?.trim() || null,
         photoURL: null,
         emailVerified: false,
-        role: ["guide"], // ✅ Default role is guide
+        role: ["guide"],
         disabled: false,
         tenantId: tenantId,
         createdAt: Timestamp.now(),
@@ -91,7 +91,6 @@ const UserForm: React.FC<UserFormProps> = ({
 
       const guideId = await ensureUserExists(newGuideData);
 
-      // Add to local state
       addUser({
         ...newGuideData,
         id: guideId,
@@ -155,7 +154,7 @@ const UserForm: React.FC<UserFormProps> = ({
       const token = await storeInvitation({
         email,
         tenantId,
-        role: role, // ✅ Multiple roles support
+        role: role,
       } as any);
 
       await sendInvitationEmail(email, token);
@@ -198,47 +197,40 @@ const UserForm: React.FC<UserFormProps> = ({
   };
 
   const handleUpdateUser = async (values: Partial<IUser>) => {
-  if (userToEdit) {
-    try {
-      setIsLoading(true);
-      await updateUser(userToEdit.id, values);
+    if (userToEdit) {
+      try {
+        setIsLoading(true);
+        await updateUser(userToEdit.id, values);
 
-      // ✅ Determine user type label based on actual roles (updated or existing)
-      const updatedRoles = values.role || userToEdit.role;
-      let userTypeLabel = "L'utente";
-      
+        openNotification(
+          "success",
+          "Utente Aggiornato",
+          `L'utente ${values.displayName || userToEdit.displayName} è stato aggiornato con successo.`
+        );
 
-      openNotification(
-        "success",
-        "Utente Aggiornato",
-        `${userTypeLabel} ${values.displayName || userToEdit.displayName} è stato aggiornato con successo.`
-      );
-
-      form.resetFields();
-      setDrawerVisible(false);
-      setUserToEdit(null);
-    } catch (error) {
-      console.error("Error updating user:", error);
-      openNotification(
-        "error",
-        "Aggiornamento Fallito",
-        "Si è verificato un errore durante l'aggiornamento. Riprova."
-      );
-    } finally {
-      setIsLoading(false);
+        form.resetFields();
+        setDrawerVisible(false);
+        setUserToEdit(null);
+      } catch (error) {
+        console.error("Error updating user:", error);
+        openNotification(
+          "error",
+          "Aggiornamento Fallito",
+          "Si è verificato un errore durante l'aggiornamento. Riprova."
+        );
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }
-};
+  };
 
   const onFinish = async (values: any) => {
     if (userToEdit) {
       await handleUpdateUser(values);
     } else {
-      // ✅ Different logic based on userType
       if (userType === "guide") {
         await handleCreateGuide(values);
       } else {
-        // For rider/admin, use invitation with role selection
         await handleInviteUser(values);
       }
     }
@@ -247,11 +239,10 @@ const UserForm: React.FC<UserFormProps> = ({
   const showDrawer = () => {
     form.resetFields();
     
-    // ✅ Set default role based on current tab
-    if (userType === "rider") {
+    if (userType === "rider" || userType === "riders") {
       form.setFieldsValue({ role: ["rider"] });
-    } else if (userType === "admin") {
-      form.setFieldsValue({ role: ["rider", "admin"] }); // Admin is typically also a rider
+    } else if (userType === "admin" || userType === "admins") {
+      form.setFieldsValue({ role: ["admin"] });
     }
     
     setDrawerVisible(true);
@@ -265,11 +256,15 @@ const UserForm: React.FC<UserFormProps> = ({
 
   const getTitle = () => {
     if (userToEdit) {
+      const roles = userToEdit.role || [];
+      if (roles.includes("admin")) return "Modifica Amministratore";
+      if (roles.includes("rider")) return "Modifica Rider";
+      if (roles.includes("guide")) return "Modifica Guida";
       return "Modifica Utente";
     }
     
-    if (userType === "rider") return "Aggiungi Rider";
-    if (userType === "admin") return "Aggiungi Amministratore";
+    if (userType === "rider" || userType === "riders") return "Aggiungi Rider";
+    if (userType === "admin" || userType === "admins") return "Aggiungi Amministratore";
     return "Aggiungi Guida";
   };
 
@@ -281,8 +276,7 @@ const UserForm: React.FC<UserFormProps> = ({
     return userType === "guide" ? "Crea Guida" : "Invia Invito";
   };
 
-  // ✅ Check if this is a rider/admin form (needs role selector)
-  const isRiderOrAdminForm = userType === "rider" || userType === "admin";
+  const isRiderOrAdminForm = userType === "rider" || userType === "riders" || userType === "admin" || userType === "admins";
 
   return (
     <>
@@ -329,7 +323,6 @@ const UserForm: React.FC<UserFormProps> = ({
             />
           </Form.Item>
 
-          {/* ✅ Role selector ONLY for rider/admin forms */}
           {isRiderOrAdminForm && !userToEdit && (
             <Form.Item
               label='Ruoli'
@@ -354,7 +347,6 @@ const UserForm: React.FC<UserFormProps> = ({
             </Form.Item>
           )}
 
-          {/* ✅ Role selector for EDITING any user type */}
           {userToEdit && (
             <Form.Item
               label='Ruoli'
@@ -380,7 +372,6 @@ const UserForm: React.FC<UserFormProps> = ({
             </Form.Item>
           )}
 
-          {/* ✅ Phone number for guides or when editing */}
           {(userToEdit || userType === "guide") && (
             <Form.Item
               label='Numero di Telefono'
