@@ -5,9 +5,7 @@ const LandingPage: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -17,151 +15,340 @@ const LandingPage: React.FC = () => {
       {/* Navigation */}
       <nav className={`nav ${scrolled ? "scrolled" : ""}`}>
         <div className='nav-container'>
-          <div className='nav-left'>
-            <a href='/' className='logo'>
-              EchoBox Logistics
+          <a href='/' className='logo'>
+            EchoBox Logistics
+          </a>
+          <div className='nav-links'>
+            <a href='#features'>Features</a>
+            <a href='#how-it-works'>How it works</a>
+            <a href='#problems'>Problems</a>
+            <a href='#contact' className='nav-cta'>
+              Get Started
             </a>
-            <div className='nav-links'>
-              <a href='#features'>Features</a>
-              <a href='#how-it-works'>How it works</a>
-              {/* <a href='#pricing'>Pricing</a> */}
-            </div>
           </div>
-          {/* <div className='nav-right'>
-            <a href='#contact' className='nav-link'>
-              Contact
-            </a>
-            <a href='/login' className='btn-secondary-nav'>
-              Sign in
-            </a>
-            <a href='#download' className='btn-primary-nav'>
-              Get started
-            </a>
-          </div> */}
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <section className='hero'>
         <div className='hero-container'>
-          <div className='hero-content'>
-            <div className='badge'>Equipment tracking reimagined</div>
-            <h1 className='hero-title'>
-              Stop wondering where your equipment is
-            </h1>
-            <p className='hero-description'>
-              EchoBox Logistics gives tour companies complete visibility over
-              their audio equipment deliveries and pickups. Prevent channel
-              conflicts, track in real-time, and ensure nothing gets forgotten.
+          <div className='hero-badge'>
+            <span className='status-dot'></span>
+            Live Tracking Active
+          </div>
+          <h1>
+            Complete Control Over Your{" "}
+            <span className='gradient-text'>Audio Equipment</span> Operations
+          </h1>
+          <p className='hero-description'>
+            EchoBox Logistics gives tour companies complete visibility over
+            their audio equipment deliveries and pickups. Prevent channel
+            conflicts, track in real-time, and ensure nothing gets forgotten.
+            Built for tour operations where timing and coordination are
+            critical.
+          </p>
+          <div className='hero-buttons'>
+            <a href='#contact' className='btn-primary'>
+              Start Free Trial
+            </a>
+            <a href='#how-it-works' className='btn-secondary'>
+              See How It Works
+            </a>
+          </div>
+
+          {/* Stats Preview */}
+          <div className='app-preview'>
+            <div className='preview-card'>
+              <div className='preview-icon'>🚚</div>
+              <div className='preview-value'>42</div>
+              <div className='preview-label'>Active Orders</div>
+            </div>
+            <div className='preview-card'>
+              <div className='preview-icon'>⏱️</div>
+              <div className='preview-value'>12</div>
+              <div className='preview-label'>Out for Delivery</div>
+            </div>
+            <div className='preview-card'>
+              <div className='preview-icon'>📦</div>
+              <div className='preview-value'>8</div>
+              <div className='preview-label'>Awaiting Pickup</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof Stats */}
+      <section className='stats-bar'>
+        <div className='stats-container'>
+          <div className='stat-item'>
+            <div className='preview-icon'>📦</div>
+            <div className='stat-value'>10k+</div>
+            <div className='stat-label'>Orders Managed</div>
+          </div>
+          <div className='stat-item'>
+            <div className='preview-icon'>✅</div>
+            <div className='stat-value'>99.9%</div>
+            <div className='stat-label'>Uptime Guarantee</div>
+          </div>
+          <div className='stat-item'>
+            <div className='preview-icon'>🕐</div>
+            <div className='stat-value'>24/7</div>
+            <div className='stat-label'>Support Available</div>
+          </div>
+          <div className='stat-item'>
+            <div className='preview-icon'>🎯</div>
+            <div className='stat-value'>0</div>
+            <div className='stat-label'>Forgotten Pickups</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Solution Overview */}
+      <section className='solution-overview'>
+        <div className='container'>
+          <div className='section-header'>
+            <div className='section-label'>The Solution</div>
+            <h2 className='section-title'>
+              Everything You Need, Nothing You Don't
+            </h2>
+            <p className='section-subtitle'>
+              Powerful features designed specifically for tour equipment
+              management
             </p>
           </div>
 
-          <div className='hero-visual'>
-            <div className='hero-card'>
-              <div className='hero-card-header'>
-                <div className='status-indicator active'></div>
-                <span>Live tracking</span>
-              </div>
-              <div className='hero-card-content'>
-                <div className='metric'>
-                  <span className='metric-label'>Active orders</span>
-                  <span className='metric-value'>12</span>
-                </div>
-                <div className='metric'>
-                  <span className='metric-label'>Available channels</span>
-                  <span className='metric-value'>8/15</span>
-                </div>
-                <div className='metric'>
-                  <span className='metric-label'>Riders on duty</span>
-                  <span className='metric-value'>5</span>
-                </div>
-              </div>
+          <div className='solution-cards'>
+            <div className='solution-card'>
+              <h3>Never Conflict Channels Again</h3>
+              <p>
+                The system automatically tracks which radio channels are in use
+                and prevents double-booking. When an order completes, the
+                channel is released. No manual tracking, no spreadsheets, no
+                mistakes. You get real-time channel availability, automatic
+                conflict prevention, and smart channel recommendations based on
+                current usage.
+              </p>
             </div>
-          </div>
-        </div>
 
-        <div className='hero-gradient'></div>
-      </section>
+            <div className='solution-card'>
+              <h3>Pickups Stay Visible Until Done</h3>
+              <p>
+                Orders awaiting pickup don't disappear from your dashboard. They
+                remain prominently displayed every day until someone marks them
+                complete. You'll never forget equipment again. The system
+                includes persistent pickup reminders, aging indicators for
+                overdue items, and one-tap completion marking.
+              </p>
+            </div>
 
-      {/* Social Proof */}
-      <section className='social-proof'>
-        <div className='container-narrow'>
-          <div className='stats-grid'>
-            <div className='stat'>
-              <div className='stat-value'>10k+</div>
-              <div className='stat-label'>Orders managed</div>
-            </div>
-            <div className='stat'>
-              <div className='stat-value'>99.9%</div>
-              <div className='stat-label'>Uptime</div>
-            </div>
-            <div className='stat'>
-              <div className='stat-value'>24/7</div>
-              <div className='stat-label'>Support</div>
-            </div>
-            <div className='stat'>
-              <div className='stat-value'>0</div>
-              <div className='stat-label'>Forgotten pickups</div>
+            <div className='solution-card'>
+              <h3>Know Where Everyone Is</h3>
+              <p>
+                See exactly where your riders are, what they're working on, and
+                where they're heading next. No more phone calls asking for
+                updates. Everyone stays in sync automatically. Track live rider
+                locations, view current assignment status, and see estimated
+                arrival times—all in real-time.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Problem Section */}
-      <section className='problem-section'>
+      {/* Problems Section */}
+      <section id='problems' className='problems-section'>
         <div className='container'>
           <div className='section-header'>
-            <h2>The problems you face every day</h2>
-            <p>Managing tour equipment shouldn't be this complicated</p>
+            <div className='section-label'>The Problem</div>
+            <h2 className='section-title'>The Chaos You Deal With Every Day</h2>
+            <p className='section-subtitle'>
+              Tour equipment management shouldn't be this complicated
+            </p>
           </div>
 
           <div className='problem-grid'>
             <div className='problem-card'>
-              <div className='problem-icon'>
-                <svg width='24' height='24' viewBox='0 0 24 24' fill='none'>
-                  <path
-                    d='M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z'
-                    fill='currentColor'
-                  />
-                </svg>
+              <div className='problem-header'>
+                <h3>Channel Conflicts</h3>
+                <span className='badge warning'>Critical Issue</span>
               </div>
-              <h3>Channel conflicts</h3>
               <p>
-                Two guides on the same channel. Tours talking over each other.
-                Complete confusion.
+                Two guides on the same radio channel. Tours talking over each
+                other. Complete confusion for everyone involved. Without
+                automated tracking, channel conflicts are inevitable—and they
+                ruin the experience.
               </p>
             </div>
 
             <div className='problem-card'>
-              <div className='problem-icon'>
-                <svg width='24' height='24' viewBox='0 0 24 24' fill='none'>
-                  <path
-                    d='M11.99 2C6.47 2 2 6.48 2 12C2 17.52 6.47 22 11.99 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 11.99 2ZM12 20C7.58 20 4 16.42 4 12C4 7.58 7.58 4 12 4C16.42 4 20 7.58 20 12C20 16.42 16.42 20 12 20ZM12.5 7H11V13L16.25 16.15L17 14.92L12.5 12.25V7Z'
-                    fill='currentColor'
-                  />
-                </svg>
+              <div className='problem-header'>
+                <h3>Forgotten Pickups</h3>
+                <span className='badge pickup'>Operational Risk</span>
               </div>
-              <h3>Forgotten pickups</h3>
               <p>
                 Equipment that should have been picked up days ago, still
-                sitting there.
+                sitting there. No persistent reminders means things slip through
+                the cracks. You only notice when it's too late.
               </p>
             </div>
 
             <div className='problem-card'>
-              <div className='problem-icon'>
-                <svg width='24' height='24' viewBox='0 0 24 24' fill='none'>
-                  <path
-                    d='M20 2H4C2.9 2 2.01 2.9 2.01 4L2 22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z'
-                    fill='currentColor'
-                  />
-                </svg>
+              <div className='problem-header'>
+                <h3>Communication Chaos</h3>
+                <span className='badge delivery'>Daily Frustration</span>
               </div>
-              <h3>Communication chaos</h3>
               <p>
                 "Where's the rider?" "Who has that equipment?" Endless texts and
-                calls.
+                calls. No centralized system means constant interruptions and
+                information scattered across dozens of chat threads.
               </p>
+            </div>
+
+            <div className='problem-card'>
+              <div className='problem-header'>
+                <h3>Zero Visibility</h3>
+                <span className='badge available'>Blind Operations</span>
+              </div>
+              <p>
+                You don't know where riders are, what they're working on, or
+                when they'll finish. Manual processes and scattered information
+                make it impossible to get a real-time view of operations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Live Status Section */}
+      <section className='status-section'>
+        <div className='container'>
+          <div className='section-header'>
+            <div className='section-label'>Live Dashboard</div>
+            <h2 className='section-title'>Real-Time Operations at a Glance</h2>
+            <p className='section-subtitle'>
+              See exactly what's happening with your equipment right now
+            </p>
+          </div>
+
+          <div className='order-grid'>
+            <div className='order-card'>
+              <div className='order-header'>
+                <h3>Order #1847</h3>
+                <span className='badge delivery'>In Consegna</span>
+              </div>
+              <div className='order-info'>
+                <div className='info-row'>
+                  <div className='info-icon'>🚴</div>
+                  <div className='info-text'>
+                    <h4>Rider</h4>
+                    <p>Dan Joe</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>⏰</div>
+                  <div className='info-text'>
+                    <h4>Delivery Time</h4>
+                    <p>10:40 - Colosseo</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>📍</div>
+                  <div className='info-text'>
+                    <h4>ETA</h4>
+                    <p>15 minutes</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className='order-card'>
+              <div className='order-header'>
+                <h3>Order #1843</h3>
+                <span className='badge pickup'>Attesa Ritiro</span>
+              </div>
+              <div className='order-info'>
+                <div className='info-row'>
+                  <div className='info-icon'>🚴</div>
+                  <div className='info-text'>
+                    <h4>Assigned Rider</h4>
+                    <p>Dan Joe</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>⏰</div>
+                  <div className='info-text'>
+                    <h4>Pickup Time</h4>
+                    <p>22:40 - Verona</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>📅</div>
+                  <div className='info-text'>
+                    <h4>Status</h4>
+                    <p>Due Today</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className='order-card'>
+              <div className='order-header'>
+                <h3>Dan Joe</h3>
+                <span className='badge available'>Libero</span>
+              </div>
+              <div className='order-info'>
+                <div className='info-row'>
+                  <div className='info-icon'>📊</div>
+                  <div className='info-text'>
+                    <h4>Status</h4>
+                    <p>Ritirato</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>🕐</div>
+                  <div className='info-text'>
+                    <h4>Last Update</h4>
+                    <p>22:42 - 29/10/2025</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>📍</div>
+                  <div className='info-text'>
+                    <h4>Location</h4>
+                    <p>Verona, VR, Italia</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className='order-card'>
+              <div className='order-header'>
+                <h3>Order #1852</h3>
+                <span className='badge warning'>Scheduled</span>
+              </div>
+              <div className='order-info'>
+                <div className='info-row'>
+                  <div className='info-icon'>📅</div>
+                  <div className='info-text'>
+                    <h4>Delivery</h4>
+                    <p>Tomorrow 10:00</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>🚴</div>
+                  <div className='info-text'>
+                    <h4>Rider</h4>
+                    <p>To be assigned</p>
+                  </div>
+                </div>
+                <div className='info-row'>
+                  <div className='info-icon'>📦</div>
+                  <div className='info-text'>
+                    <h4>Status</h4>
+                    <p>Awaiting delivery</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -171,121 +358,90 @@ const LandingPage: React.FC = () => {
       <section id='features' className='features-section'>
         <div className='container'>
           <div className='section-header'>
-            <h2>Everything you need, nothing you don't</h2>
-            <p>
-              Powerful features designed specifically for tour equipment
-              management
-            </p>
+            <div className='section-label'>Features</div>
+            <h2 className='section-title'>
+              Everything You Need to Manage Equipment
+            </h2>
           </div>
 
-          <div className='features-list'>
-            <div className='feature-row'>
-              <div className='feature-content'>
-                <div className='feature-label'>
-                  Automatic channel management
-                </div>
-                <h3>Never conflict channels again</h3>
-                <p>
-                  The system automatically tracks which radio channels are in
-                  use and prevents double-booking. When an order completes, the
-                  channel is released. No manual tracking, no spreadsheets, no
-                  mistakes.
-                </p>
-                <ul className='feature-list'>
-                  <li>Real-time channel availability</li>
-                  <li>Automatic conflict prevention</li>
-                  <li>Smart channel recommendations</li>
-                </ul>
-              </div>
-              <div className='feature-visual'>
-                <div className='visual-card'>
-                  <div className='channel-grid'>
-                    <div className='channel available'>
-                      Ch 1 <span>Available</span>
-                    </div>
-                    <div className='channel in-use'>
-                      Ch 2 <span>In use</span>
-                    </div>
-                    <div className='channel available'>
-                      Ch 3 <span>Available</span>
-                    </div>
-                    <div className='channel in-use'>
-                      Ch 4 <span>In use</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className='features-grid'>
+            <div className='feature-card'>
+              <div className='feature-icon'>📻</div>
+              <h3>Automatic Channel Management</h3>
+              <p>
+                The system automatically tracks which radio channels are in use
+                and prevents double-booking. When an order completes, the
+                channel is released. No manual tracking, no spreadsheets, no
+                mistakes.
+              </p>
             </div>
 
-            <div className='feature-row reverse'>
-              <div className='feature-content'>
-                <div className='feature-label'>Persistent tracking</div>
-                <h3>Pickups stay visible until done</h3>
-                <p>
-                  Orders awaiting pickup don't disappear from your dashboard.
-                  They remain prominently displayed every day until someone
-                  marks them complete. You'll never forget equipment again.
-                </p>
-                <ul className='feature-list'>
-                  <li>Persistent pickup reminders</li>
-                  <li>Aging indicators for overdue items</li>
-                  <li>One-tap completion marking</li>
-                </ul>
-              </div>
-              <div className='feature-visual'>
-                <div className='visual-card'>
-                  <div className='order-list'>
-                    <div className='order-item urgent'>
-                      <span className='order-status'>Awaiting pickup</span>
-                      <span className='order-time'>2 days overdue</span>
-                    </div>
-                    <div className='order-item warning'>
-                      <span className='order-status'>Awaiting pickup</span>
-                      <span className='order-time'>Due today</span>
-                    </div>
-                    <div className='order-item'>
-                      <span className='order-status'>Awaiting pickup</span>
-                      <span className='order-time'>Due tomorrow</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className='feature-card'>
+              <div className='feature-icon'>📍</div>
+              <h3>Real-Time Visibility</h3>
+              <p>
+                See exactly where your riders are, what they're working on, and
+                where they're heading next. No more phone calls asking for
+                updates. Everyone stays in sync automatically.
+              </p>
             </div>
 
-            <div className='feature-row'>
-              <div className='feature-content'>
-                <div className='feature-label'>Real-time visibility</div>
-                <h3>Know where everyone is</h3>
-                <p>
-                  See exactly where your riders are, what they're working on,
-                  and where they're heading next. No more phone calls asking for
-                  updates. Everyone stays in sync automatically.
-                </p>
-                <ul className='feature-list'>
-                  <li>Live rider location tracking</li>
-                  <li>Current assignment status</li>
-                  <li>Estimated arrival times</li>
-                </ul>
-              </div>
-              <div className='feature-visual'>
-                <div className='visual-card'>
-                  <div className='rider-list'>
-                    <div className='rider-item active'>
-                      <div className='rider-info'>
-                        <span className='rider-name'>Marco R.</span>
-                        <span className='rider-status'>En route to pickup</span>
-                      </div>
-                      <span className='rider-eta'>5 min</span>
-                    </div>
-                    <div className='rider-item'>
-                      <div className='rider-info'>
-                        <span className='rider-name'>Sofia M.</span>
-                        <span className='rider-status'>Available</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className='feature-card'>
+              <div className='feature-icon'>📌</div>
+              <h3>Persistent Pickup Tracking</h3>
+              <p>
+                Orders awaiting pickup don't disappear from your dashboard. They
+                remain prominently displayed every day until someone marks them
+                complete. You'll never forget equipment again.
+              </p>
+            </div>
+
+            <div className='feature-card'>
+              <div className='feature-icon'>⏱️</div>
+              <h3>Aging Indicators</h3>
+              <p>
+                Visual alerts show which pickups are overdue and by how long.
+                See at a glance what needs immediate attention versus what's on
+                schedule.
+              </p>
+            </div>
+
+            <div className='feature-card'>
+              <div className='feature-icon'>🎯</div>
+              <h3>Smart Channel Recommendations</h3>
+              <p>
+                Based on current availability and usage patterns, the system
+                suggests the best channels for new orders, optimizing your radio
+                spectrum usage.
+              </p>
+            </div>
+
+            <div className='feature-card'>
+              <div className='feature-icon'>✅</div>
+              <h3>One-Tap Completion</h3>
+              <p>
+                Riders can mark deliveries and pickups complete with a single
+                tap. Status updates propagate instantly to all team members.
+              </p>
+            </div>
+
+            <div className='feature-card'>
+              <div className='feature-icon'>🔔</div>
+              <h3>Instant Notifications</h3>
+              <p>
+                Get automatic notifications when statuses change. Everyone stays
+                synchronized without phone calls or texts cluttering your day.
+              </p>
+            </div>
+
+            <div className='feature-card'>
+              <div className='feature-icon'>📊</div>
+              <h3>Estimated Arrival Times</h3>
+              <p>
+                Track real-time ETA for all active deliveries. Guides know
+                exactly when to expect equipment, improving tour start
+                reliability.
+              </p>
             </div>
           </div>
         </div>
@@ -293,262 +449,136 @@ const LandingPage: React.FC = () => {
 
       {/* How It Works */}
       <section id='how-it-works' className='how-it-works'>
-        <div className='container-narrow'>
+        <div className='container'>
           <div className='section-header'>
-            <h2>How it works</h2>
-            <p>Get started in minutes, not days</p>
+            <div className='section-label'>Process</div>
+            <h2 className='section-title'>How It Works</h2>
+            <p className='section-subtitle'>
+              Get started in minutes, not hours
+            </p>
           </div>
 
-          <div className='steps'>
-            <div className='step'>
-              <div className='step-number'>01</div>
-              <h3>Create your order</h3>
-              <p>
-                Add delivery time, pickup time, location, guide details, and
-                select a radio channel. Takes less than a minute.
-              </p>
-            </div>
-
-            <div className='step-connector'></div>
-
-            <div className='step'>
-              <div className='step-number'>02</div>
-              <h3>Assign your riders</h3>
-              <p>
-                Choose a rider for delivery and optionally a different one for
-                pickup. They get instant notifications on their phone.
-              </p>
-            </div>
-
-            <div className='step-connector'></div>
-
-            <div className='step'>
-              <div className='step-number'>03</div>
-              <h3>Track in real-time</h3>
-              <p>
-                Watch orders progress through each stage. Riders update statuses
-                as they complete deliveries and pickups.
-              </p>
-            </div>
-
-            <div className='step-connector'></div>
-
-            <div className='step'>
-              <div className='step-number'>04</div>
-              <h3>Stay informed</h3>
-              <p>
-                Get automatic notifications when statuses change. Everyone stays
-                synchronized without phone calls or texts.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section
-      <section id='pricing' className='pricing-section'>
-        <div className='container-narrow'>
-          <div className='section-header'>
-            <h2>Simple, transparent pricing</h2>
-            <p>Start free, scale as you grow</p>
-          </div>
-
-          <div className='pricing-grid'>
-            <div className='pricing-card'>
-              <div className='pricing-header'>
-                <h3>Free</h3>
-                <div className='price'>
-                  <span className='price-amount'>€0</span>
-                  <span className='price-period'>/month</span>
-                </div>
+          <div className='timeline'>
+            <div className='timeline-item'>
+              <div className='timeline-number'>1</div>
+              <div className='timeline-content'>
+                <h3>Create Your Order</h3>
+                <p>
+                  Add delivery time, pickup time, location, guide details, and
+                  select an available radio channel. The system shows you which
+                  channels are free and recommends optimal choices. Takes less
+                  than a minute to complete, with all critical information
+                  structured and clear.
+                </p>
               </div>
-              <ul className='pricing-features'>
-                <li>Up to 50 orders/month</li>
-                <li>3 riders</li>
-                <li>Basic tracking</li>
-                <li>Email support</li>
-              </ul>
-              <a href='#download' className='btn-pricing'>
-                Get started
-              </a>
             </div>
 
-            <div className='pricing-card featured'>
-              <div className='pricing-badge'>Most popular</div>
-              <div className='pricing-header'>
-                <h3>Professional</h3>
-                <div className='price'>
-                  <span className='price-amount'>€49</span>
-                  <span className='price-period'>/month</span>
-                </div>
+            <div className='timeline-item'>
+              <div className='timeline-number'>2</div>
+              <div className='timeline-content'>
+                <h3>Assign Your Riders</h3>
+                <p>
+                  Choose a rider for delivery and optionally assign a different
+                  one for pickup. They receive instant push notifications on
+                  their mobile devices with all order details. The system tracks
+                  rider availability and shows you who's currently free versus
+                  occupied.
+                </p>
               </div>
-              <ul className='pricing-features'>
-                <li>Unlimited orders</li>
-                <li>Unlimited riders</li>
-                <li>Advanced analytics</li>
-                <li>Priority support</li>
-                <li>Custom branding</li>
-              </ul>
-              <a href='#download' className='btn-pricing-primary'>
-                Get started
-              </a>
             </div>
 
-            <div className='pricing-card'>
-              <div className='pricing-header'>
-                <h3>Enterprise</h3>
-                <div className='price'>
-                  <span className='price-amount'>Custom</span>
-                </div>
+            <div className='timeline-item'>
+              <div className='timeline-number'>3</div>
+              <div className='timeline-content'>
+                <h3>Track in Real-Time</h3>
+                <p>
+                  Watch orders progress through each stage: created, en route to
+                  delivery, delivered, awaiting pickup, en route to pickup,
+                  completed. Riders update statuses with a single tap as they
+                  work. See live location tracking and estimated arrival times
+                  for all active deliveries.
+                </p>
               </div>
-              <ul className='pricing-features'>
-                <li>Everything in Professional</li>
-                <li>Multiple locations</li>
-                <li>API access</li>
-                <li>Dedicated support</li>
-                <li>SLA guarantee</li>
-              </ul>
-              <a href='#contact' className='btn-pricing'>
-                Contact sales
-              </a>
             </div>
-          </div>
-        </div>
-      </section> */}
 
-      {/* FAQ */}
-      <section className='faq-section'>
-        <div className='container-narrow'>
-          <div className='section-header'>
-            <h2>Frequently asked questions</h2>
-          </div>
-
-          <div className='faq-list'>
-            <details className='faq-item'>
-              <summary>Do I need to sign up before downloading?</summary>
-              <p>
-                Yes. Contact <strong>support@echoboxlogistics.com</strong> and
-                we'll provide a new account for you to try.
-              </p>
-            </details>
-
-            <details className='faq-item'>
-              <summary>How many riders can I add to my team?</summary>
-              <p>
-                On the standard plan, you can add up to 3 riders. Professional
-                and Enterprise plans support unlimited riders.
-              </p>
-            </details>
-
-            <details className='faq-item'>
-              <summary>
-                Can riders see all orders or just their assignments?
-              </summary>
-              <p>
-                Riders only see orders that are assigned to them. Administrators
-                have full visibility over all orders and team members.
-              </p>
-            </details>
-
-            <details className='faq-item'>
-              <summary>Can I customize the radio channel range?</summary>
-              <p>
-                Yes. You can configure exactly which channels you use in your
-                operations, and the app will adapt its recommendations
-                accordingly.
-              </p>
-            </details>
-
-            <details className='faq-item'>
-              <summary>How is my data secured?</summary>
-              <p>
-                All data is encrypted in transit and at rest. We use Firebase's
-                enterprise-grade security infrastructure with regular security
-                audits.
-              </p>
-            </details>
+            <div className='timeline-item'>
+              <div className='timeline-number'>4</div>
+              <div className='timeline-content'>
+                <h3>Stay Informed</h3>
+                <p>
+                  Receive automatic notifications when statuses change, when
+                  pickups become overdue, or when riders complete their
+                  assignments. Everyone on your team stays synchronized without
+                  constant phone calls or text message chains. Channels are
+                  automatically released when orders complete.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      {/* <section className='cta-section'>
-        <div className='container-narrow'>
-          <div className='cta-content'>
-            <h2>Ready to stop wondering?</h2>
-            <p>
-              Join tour companies worldwide who have eliminated equipment
-              tracking chaos.
-            </p>
-            <div className='cta-buttons'>
-              <a href='#download' className='btn-cta-primary'>
-                Download for iOS
-              </a>
-              <a href='#download' className='btn-cta-primary'>
-                Download for Android
-              </a>
-            </div>
-            <div className='cta-note'>
-              No credit card required • Free to start • Cancel anytime
-            </div>
+      <section id='contact' className='cta-section'>
+        <div className='cta-container'>
+          <h2>Ready to Stop Wondering?</h2>
+          <p>
+            Join tour companies worldwide who have eliminated equipment tracking
+            chaos. No more channel conflicts, no more forgotten pickups, no more
+            communication breakdowns. Get complete visibility over your audio
+            equipment operations.
+          </p>
+          <div className='hero-buttons'>
+            <a
+              href='mailto:support@echoboxlogistics.com'
+              className='btn-primary'
+            >
+              Contact Us
+            </a>
           </div>
         </div>
-      </section> */}
+      </section>
 
       {/* Footer */}
       <footer className='footer'>
-        <div className='container'>
-          <div className='footer-grid'>
+        <div className='footer-content'>
+          <div className='footer-brand'>
+            <h3>EchoBox Logistics</h3>
+            <p>
+              Equipment tracking for modern tour companies. Real-time
+              visibility, automated management, zero forgotten pickups.
+            </p>
+          </div>
+          <div className='footer-links'>
             <div className='footer-col'>
-              <div className='footer-logo'>EchoBox Logistics</div>
-              <p className='footer-description'>
-                Equipment tracking for modern tour companies.
-              </p>
-            </div>
-
-            {/* <div className='footer-col'>
               <h4>Product</h4>
               <ul>
                 <li>
                   <a href='#features'>Features</a>
                 </li>
                 <li>
-                  <a href='#pricing'>Pricing</a>
+                  <a href='#how-it-works'>How It Works</a>
                 </li>
                 <li>
-                  <a href='#how-it-works'>How it works</a>
+                  <a href='#problems'>Problems</a>
                 </li>
               </ul>
-            </div> */}
-
-            {/* <div className='footer-col'>
-              <h4>Company</h4>
-              <ul>
-                <li>
-                  <a href='#about'>About</a>
-                </li>
-                <li>
-                  <a href='#contact'>Contact</a>
-                </li>
-              </ul>
-            </div> */}
-
+            </div>
             <div className='footer-col'>
               <h4>Legal</h4>
               <ul>
                 <li>
-                  <a href='/privacy'>Privacy</a>
+                  <a href='/privacy'>Privacy Policy</a>
                 </li>
                 <li>
-                  <a href='/terms'>Terms</a>
+                  <a href='/terms'>Terms of Service</a>
                 </li>
               </ul>
             </div>
           </div>
-
-          <div className='footer-bottom'>
-            <p>&copy; 2025 EchoBox Logistics. All rights reserved.</p>
-          </div>
+        </div>
+        <div className='footer-bottom'>
+          <p>&copy; 2025 EchoBox Logistics. All rights reserved.</p>
         </div>
       </footer>
     </div>
