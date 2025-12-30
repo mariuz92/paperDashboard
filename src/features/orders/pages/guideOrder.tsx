@@ -161,12 +161,12 @@ const GuideOrderPage: React.FC = () => {
     return (
       <div
         style={{
-          minHeight: "100vh",
           background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+          minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "24px",
+          padding: "16px",
         }}
       >
         <Card
@@ -175,8 +175,8 @@ const GuideOrderPage: React.FC = () => {
             width: "100%",
             borderRadius: 16,
             boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+            padding: "32px",
           }}
-          bodyStyle={{ padding: "60px 40px" }}
         >
           <Result
             status='success'
@@ -193,6 +193,7 @@ const GuideOrderPage: React.FC = () => {
                   justifyContent: "center",
                   margin: "0 auto",
                 }}
+                className='success-icon'
               >
                 <CheckCircleOutlined style={{ fontSize: 64, color: "#fff" }} />
               </div>
@@ -200,7 +201,8 @@ const GuideOrderPage: React.FC = () => {
             title={
               <Title
                 level={2}
-                style={{ marginTop: 24, marginBottom: 16, fontSize: 28 }}
+                style={{ marginTop: 24, marginBottom: 16 }}
+                className='result-title'
               >
                 Prenotazione Confermata!
               </Title>
@@ -213,532 +215,671 @@ const GuideOrderPage: React.FC = () => {
                   display: "block",
                   lineHeight: 1.6,
                 }}
+                className='result-subtitle'
               >
                 La tua richiesta è stata ricevuta con successo. Il nostro team
                 ti contatterà a breve per confermare i dettagli del servizio.
               </Text>
             }
-            extra={[
-              <Button
-                type='primary'
-                size='large'
-                key='new'
-                onClick={handleNewOrder}
-                style={{
-                  borderRadius: 8,
-                  height: 48,
-                  fontSize: 16,
-                  fontWeight: 500,
-                  minWidth: 180,
-                  border: "none",
-                }}
-              >
-                Nuova Prenotazione
-              </Button>,
-              <Button
-                size='large'
-                key='external'
-                onClick={() =>
-                  (window.location.href = "https://www.youngtour.it")
-                }
-                style={{
-                  borderRadius: 8,
-                  height: 48,
-                  fontSize: 16,
-                  minWidth: 180,
-                }}
-              >
-                Torna al Sito
-              </Button>,
-            ]}
+            extra={
+              <div className='result-buttons'>
+                <Button
+                  type='primary'
+                  size='large'
+                  key='new'
+                  onClick={handleNewOrder}
+                  style={{
+                    borderRadius: 8,
+                    height: 48,
+                    fontSize: 16,
+                    fontWeight: 500,
+                    border: "none",
+                  }}
+                  className='result-button'
+                >
+                  Nuova Prenotazione
+                </Button>
+                <Button
+                  size='large'
+                  key='external'
+                  onClick={() =>
+                    (window.location.href = "https://www.youngtour.it")
+                  }
+                  style={{
+                    borderRadius: 8,
+                    height: 48,
+                    fontSize: 16,
+                  }}
+                  className='result-button'
+                >
+                  Torna al Sito
+                </Button>
+              </div>
+            }
           />
         </Card>
+        <style>{`
+          @media (max-width: 768px) {
+            .success-icon {
+              width: 100px !important;
+              height: 100px !important;
+            }
+            .success-icon .anticon {
+              font-size: 48px !important;
+            }
+            .result-title {
+              font-size: 22px !important;
+            }
+            .result-subtitle {
+              font-size: 14px !important;
+              padding: 0 10px;
+            }
+            .result-buttons {
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              width: 100%;
+            }
+            .result-button {
+              width: 100% !important;
+              min-width: 100% !important;
+            }
+          }
+        `}</style>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header Card */}
-      <Card
-        style={{
-          borderRadius: 16,
-          marginBottom: 32,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-          background: " #8D9BB3FF ",
-          border: "none",
-        }}
-        bodyStyle={{ padding: "32px 24px" }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <Avatar
-            size={80}
-            icon={<AudioOutlined />}
-            style={{
-              backgroundColor: "rgba(255,255,255,0.25)",
-              marginBottom: 16,
-            }}
-          />
-          <Title
-            level={1}
-            style={{
-              color: "#fff",
-              marginBottom: 8,
-              fontSize: 36,
-              fontWeight: 600,
-            }}
+    <>
+      <div className='page-container'>
+        {/* Header Card */}
+        <Card
+          style={{
+            borderRadius: 16,
+            marginBottom: 32,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+            background: " #8D9BB3FF ",
+            border: "none",
+          }}
+          className='header-card'
+        >
+          <div style={{ textAlign: "center" }}>
+            <Avatar
+              size={80}
+              icon={<AudioOutlined />}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.25)",
+                marginBottom: 16,
+              }}
+              className='header-avatar'
+            />
+            <Title
+              level={1}
+              style={{
+                color: "#fff",
+                marginBottom: 8,
+                fontSize: 36,
+                fontWeight: 600,
+              }}
+              className='header-title'
+            >
+              Prenota il Servizio Radioguide
+            </Title>
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.95)",
+                fontSize: 16,
+                display: "block",
+              }}
+              className='header-subtitle'
+            >
+              Compila il modulo per richiedere il servizio di radioguide per il
+              tuo gruppo
+            </Text>
+          </div>
+        </Card>
+
+        {/* Main Form Card */}
+        <Card
+          style={{
+            borderRadius: 16,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+          }}
+          className='form-card'
+        >
+          <Form
+            form={form}
+            layout='vertical'
+            onFinish={onFinish}
+            initialValues={{ phonePrefix: "+39" }}
+            requiredMark='optional'
           >
-            Prenota il Servizio Radioguide
-          </Title>
-          <Text
-            style={{
-              color: "rgba(255,255,255,0.95)",
-              fontSize: 16,
-              display: "block",
-            }}
-          >
-            Compila il modulo per richiedere il servizio di radioguide per il
-            tuo gruppo
+            {/* Contact Information Section */}
+            <div className='form-section'>
+              <Space
+                align='center'
+                style={{ marginBottom: 20 }}
+                className='section-header-space'
+              >
+                <UserOutlined
+                  style={{ fontSize: 24, color: "#667eea" }}
+                  className='section-icon'
+                />
+                <Title
+                  level={3}
+                  style={{
+                    margin: 0,
+                    fontSize: 22,
+                    fontWeight: 600,
+                    color: "#262626",
+                  }}
+                  className='section-title'
+                >
+                  Informazioni di Contatto
+                </Title>
+              </Space>
+              <Divider
+                style={{ margin: "0 0 28px 0" }}
+                className='section-divider'
+              />
+
+              <Row gutter={[24, 20]}>
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <MailOutlined
+                          style={{ marginRight: 8, color: "#667eea" }}
+                        />
+                        Indirizzo Email
+                      </span>
+                    }
+                    name='email'
+                    rules={[
+                      {
+                        required: true,
+                        message: "Per favore inserisci la tua email",
+                      },
+                      { type: "email", message: "Inserisci un'email valida" },
+                    ]}
+                  >
+                    <Input
+                      placeholder='tuaemail@esempio.com'
+                      size='large'
+                      style={{ borderRadius: 8, fontSize: 15 }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <PhoneOutlined
+                          style={{ marginRight: 8, color: "#667eea" }}
+                        />
+                        Numero di Telefono
+                      </span>
+                    }
+                    required
+                  >
+                    <Input.Group compact style={{ display: "flex" }}>
+                      <Form.Item
+                        name='phonePrefix'
+                        noStyle
+                        rules={[
+                          { required: true, message: "Prefisso richiesto" },
+                        ]}
+                      >
+                        <AutoComplete
+                          className='phone-prefix'
+                          size='large'
+                          onChange={(value) => setPhonePrefix(value)}
+                          placeholder='+39'
+                          options={countryCodes.map((country) => ({
+                            value: country.code,
+                            label: `${country.flag} ${country.code}`,
+                          }))}
+                          filterOption={(inputValue, option) =>
+                            option?.value?.toString().includes(inputValue) ??
+                            false
+                          }
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        name='phone'
+                        noStyle
+                        rules={[
+                          { required: true, message: "Inserisci il numero" },
+                          {
+                            pattern: /^[0-9\s]+$/,
+                            message: "Solo numeri",
+                          },
+                        ]}
+                      >
+                        <Input
+                          placeholder='123 456 7890'
+                          size='large'
+                          style={{ flex: 1, fontSize: 15 }}
+                        />
+                      </Form.Item>
+                    </Input.Group>
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <UserOutlined
+                          style={{ marginRight: 8, color: "#667eea" }}
+                        />
+                        Nome Guida o Gruppo
+                      </span>
+                    }
+                    name='nomeGuida'
+                    rules={[
+                      {
+                        required: true,
+                        message: "Inserisci il nome della guida o gruppo",
+                      },
+                    ]}
+                  >
+                    <Input
+                      placeholder='Mario Rossi / Gruppo Turistico Roma'
+                      size='large'
+                      style={{ borderRadius: 8, fontSize: 15 }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <AudioOutlined
+                          style={{ marginRight: 8, color: "#667eea" }}
+                        />
+                        Numero di Radioguide
+                      </span>
+                    }
+                    name='radioguideConsegnate'
+                    rules={[
+                      {
+                        required: true,
+                        message: "Inserisci il numero di radioguide",
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      placeholder='Es: 20'
+                      size='large'
+                      style={{ width: "100%", borderRadius: 8, fontSize: 15 }}
+                      min={1}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Delivery Information Section */}
+            <div className='form-section'>
+              <Space
+                align='center'
+                style={{ marginBottom: 20 }}
+                className='section-header-space'
+              >
+                <SendOutlined
+                  style={{ fontSize: 24, color: "#667eea" }}
+                  className='section-icon'
+                />
+                <Title
+                  level={3}
+                  style={{
+                    margin: 0,
+                    fontSize: 22,
+                    fontWeight: 600,
+                    color: "#262626",
+                  }}
+                  className='section-title'
+                >
+                  Informazioni Consegna
+                </Title>
+              </Space>
+              <Divider
+                style={{ margin: "0 0 28px 0" }}
+                className='section-divider'
+              />
+
+              <Row gutter={[24, 20]}>
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <ClockCircleOutlined
+                          style={{ marginRight: 8, color: "#667eea" }}
+                        />
+                        Data e Ora Consegna
+                      </span>
+                    }
+                    name='oraConsegna'
+                    rules={[
+                      {
+                        required: true,
+                        message: "Seleziona data e ora di consegna",
+                      },
+                    ]}
+                  >
+                    <DatePicker
+                      placement='topRight'
+                      showTime
+                      placeholder='Seleziona data e ora'
+                      format='DD/MM/YYYY HH:mm'
+                      size='large'
+                      style={{ width: "100%", borderRadius: 8, fontSize: 15 }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <EnvironmentOutlined
+                          style={{ marginRight: 8, color: "#667eea" }}
+                        />
+                        Luogo Consegna
+                      </span>
+                    }
+                    name='luogoConsegna'
+                    rules={[
+                      {
+                        required: true,
+                        message: "Inserisci il luogo di consegna",
+                      },
+                    ]}
+                  >
+                    <GooglePlacesAutocomplete
+                      initialValue=''
+                      placeholder='Inserisci indirizzo di consegna'
+                      onPlaceSelect={(address) =>
+                        form.setFieldsValue({ luogoConsegna: address })
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Pickup Information Section */}
+            <div className='form-section'>
+              <Space
+                align='center'
+                style={{ marginBottom: 12 }}
+                className='section-header-space'
+              >
+                <EnvironmentOutlined
+                  style={{ fontSize: 24, color: "#764ba2" }}
+                  className='section-icon'
+                />
+                <Title
+                  level={3}
+                  style={{
+                    margin: 0,
+                    fontSize: 22,
+                    fontWeight: 600,
+                    color: "#262626",
+                  }}
+                  className='section-title'
+                >
+                  Informazioni Ritiro
+                </Title>
+              </Space>
+              <Text
+                type='secondary'
+                style={{
+                  display: "block",
+                  marginBottom: 20,
+                  fontSize: 14,
+                  color: "#8c8c8c",
+                }}
+                className='optional-text'
+              >
+                Opzionale - Compila solo se desideri programmare il ritiro delle
+                radioguide
+              </Text>
+              <Divider
+                style={{ margin: "0 0 28px 0" }}
+                className='section-divider'
+              />
+
+              <Row gutter={[24, 20]}>
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <ClockCircleOutlined
+                          style={{ marginRight: 8, color: "#764ba2" }}
+                        />
+                        Data e Ora Ritiro
+                      </span>
+                    }
+                    name='oraRitiro'
+                  >
+                    <DatePicker
+                      placement='topRight'
+                      showTime
+                      placeholder='Seleziona data e ora'
+                      format='DD/MM/YYYY HH:mm'
+                      size='large'
+                      style={{ width: "100%", borderRadius: 8, fontSize: 15 }}
+                    />
+                  </Form.Item>
+                </Col>
+
+                <Col xs={24} lg={12}>
+                  <Form.Item
+                    label={
+                      <span className='form-label'>
+                        <EnvironmentOutlined
+                          style={{ marginRight: 8, color: "#764ba2" }}
+                        />
+                        Luogo Ritiro
+                      </span>
+                    }
+                    name='luogoRitiro'
+                  >
+                    <GooglePlacesAutocomplete
+                      initialValue=''
+                      placeholder='Inserisci indirizzo di ritiro'
+                      onPlaceSelect={(address) =>
+                        form.setFieldsValue({ luogoRitiro: address })
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Notes Section */}
+            <div className='form-section'>
+              <Space
+                align='center'
+                style={{ marginBottom: 20 }}
+                className='section-header-space'
+              >
+                <FileTextOutlined
+                  style={{ fontSize: 24, color: "#667eea" }}
+                  className='section-icon'
+                />
+                <Title
+                  level={3}
+                  style={{
+                    margin: 0,
+                    fontSize: 22,
+                    fontWeight: 600,
+                    color: "#262626",
+                  }}
+                  className='section-title'
+                >
+                  Note Aggiuntive
+                </Title>
+              </Space>
+              <Divider
+                style={{ margin: "0 0 28px 0" }}
+                className='section-divider'
+              />
+
+              <Form.Item name='note'>
+                <TextArea
+                  placeholder='Inserisci eventuali richieste speciali o informazioni aggiuntive che potrebbero esserci utili per il servizio...'
+                  rows={4}
+                  style={{ borderRadius: 8, fontSize: 15 }}
+                  maxLength={500}
+                  showCount
+                />
+              </Form.Item>
+            </div>
+
+            {/* Submit Button */}
+            <Row>
+              <Col xs={24} style={{ textAlign: "center" }}>
+                <Button
+                  type='primary'
+                  htmlType='submit'
+                  loading={loading}
+                  size='large'
+                  icon={<SendOutlined />}
+                  className='submit-button'
+                  style={{
+                    borderRadius: 10,
+                    height: 56,
+                    fontSize: 17,
+                    fontWeight: 600,
+                    minWidth: 280,
+                    border: "none",
+                    boxShadow: "0 4px 16px rgba(102, 126, 234, 0.4)",
+                  }}
+                >
+                  Invia Prenotazione
+                </Button>
+              </Col>
+            </Row>
+          </Form>
+        </Card>
+
+        {/* Footer */}
+        <div
+          style={{ textAlign: "center", marginTop: 32, marginBottom: 16 }}
+          className='footer'
+        >
+          <Text style={{ color: "#8c8c8c", fontSize: 14 }}>
+            © 2025 {CONFIG.appName}
           </Text>
         </div>
-      </Card>
-
-      {/* Main Form Card */}
-      <Card
-        style={{
-          borderRadius: 16,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-        }}
-        bodyStyle={{ padding: "40px" }}
-      >
-        <Form
-          form={form}
-          layout='vertical'
-          onFinish={onFinish}
-          initialValues={{ phonePrefix: "+39" }}
-          requiredMark='optional'
-        >
-          {/* Contact Information Section */}
-          <div style={{ marginBottom: 48 }}>
-            <Space align='center' style={{ marginBottom: 20 }}>
-              <UserOutlined style={{ fontSize: 24, color: "#667eea" }} />
-              <Title
-                level={3}
-                style={{
-                  margin: 0,
-                  fontSize: 22,
-                  fontWeight: 600,
-                  color: "#262626",
-                }}
-              >
-                Informazioni di Contatto
-              </Title>
-            </Space>
-            <Divider style={{ margin: "0 0 28px 0" }} />
-
-            <Row gutter={[24, 20]}>
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <MailOutlined
-                        style={{ marginRight: 8, color: "#667eea" }}
-                      />
-                      Indirizzo Email
-                    </span>
-                  }
-                  name='email'
-                  rules={[
-                    {
-                      required: true,
-                      message: "Per favore inserisci la tua email",
-                    },
-                    { type: "email", message: "Inserisci un'email valida" },
-                  ]}
-                >
-                  <Input
-                    placeholder='tuaemail@esempio.com'
-                    size='large'
-                    style={{ borderRadius: 8, fontSize: 15 }}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <PhoneOutlined
-                        style={{ marginRight: 8, color: "#667eea" }}
-                      />
-                      Numero di Telefono
-                    </span>
-                  }
-                  required
-                >
-                  <Input.Group compact style={{ display: "flex" }}>
-                    <Form.Item
-                      name='phonePrefix'
-                      noStyle
-                      rules={[
-                        { required: true, message: "Prefisso richiesto" },
-                      ]}
-                    >
-                      <AutoComplete
-                        style={{ width: 110 }}
-                        size='large'
-                        onChange={(value) => setPhonePrefix(value)}
-                        placeholder='+39'
-                        options={countryCodes.map((country) => ({
-                          value: country.code,
-                          label: `${country.flag} ${country.code}`,
-                        }))}
-                        filterOption={(inputValue, option) =>
-                          option?.value?.toString().includes(inputValue) ??
-                          false
-                        }
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name='phone'
-                      noStyle
-                      rules={[
-                        { required: true, message: "Inserisci il numero" },
-                        {
-                          pattern: /^[0-9\s]+$/,
-                          message: "Solo numeri",
-                        },
-                      ]}
-                    >
-                      <Input
-                        placeholder='123 456 7890'
-                        size='large'
-                        style={{ flex: 1, fontSize: 15 }}
-                      />
-                    </Form.Item>
-                  </Input.Group>
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <UserOutlined
-                        style={{ marginRight: 8, color: "#667eea" }}
-                      />
-                      Nome Guida o Gruppo
-                    </span>
-                  }
-                  name='nomeGuida'
-                  rules={[
-                    {
-                      required: true,
-                      message: "Inserisci il nome della guida o gruppo",
-                    },
-                  ]}
-                >
-                  <Input
-                    placeholder='Mario Rossi / Gruppo Turistico Roma'
-                    size='large'
-                    style={{ borderRadius: 8, fontSize: 15 }}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <AudioOutlined
-                        style={{ marginRight: 8, color: "#667eea" }}
-                      />
-                      Numero di Radioguide
-                    </span>
-                  }
-                  name='radioguideConsegnate'
-                  rules={[
-                    {
-                      required: true,
-                      message: "Inserisci il numero di radioguide",
-                    },
-                  ]}
-                >
-                  <InputNumber
-                    placeholder='Es: 20'
-                    size='large'
-                    style={{ width: "100%", borderRadius: 8, fontSize: 15 }}
-                    min={1}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          </div>
-
-          {/* Delivery Information Section */}
-          <div style={{ marginBottom: 48 }}>
-            <Space align='center' style={{ marginBottom: 20 }}>
-              <SendOutlined style={{ fontSize: 24, color: "#667eea" }} />
-              <Title
-                level={3}
-                style={{
-                  margin: 0,
-                  fontSize: 22,
-                  fontWeight: 600,
-                  color: "#262626",
-                }}
-              >
-                Informazioni Consegna
-              </Title>
-            </Space>
-            <Divider style={{ margin: "0 0 28px 0" }} />
-
-            <Row gutter={[24, 20]}>
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <ClockCircleOutlined
-                        style={{ marginRight: 8, color: "#667eea" }}
-                      />
-                      Data e Ora Consegna
-                    </span>
-                  }
-                  name='oraConsegna'
-                  rules={[
-                    {
-                      required: true,
-                      message: "Seleziona data e ora di consegna",
-                    },
-                  ]}
-                >
-                  <DatePicker
-                    showTime
-                    placeholder='Seleziona data e ora'
-                    format='DD/MM/YYYY HH:mm'
-                    size='large'
-                    style={{ width: "100%", borderRadius: 8, fontSize: 15 }}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <EnvironmentOutlined
-                        style={{ marginRight: 8, color: "#667eea" }}
-                      />
-                      Luogo Consegna
-                    </span>
-                  }
-                  name='luogoConsegna'
-                  rules={[
-                    {
-                      required: true,
-                      message: "Inserisci il luogo di consegna",
-                    },
-                  ]}
-                >
-                  <GooglePlacesAutocomplete
-                    initialValue=''
-                    placeholder='Inserisci indirizzo di consegna'
-                    onPlaceSelect={(address) =>
-                      form.setFieldsValue({ luogoConsegna: address })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          </div>
-
-          {/* Pickup Information Section */}
-          <div style={{ marginBottom: 48 }}>
-            <Space align='center' style={{ marginBottom: 12 }}>
-              <EnvironmentOutlined style={{ fontSize: 24, color: "#764ba2" }} />
-              <Title
-                level={3}
-                style={{
-                  margin: 0,
-                  fontSize: 22,
-                  fontWeight: 600,
-                  color: "#262626",
-                }}
-              >
-                Informazioni Ritiro
-              </Title>
-            </Space>
-            <Text
-              type='secondary'
-              style={{
-                display: "block",
-                marginBottom: 20,
-                fontSize: 14,
-                color: "#8c8c8c",
-              }}
-            >
-              Opzionale - Compila solo se desideri programmare il ritiro delle
-              radioguide
-            </Text>
-            <Divider style={{ margin: "0 0 28px 0" }} />
-
-            <Row gutter={[24, 20]}>
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <ClockCircleOutlined
-                        style={{ marginRight: 8, color: "#764ba2" }}
-                      />
-                      Data e Ora Ritiro
-                    </span>
-                  }
-                  name='oraRitiro'
-                >
-                  <DatePicker
-                    showTime
-                    placeholder='Seleziona data e ora'
-                    format='DD/MM/YYYY HH:mm'
-                    size='large'
-                    style={{ width: "100%", borderRadius: 8, fontSize: 15 }}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} lg={12}>
-                <Form.Item
-                  label={
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 500,
-                        color: "#262626",
-                      }}
-                    >
-                      <EnvironmentOutlined
-                        style={{ marginRight: 8, color: "#764ba2" }}
-                      />
-                      Luogo Ritiro
-                    </span>
-                  }
-                  name='luogoRitiro'
-                >
-                  <GooglePlacesAutocomplete
-                    initialValue=''
-                    placeholder='Inserisci indirizzo di ritiro'
-                    onPlaceSelect={(address) =>
-                      form.setFieldsValue({ luogoRitiro: address })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          </div>
-
-          {/* Notes Section */}
-          <div style={{ marginBottom: 40 }}>
-            <Space align='center' style={{ marginBottom: 20 }}>
-              <FileTextOutlined style={{ fontSize: 24, color: "#667eea" }} />
-              <Title
-                level={3}
-                style={{
-                  margin: 0,
-                  fontSize: 22,
-                  fontWeight: 600,
-                  color: "#262626",
-                }}
-              >
-                Note Aggiuntive
-              </Title>
-            </Space>
-            <Divider style={{ margin: "0 0 28px 0" }} />
-
-            <Form.Item name='note'>
-              <TextArea
-                placeholder='Inserisci eventuali richieste speciali o informazioni aggiuntive che potrebbero esserci utili per il servizio...'
-                rows={4}
-                style={{ borderRadius: 8, fontSize: 15 }}
-                maxLength={500}
-                showCount
-              />
-            </Form.Item>
-          </div>
-
-          {/* Submit Button */}
-          <Row>
-            <Col xs={24} style={{ textAlign: "center" }}>
-              <Button
-                type='primary'
-                htmlType='submit'
-                loading={loading}
-                size='large'
-                icon={<SendOutlined />}
-                style={{
-                  borderRadius: 10,
-                  height: 56,
-                  fontSize: 17,
-                  fontWeight: 600,
-                  minWidth: 280,
-                  border: "none",
-                  boxShadow: "0 4px 16px rgba(102, 126, 234, 0.4)",
-                }}
-              >
-                Invia Prenotazione
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
-
-      {/* Footer */}
-      <div style={{ textAlign: "center", marginTop: 32, marginBottom: 16 }}>
-        <Text style={{ color: "#8c8c8c", fontSize: 14 }}>
-          © 2025 {CONFIG.appName}
-        </Text>
       </div>
-    </div>
+
+      <style>{`
+        .page-container {
+          padding: 0;
+        }
+
+        @media (max-width: 768px) {
+          .page-container {
+            padding: 12px;
+          }
+          .ant-card-body {
+            padding: 0px !important;
+          }
+          .header-card {
+            border-radius: 12px !important;
+            margin-bottom: 16px !important;
+          }
+
+          .header-card .ant-card-body {
+            padding: 24px 16px !important;
+          }
+
+          .header-avatar {
+            width: 64px !important;
+            height: 64px !important;
+            font-size: 32px !important;
+          }
+
+          .header-title {
+            font-size: 24px !important;
+          }
+
+          .header-subtitle {
+            font-size: 14px !important;
+            padding: 0 8px;
+          }
+
+          .form-card {
+            border-radius: 12px !important;
+          }
+
+          .form-card .ant-card-body {
+            padding: 20px 16px !important;
+          }
+
+          .form-section {
+            margin-bottom: 32px !important;
+          }
+
+          .section-header-space {
+            margin-bottom: 12px !important;
+          }
+
+          .section-icon {
+            font-size: 20px !important;
+          }
+
+          .section-title {
+            font-size: 18px !important;
+          }
+
+          .section-divider {
+            margin: 0 0 16px 0 !important;
+          }
+
+          .form-label {
+            font-size: 14px !important;
+          }
+
+          .optional-text {
+            font-size: 13px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .phone-prefix {
+            width: 90px !important;
+          }
+
+          .ant-row {
+            row-gap: 0 !important;
+          }
+
+          .submit-button {
+            width: 100% !important;
+            min-width: 100% !important;
+            height: 50px !important;
+            font-size: 16px !important;
+          }
+
+          .footer {
+            margin-top: 24px !important;
+            background: none !important;
+
+          }
+
+          .footer span {
+            font-size: 13px !important;
+          }
+        }
+      `}</style>
+    </>
   );
 };
 
