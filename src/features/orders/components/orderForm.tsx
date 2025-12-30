@@ -178,24 +178,7 @@ const OrderDrawer: React.FC<OrderDrawerProps> = ({
     // ✅ Build oraConsegna Timestamp
     let oraConsegna: Timestamp | null = null;
     if (values.oraConsegna) {
-      const time = values.oraConsegna;
-
-      if (mode === "edit" && order?.oraConsegna) {
-        const originalDate = dayjs(order.oraConsegna.toDate());
-        const mergedDateTime = originalDate
-          .hour(time.hour())
-          .minute(time.minute())
-          .second(0)
-          .millisecond(0);
-        oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
-      } else {
-        const mergedDateTime = dayjs()
-          .hour(time.hour())
-          .minute(time.minute())
-          .second(0)
-          .millisecond(0);
-        oraConsegna = Timestamp.fromDate(mergedDateTime.toDate());
-      }
+      oraConsegna = Timestamp.fromDate(values.oraConsegna.toDate());
     }
 
     // ✅ Build oraRitiro Timestamp (or null if not provided)

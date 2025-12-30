@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Table,
   Tag,
@@ -14,9 +14,12 @@ import {
   Space,
   Typography,
   Row,
+  Col,
   Tooltip,
   Badge,
   Modal,
+  Card,
+  Statistic,
 } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { FormInstance, MenuProps } from "antd";
@@ -33,6 +36,9 @@ import {
   UserAddOutlined,
   EyeOutlined,
   UserOutlined,
+  CalendarOutlined,
+  RadarChartOutlined,
+  EuroOutlined,
 } from "@ant-design/icons";
 
 import jsPDF from "jspdf";
@@ -44,6 +50,9 @@ import { useNavigate } from "react-router";
 import ManageChannels from "./manageChannels";
 import { IRiderStatus } from "../../../types/interfaces/IRIderStatus";
 import { watchAllRiderStatuses } from "../../users/api/riderStatusApi";
+
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
 /** Helper: Safely convert a `Timestamp|string|null|undefined` to a Dayjs object. */
 function dayjsValue(value?: Timestamp | string | null) {
@@ -87,6 +96,44 @@ interface OrderTableProps {
   selectedDate: Dayjs;
   onRowClick?: (order: IOrder, mode?: "view" | "edit") => void;
 }
+
+/** Radio Summary Component */
+interface RadioSummaryProps {
+  stats: {
+    totalRadioConsegnate: number;
+    totalPaid: number;
+  };
+}
+
+const RadioSummary: React.FC<RadioSummaryProps> = ({ stats }) => {
+  return (
+    <Card
+      style={{ marginBottom: 16, border: "none" }}
+      bodyStyle={{ padding: "12px 16px" }}
+    >
+      <Row gutter={16} justify='end' align='middle'>
+        <Col>
+          <Statistic
+            title='Radio Consegnate'
+            value={stats.totalRadioConsegnate}
+            valueStyle={{ color: "#1890ff", fontSize: "20px" }}
+            style={{ textAlign: "right" }}
+          />
+        </Col>
+        <Col>
+          <Statistic
+            title='Totale Pagato'
+            value={stats.totalPaid}
+            prefix={<EuroOutlined />}
+            precision={2}
+            valueStyle={{ color: "#52c41a", fontSize: "20px" }}
+            style={{ textAlign: "right" }}
+          />
+        </Col>
+      </Row>
+    </Card>
+  );
+};
 
 /** Convert data to PDF (landscape) */
 const exportToPDF = (orders: IOrder[]) => {
@@ -147,6 +194,16 @@ const OrderTable: React.FC<OrderTableProps> = ({
     new Map()
   );
 
+  // Time range filter states
+  const [timeRangeType, setTimeRangeType] = useState<"day" | "month" | "year">(
+    "day"
+  );
+  const [selectedMonth, setSelectedMonth] = useState<Dayjs | null>(dayjs());
+  const [selectedYear, setSelectedYear] = useState<Dayjs | null>(dayjs());
+
+  // State to track current filtered data from table
+  const [currentTableData, setCurrentTableData] = useState<IOrder[]>([]);
+
   useEffect(() => {
     const fetchRiders = async () => {
       try {
@@ -188,6 +245,81 @@ const OrderTable: React.FC<OrderTableProps> = ({
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  // Filter orders based on time range
+  const filteredOrders = useMemo(() => {
+    let filtered = [...orders];
+
+    switch (timeRangeType) {
+      case "day":
+        // Use the existing selectedDate prop
+        filtered = filtered.filter((order) => {
+          const orderDate = dayjsValue(order.oraConsegna);
+          return orderDate.isValid() && orderDate.isSame(selectedDate, "day");
+        });
+        break;
+
+      case "month":
+        if (selectedMonth) {
+          filtered = filtered.filter((order) => {
+            const orderDate = dayjsValue(order.oraConsegna);
+            return (
+              orderDate.isValid() && orderDate.isSame(selectedMonth, "month")
+            );
+          });
+        }
+        break;
+
+      case "year":
+        if (selectedYear) {
+          filtered = filtered.filter((order) => {
+            const orderDate = dayjsValue(order.oraConsegna);
+            return (
+              orderDate.isValid() && orderDate.isSame(selectedYear, "year")
+            );
+          });
+        }
+        break;
+    }
+
+    return filtered;
+  }, [orders, timeRangeType, selectedDate, selectedMonth, selectedYear]);
+
+  // Update currentTableData when filteredOrders changes initially
+  useEffect(() => {
+    setCurrentTableData(filteredOrders);
+  }, [filteredOrders]);
+
+  // Table onChange handler to capture filtered data
+  const handleTableChange = (
+    pagination: any,
+    filters: any,
+    sorter: any,
+    extra: { currentDataSource: IOrder[]; action: string }
+  ) => {
+    // Update the current table data whenever filters, sorting, or pagination changes
+    setCurrentTableData(extra.currentDataSource);
+  };
+
+  // Calculate radio usage based on current table data (after ALL filters)
+  const radioStats = useMemo(() => {
+    // Sum of radioguideConsegnate (total radios delivered across all filtered orders)
+    const totalRadioConsegnate = currentTableData.reduce(
+      (sum, order) => sum + (order.radioguideConsegnate || 0),
+      0
+    );
+
+    // Calculate total paid (saldo)
+    const totalPaid = currentTableData.reduce(
+      (sum, order) => sum + (order.saldo || 0),
+      0
+    );
+
+    return {
+      totalRadioConsegnate,
+      totalPaid,
+    };
+  }, [currentTableData]);
+
   const handleDelete = async (id: string) => {
     try {
       await deleteOrder(id);
@@ -201,7 +333,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
   };
 
   const handleShare = async (rider: IUser, index: number) => {
-    const order = orders[index];
+    const order = filteredOrders[index];
 
     console.log("🎯 [handleShare] Starting assignment:", {
       orderId: order.id,
@@ -219,19 +351,13 @@ const OrderTable: React.FC<OrderTableProps> = ({
       return;
     }
 
-    // ✅ CORRECTED LOGIC
     let isPickupAssignment = false;
 
-    // Rule 1: If delivery is COMPLETED or waiting for pickup, we're managing pickup
     if (["Consegnato", "Attesa ritiro"].includes(order.status)) {
       isPickupAssignment = true;
-    }
-    // Rule 2: If pickup rider is already assigned, we're managing pickup
-    else if (order.ritiratoDa) {
+    } else if (order.ritiratoDa) {
       isPickupAssignment = true;
-    }
-    // Rule 3: Otherwise, we're managing delivery
-    else {
+    } else {
       isPickupAssignment = false;
     }
 
@@ -244,7 +370,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
       hasPickupInfo: !!(order.luogoRitiro && order.oraRitiro),
     });
 
-    // ✅ Get current rider info for this assignment type
     const currentRiderName = isPickupAssignment
       ? order.pickupName
       : order.deliveryName;
@@ -252,10 +377,8 @@ const OrderTable: React.FC<OrderTableProps> = ({
       ? order.ritiratoDa
       : order.consegnatoDa;
 
-    // ✅ Check if required info exists (only for first-time assignment)
     if (!currentRiderId) {
       if (isPickupAssignment) {
-        // Assigning pickup for first time - check if pickup info exists
         if (!order.luogoRitiro || !order.oraRitiro) {
           Modal.confirm({
             title: "Informazioni mancanti",
@@ -272,7 +395,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
           return;
         }
       } else {
-        // Assigning delivery for first time - check if delivery info exists
         if (!order.luogoConsegna || !order.oraConsegna) {
           Modal.confirm({
             title: "Informazioni mancanti",
@@ -291,18 +413,12 @@ const OrderTable: React.FC<OrderTableProps> = ({
       }
     }
 
-    // ✅ Handle assignment or reassignment
     if (currentRiderId) {
-      // This is a REASSIGNMENT (rider already exists for this role)
-
-      // ✅ Check if the rider is already in progress (not just "Assegnato")
       let isInProgress = false;
 
       if (isPickupAssignment) {
-        // For pickup: in progress means "In Ritiro" or "Ritirato"
         isInProgress = ["In Ritiro", "Ritirato"].includes(order.status);
       } else {
-        // For delivery: in progress means "Presa in Carico", "In Consegna", "Consegnato", or "Attesa ritiro"
         isInProgress = [
           "Presa in Carico",
           "In Consegna",
@@ -319,7 +435,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
         return;
       }
 
-      // Status is "Assegnato" - allow reassignment
       if (currentRiderId === rider.id) {
         const roleLabel = isPickupAssignment ? "ritiro" : "consegna";
         message.info(
@@ -328,7 +443,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
         return;
       }
 
-      // Different rider - ask for confirmation
       const roleLabel = isPickupAssignment ? "ritiro" : "consegna";
       Modal.confirm({
         title: "Riassegna ordine",
@@ -342,11 +456,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
       return;
     }
 
-    // First-time assignment
     await performAssignment(order, rider, isPickupAssignment);
   };
 
-  // ✅ Helper function to perform the actual assignment
   const performAssignment = async (
     order: IOrder,
     rider: IUser,
@@ -395,56 +507,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
     }
   };
 
-  // // Helper function to perform the actual assignment
-  // const performAssignment = async (order: IOrder, rider: IUser, isPickupAssignment: boolean) => {
-  //   const updatedOrder: Partial<IOrder> = {
-  //     status: "Assegnato",
-  //   };
-
-  //   if (isPickupAssignment) {
-  //     // ✅ Assigning pickup rider - only update pickup fields
-  //     updatedOrder.ritiratoDa = rider.id;
-  //     updatedOrder.pickupName = rider.displayName;
-  //   } else {
-  //     // ✅ Assigning delivery rider - only update delivery fields
-  //     updatedOrder.consegnatoDa = rider.id;
-  //     updatedOrder.deliveryName = rider.displayName;
-  //   }
-
-  //   try {
-  //     console.log("🚀 [performAssignment] Assigning order with update:", {
-  //       orderId: order.id,
-  //       currentStatus: order.status,
-  //       newStatus: updatedOrder.status,
-  //       riderId: rider.id,
-  //       riderName: rider.displayName,
-  //       isPickup: isPickupAssignment,
-  //       fullUpdate: updatedOrder,
-  //     });
-
-  //     await updateOrder(order.id as string, updatedOrder);
-
-  //     console.log("✅ [performAssignment] Assignment API call completed");
-
-  //     // ✅ OPTIMISTIC UPDATE
-  //     setOrders(prevOrders =>
-  //       prevOrders.map(o =>
-  //         o.id === order.id
-  //           ? { ...o, ...updatedOrder }
-  //           : o
-  //       )
-  //     );
-
-  //     const actionType = isPickupAssignment ? "ritiro" : "consegna";
-  //     message.success(
-  //       `Ordine assegnato a ${rider.displayName} per ${actionType}`
-  //     );
-  //   } catch (error) {
-  //     message.error("Errore nell'assegnazione dell'ordine");
-  //     console.error("❌ [performAssignment] Assignment error:", error);
-  //   }
-  // };
-
   const getMenuItems = (order: IOrder, index: number) => [
     {
       label: (
@@ -473,8 +535,6 @@ const OrderTable: React.FC<OrderTableProps> = ({
             ]
           : riders.map((rider) => {
               const riderStatus = riderStatuses.get(rider.id);
-
-              // ✅ Show busy indicator but DON'T disable assignment
               const isBusy = riderStatus?.isBusy ?? false;
 
               return {
@@ -498,7 +558,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
                   </span>
                 ),
                 key: rider.id,
-                disabled: false, // ✅ NEVER disabled - always assignable
+                disabled: false,
               };
             }),
     },
@@ -591,6 +651,7 @@ const OrderTable: React.FC<OrderTableProps> = ({
         { text: "In Ritiro", value: "In Ritiro" },
         { text: "Ritirato", value: "Ritirato" },
         { text: "Annullato", value: "Annullato" },
+        { text: "Assegnato", value: "Assegnato" },
       ],
       onFilter: (value, record) => record.status === value,
       render: (status: IOrderStatus) => {
@@ -832,7 +893,9 @@ const OrderTable: React.FC<OrderTableProps> = ({
             <EyeOutlined style={{ marginRight: 4 }} />
           </Button>
           <Dropdown
-            menu={{ items: getMenuItems(record, orders.indexOf(record)) }}
+            menu={{
+              items: getMenuItems(record, filteredOrders.indexOf(record)),
+            }}
             trigger={["click"]}
           >
             <Button
@@ -850,12 +913,79 @@ const OrderTable: React.FC<OrderTableProps> = ({
 
   return (
     <>
+      {/* Time Range Filter */}
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={[16, 16]} align='middle'>
+          <Col xs={24} sm={8} md={6}>
+            <div style={{ marginBottom: 8 }}>
+              <strong>
+                <CalendarOutlined /> Periodo:
+              </strong>
+            </div>
+            <Select
+              style={{ width: "100%" }}
+              value={timeRangeType}
+              onChange={(value) => setTimeRangeType(value)}
+            >
+              <Option value='day'>Giorno</Option>
+              <Option value='month'>Mese</Option>
+              <Option value='year'>Anno</Option>
+            </Select>
+          </Col>
+
+          {timeRangeType === "month" && (
+            <Col xs={24} sm={8} md={6}>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Seleziona Mese:</strong>
+              </div>
+              <DatePicker
+                picker='month'
+                style={{ width: "100%" }}
+                value={selectedMonth}
+                onChange={(date) => setSelectedMonth(date)}
+                format='MMMM YYYY'
+              />
+            </Col>
+          )}
+
+          {timeRangeType === "year" && (
+            <Col xs={24} sm={8} md={6}>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Seleziona Anno:</strong>
+              </div>
+              <DatePicker
+                picker='year'
+                style={{ width: "100%" }}
+                value={selectedYear}
+                onChange={(date) => setSelectedYear(date)}
+                format='YYYY'
+              />
+            </Col>
+          )}
+
+          <Col xs={24} sm={8} md={6}>
+            <div style={{ marginBottom: 8 }}>
+              <strong>Periodo selezionato:</strong>
+            </div>
+            <Typography.Text type='secondary'>
+              {timeRangeType === "day" && selectedDate.format("DD/MM/YYYY")}
+              {timeRangeType === "month" && selectedMonth?.format("MMMM YYYY")}
+              {timeRangeType === "year" && selectedYear?.format("YYYY")}
+            </Typography.Text>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Radio Summary */}
+      <RadioSummary stats={radioStats} />
+
+      {/* Action Buttons */}
       <Space
         style={{ marginBottom: 16, display: "flex", justifyContent: "end" }}
       >
         <Button
           icon={<FilePdfOutlined />}
-          onClick={() => exportToPDF(orders)}
+          onClick={() => exportToPDF(currentTableData)}
           type='primary'
         >
           Esporta PDF
@@ -871,15 +1001,18 @@ const OrderTable: React.FC<OrderTableProps> = ({
           onSaved={() => {}}
         />
       </Space>
+
+      {/* Table */}
       <Table<IOrder>
         virtual
         bordered
-        dataSource={orders}
+        dataSource={filteredOrders}
         columns={columns}
         rowKey={(record) => record.id as string}
         loading={loading}
         tableLayout='fixed'
         scroll={{ x: 1480, y: 2000 }}
+        onChange={handleTableChange}
         pagination={{
           pageSize: 50,
           showSizeChanger: true,
